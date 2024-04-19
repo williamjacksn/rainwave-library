@@ -18,6 +18,8 @@ markupsafe==2.1.5
     # via
     #   jinja2
     #   werkzeug
+notch==2023.1
+    # via -r requirements.in
 psycopg2-binary==2.9.9
     # via -r requirements.in
 waitress==3.0.0
