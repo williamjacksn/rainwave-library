@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block container_content %}
+    <div class="pt-3 row">
+        <div class="col">
+            <h1>Rainwave Library</h1>
+        </div>
+    </div>
+
+    <div class="pt-3 row">
+        <div class="col-auto">
+            <input aria-label="Search songs" class="form-control" name="q" placeholder="Search songs..." type="text">
+        </div>
+    </div>
+
+    <div class="pt-3 row">
+        <div class="col">
+            <table class="table table-sm table-striped">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Album</th>
+                    <th>Title</th>
+                    <th>Artist</th>
+                    <th>Filename</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for s in g.songs %}
+                    <tr>
+                        <td>{{ s.song_id }}</td>
+                        <td class="text-nowrap user-select-all">{{ s.album_name }}</td>
+                        <td class="user-select-all">{{ s.song_title }}</td>
+                        <td>{{ s.song_artist_tag }}</td>
+                        <td class="user-select-all"><code>{{ s.song_filename }}</code></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

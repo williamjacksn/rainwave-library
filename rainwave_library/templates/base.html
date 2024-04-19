@@ -1,0 +1,17 @@
+<html lang="en">
+
+<head>
+    <title>Rainwave Library</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-5.3.3.css') }}">
+</head>
+
+<body>
+
+<div class="container-fluid">
+    {% block container_content %}{% endblock %}
+</div>
+
+<script src="{{ url_for('static', filename='bootstrap-5.3.3.bundle.js') }}"></script>
+</body>
+
+</html>
