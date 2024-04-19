@@ -1,6 +1,6 @@
-LABEL org.opencontainers.image.source="https://github.com/williamjacksn/rainwave-library"
-
 FROM python:3.12-slim
+
+LABEL org.opencontainers.image.source="https://github.com/williamjacksn/rainwave-library"
 
 RUN /usr/sbin/useradd --create-home --shell /bin/bash --user-group python
 
