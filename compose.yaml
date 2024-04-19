@@ -4,6 +4,8 @@ services:
       - /bin/bash
     image: ghcr.io/williamjacksn/rainwave-library
     init: true
+    ports:
+      - 8080:8080
     volumes:
       - ./:/home/python/rainwave-library
     working_dir: /home/python/rainwave-library
