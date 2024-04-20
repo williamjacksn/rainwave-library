@@ -1,0 +1,22 @@
+<table class="align-middle table table-sm table-striped">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Album</th>
+        <th>Title</th>
+        <th>Artist</th>
+        <th>Filename</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for s in g.songs %}
+        <tr>
+            <td>{{ s.song_id }}</td>
+            <td class="text-nowrap user-select-all">{{ s.album_name }}</td>
+            <td class="user-select-all">{{ s.song_title }}</td>
+            <td>{{ s.song_artist_tag }}</td>
+            <td class="user-select-all"><code>{{ s.song_filename }}</code></td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>

@@ -19,10 +19,17 @@ def before_request():
     flask.g.db = rainwave_library.models.rainwave.get_db()
 
 
-@app.route('/')
+@app.get('/')
 def index():
-    flask.g.songs = rainwave_library.models.rainwave.get_songs(flask.g.db)
     return flask.render_template('index.html')
+
+
+@app.post('/song-table')
+def song_table():
+    q = flask.request.values.get('q')
+    flask.g.songs = rainwave_library.models.rainwave.get_songs(flask.g.db, q)
+    return flask.render_template('song-table.html')
+
 
 def main(port: int):
     waitress.serve(app, port=port, ident=None)

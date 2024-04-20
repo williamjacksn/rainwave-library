@@ -9,34 +9,15 @@
 
     <div class="pt-3 row">
         <div class="col-auto">
-            <input aria-label="Search songs" class="form-control" name="q" placeholder="Search songs..." type="text">
+            <input aria-label="Search songs" class="form-control" hx-post="{{ url_for('song_table') }}"
+                   hx-target="#song-table" hx-trigger="search, keyup changed delay:500ms" name="q"
+                   placeholder="Search songs..." type="search">
         </div>
     </div>
 
     <div class="pt-3 row">
-        <div class="col">
-            <table class="table table-sm table-striped">
-                <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Album</th>
-                    <th>Title</th>
-                    <th>Artist</th>
-                    <th>Filename</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for s in g.songs %}
-                    <tr>
-                        <td>{{ s.song_id }}</td>
-                        <td class="text-nowrap user-select-all">{{ s.album_name }}</td>
-                        <td class="user-select-all">{{ s.song_title }}</td>
-                        <td>{{ s.song_artist_tag }}</td>
-                        <td class="user-select-all"><code>{{ s.song_filename }}</code></td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+        <div class="col" hx-post="{{ url_for('song_table') }}" hx-trigger="load" id="song-table">
+            <div class="htmx-indicator spinner-border"></div>
         </div>
     </div>
 {% endblock %}
