@@ -1,5 +1,6 @@
 flask
 fort
+httpx
 notch
 psycopg2-binary
 waitress
