@@ -2,8 +2,11 @@
 
 {% block container_content %}
     <div class="pt-3 row">
-        <div class="col">
+        <div class="col-auto">
             <h1>Rainwave Library</h1>
+        </div>
+        <div class="col-auto ms-auto">
+            <a class="btn btn-outline-primary" href="{{ url_for('sign_out') }}">Sign out</a>
         </div>
     </div>
 
@@ -20,9 +23,9 @@
 
     <div class="pt-3 row">
         <div class="col">
-            <table class="align-middle table table-sm table-striped">
-                <thead>
-                <tr>
+            <table class="align-middle table table-bordered table-sm table-striped">
+                <thead class="sticky-top">
+                <tr class="text-center">
                     <th>ID</th>
                     <th>Album</th>
                     <th>Title</th>

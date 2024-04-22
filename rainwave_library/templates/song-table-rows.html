@@ -1,12 +1,12 @@
 {% for s in g.songs %}
     {% if loop.index < 101 %}
     <tr>
-        <td>{{ s.song_id }}</td>
+        <td class="text-end"><code>{{ s.song_id }}</code></td>
         <td class="text-nowrap user-select-all">{{ s.album_name }}</td>
         <td class="user-select-all">{{ s.song_title }}</td>
         <td>{{ s.song_artist_tag }}</td>
-        <td>{{ '{:.2f}'.format(s.song_rating) }}</td>
-        <td>{{ s.song_rating_count }}</td>
+        <td class="text-end" title="{{ s.song_rating }}">{{ '{:.2f}'.format(s.song_rating) }}</td>
+        <td class="text-end">{{ s.song_rating_count }}</td>
         <td class="user-select-all"><code>{{ s.song_filename }}</code></td>
     </tr>
     {% else %}

@@ -99,6 +99,12 @@ def sign_in():
     return flask.redirect(auth_url, 307)
 
 
+@app.get('/sign-out')
+def sign_out():
+    flask.session.pop('discord_id')
+    return flask.redirect(flask.url_for('index'))
+
+
 @app.get('/song-table-rows')
 @secure
 def song_table_rows():
