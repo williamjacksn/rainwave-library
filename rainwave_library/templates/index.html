@@ -10,21 +10,78 @@
         </div>
     </div>
 
-    <div class="align-items-center d-flex g-2 pt-3 row">
-        <div class="col-auto">
-            <input aria-label="Search songs" class="form-control" hx-get="{{ url_for('song_table_rows') }}"
-                   hx-indicator="#filters-indicator" hx-target="tbody" hx-trigger="search, keyup changed delay:200ms"
-                   name="q" placeholder="Search songs..." type="search">
+    <form hx-target="tbody">
+        <div class="align-items-center d-flex g-2 pt-3 row">
+            <div class="col-auto">
+                <input aria-label="Search songs" class="form-control" hx-indicator="#filters-indicator"
+                       hx-post="{{ url_for('song_table_rows') }}" hx-trigger="search, keyup changed delay:300ms"
+                       name="q" placeholder="Search songs..."
+                       title="Case-insensitive search for album, title, artist, or filename" type="search">
+            </div>
+            <div class="col-auto">
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" type="button">
+                        <i class="bi-sort-alpha-down"></i>
+                    </button>
+                    <div class="dropdown-menu">
+                        <div class="px-2">
+                            <div class="form-check">
+                                <input checked class="form-check-input" hx-indicator="#filters-indicator"
+                                       hx-post="{{ url_for('song_table_rows') }}" id="sort-dir-asc" name="sort-dir"
+                                       type="radio" value="asc">
+                                <label class="form-check-label" for="sort-dir-asc">Ascending</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" hx-indicator="#filters-indicator"
+                                       hx-post="{{ url_for('song_table_rows') }}" id="sort-dir-desc" name="sort-dir"
+                                       type="radio" value="desc">
+                                <label class="form-check-label" for="sort-dir-desc">Descending</label>
+                            </div>
+                            <hr>
+                            <div class="form-check">
+                                <input checked class="form-check-input" hx-indicator="#filters-indicator"
+                                       hx-post="{{ url_for('song_table_rows') }}" id="sort-col-id" name="sort-col"
+                                       type="radio" value="song_id">
+                                <label class="form-check-label" for="sort-col-id">ID</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" hx-indicator="#filters-indicator"
+                                       hx-post="{{ url_for('song_table_rows') }}" id="sort-col-album" name="sort-col"
+                                       type="radio" value="album_name">
+                                <label class="form-check-label" for="sort-col-album">Album</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" hx-indicator="#filters-indicator"
+                                       hx-post="{{ url_for('song_table_rows') }}" id="sort-col-title" name="sort-col"
+                                       type="radio" value="song_title">
+                                <label class="form-check-label" for="sort-col-title">Title</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" hx-indicator="#filters-indicator"
+                                       hx-post="{{ url_for('song_table_rows') }}" id="sort-col-rating" name="sort-col"
+                                       type="radio" value="song_rating">
+                                <label class="form-check-label" for="sort-col-rating">Rating</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" hx-indicator="#filters-indicator"
+                                       hx-post="{{ url_for('song_table_rows') }}" id="sort-col-filename" name="sort-col"
+                                       type="radio" value="song_filename">
+                                <label class="form-check-label" for="sort-col-filename">Filename</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-auto">
+                <span class="htmx-indicator spinner-border spinner-border-sm" id="filters-indicator"></span>
+            </div>
         </div>
-        <div class="col-auto">
-            <span class="htmx-indicator spinner-border spinner-border-sm" id="filters-indicator"></span>
-        </div>
-    </div>
+    </form>
 
     <div class="pt-3 row">
         <div class="col">
             <table class="align-middle table table-bordered table-sm table-striped">
-                <thead class="sticky-top">
+                <thead>
                 <tr class="text-center">
                     <th>ID</th>
                     <th>Album</th>
@@ -35,7 +92,7 @@
                     <th>Filename</th>
                 </tr>
                 </thead>
-                <tbody hx-get="{{ url_for('song_table_rows') }}" hx-trigger="load">
+                <tbody hx-post="{{ url_for('song_table_rows') }}" hx-trigger="load">
                 <tr>
                     <td class="py-3 text-center" colspan="7">
                         <span class="htmx-indicator spinner-border spinner-border-sm"></span>

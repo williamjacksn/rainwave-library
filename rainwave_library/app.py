@@ -105,12 +105,16 @@ def sign_out():
     return flask.redirect(flask.url_for('index'))
 
 
-@app.get('/song-table-rows')
+@app.post('/song-table-rows')
 @secure
 def song_table_rows():
+    for k, v in flask.request.values.lists():
+        app.logger.debug(f'{k}: {v}')
     flask.g.q = flask.request.values.get('q')
     flask.g.page = int(flask.request.values.get('page', 1))
-    flask.g.songs = rainwave_library.models.rainwave.get_songs(flask.g.db, flask.g.q, flask.g.page)
+    sort_col = flask.request.values.get('sort-col', 'song_id')
+    sort_dir = flask.request.values.get('sort-dir', 'asc')
+    flask.g.songs = rainwave_library.models.rainwave.get_songs(flask.g.db, flask.g.q, flask.g.page, sort_col, sort_dir)
     return flask.render_template('song-table-rows.html')
 
 

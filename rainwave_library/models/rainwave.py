@@ -7,7 +7,8 @@ def get_db() -> fort.PostgresDatabase:
     return fort.PostgresDatabase(cnx_str)
 
 
-def get_songs(db: fort.PostgresDatabase, query: str = None, page: int = 1) -> list[dict]:
+def get_songs(db: fort.PostgresDatabase, query: str = None, page: int = 1,
+              sort_col: str = 'song_id', sort_dir: str = 'asc') -> list[dict]:
     if query:
         where_clause = '''
             s.song_verified is true and (
@@ -19,6 +20,15 @@ def get_songs(db: fort.PostgresDatabase, query: str = None, page: int = 1) -> li
         '''
     else:
         where_clause = 's.song_verified is true'
+
+    if sort_dir not in ('asc', 'desc'):
+        sort_dir = 'asc'
+    if sort_col not in ('album_name', 'song_id', 'song_title', 'song_rating', 'song_filename'):
+        sort_col = 'song_id'
+    sort_clause = f'{sort_col} {sort_dir}'
+    if sort_col != 'song_id':
+        sort_clause = f'{sort_clause}, song_id asc'
+
     sql = f'''
         select
             a.album_name, s.song_added_on, s.song_artist_tag, s.song_filename, s.song_id, s.song_rating,
@@ -26,7 +36,7 @@ def get_songs(db: fort.PostgresDatabase, query: str = None, page: int = 1) -> li
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id
         where {where_clause}
-        order by s.song_id
+        order by {sort_clause}
         limit 101 offset %(offset)s
     '''
     params = {
