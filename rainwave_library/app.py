@@ -24,11 +24,12 @@ def index():
     return flask.render_template('index.html')
 
 
-@app.post('/song-table')
-def song_table():
-    q = flask.request.values.get('q')
-    flask.g.songs = rainwave_library.models.rainwave.get_songs(flask.g.db, q)
-    return flask.render_template('song-table.html')
+@app.get('/song-table-rows')
+def song_table_rows():
+    flask.g.q = flask.request.values.get('q')
+    flask.g.page = int(flask.request.values.get('page', 1))
+    flask.g.songs = rainwave_library.models.rainwave.get_songs(flask.g.db, flask.g.q, flask.g.page)
+    return flask.render_template('song-table-rows.html')
 
 
 def main(port: int):

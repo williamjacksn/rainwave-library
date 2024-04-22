@@ -7,17 +7,39 @@
         </div>
     </div>
 
-    <div class="pt-3 row">
+    <div class="align-items-center d-flex g-2 pt-3 row">
         <div class="col-auto">
-            <input aria-label="Search songs" class="form-control" hx-post="{{ url_for('song_table') }}"
-                   hx-target="#song-table" hx-trigger="search, keyup changed delay:500ms" name="q"
-                   placeholder="Search songs..." type="search">
+            <input aria-label="Search songs" class="form-control" hx-get="{{ url_for('song_table_rows') }}"
+                   hx-indicator="#filters-indicator" hx-target="tbody" hx-trigger="search, keyup changed delay:200ms"
+                   name="q" placeholder="Search songs..." type="search">
+        </div>
+        <div class="col-auto">
+            <span class="htmx-indicator spinner-border spinner-border-sm" id="filters-indicator"></span>
         </div>
     </div>
 
     <div class="pt-3 row">
-        <div class="col" hx-post="{{ url_for('song_table') }}" hx-trigger="load" id="song-table">
-            <div class="htmx-indicator spinner-border"></div>
+        <div class="col">
+            <table class="align-middle table table-sm table-striped">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Album</th>
+                    <th>Title</th>
+                    <th>Artist</th>
+                    <th>Rating</th>
+                    <th>Ratings</th>
+                    <th>Filename</th>
+                </tr>
+                </thead>
+                <tbody hx-get="{{ url_for('song_table_rows') }}" hx-trigger="load">
+                <tr>
+                    <td class="py-3 text-center" colspan="7">
+                        <span class="htmx-indicator spinner-border spinner-border-sm"></span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 {% endblock %}

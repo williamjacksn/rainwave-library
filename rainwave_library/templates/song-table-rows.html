@@ -1,0 +1,24 @@
+{% for s in g.songs %}
+    {% if loop.index < 101 %}
+    <tr>
+        <td>{{ s.song_id }}</td>
+        <td class="text-nowrap user-select-all">{{ s.album_name }}</td>
+        <td class="user-select-all">{{ s.song_title }}</td>
+        <td>{{ s.song_artist_tag }}</td>
+        <td>{{ '{:.2f}'.format(s.song_rating) }}</td>
+        <td>{{ s.song_rating_count }}</td>
+        <td class="user-select-all"><code>{{ s.song_filename }}</code></td>
+    </tr>
+    {% else %}
+    <tr>
+        <td class="py-3 text-center" colspan="7" hx-get="{{ url_for('song_table_rows', q=g.q, page=g.page + 1) }}"
+            hx-target="closest tr" hx-trigger="revealed" hx-swap="outerHTML">
+            <span class="htmx-indicator spinner-border spinner-border-sm"></span>
+        </td>
+    </tr>
+    {% endif %}
+{% else %}
+<tr class="text-center">
+    <td colspan="7">No songs matched your criteria.</td>
+</tr>
+{% endfor %}
