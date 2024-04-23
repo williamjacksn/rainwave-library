@@ -2,7 +2,7 @@
     {% if loop.index < 101 %}
     <tr>
         <td class="text-end"><code>{{ s.song_id }}</code></td>
-        <td class="text-nowrap user-select-all">{{ s.album_name }}</td>
+        <td class="user-select-all">{{ s.album_name }}</td>
         <td class="user-select-all">{{ s.song_title }}</td>
         <td>{{ s.song_artist_tag }}</td>
         <td class="text-end" title="{{ s.song_rating }}">{{ '{:.2f}'.format(s.song_rating) }}</td>
