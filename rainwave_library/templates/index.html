@@ -83,6 +83,7 @@
             <table class="align-middle table table-bordered table-sm table-striped">
                 <thead>
                 <tr class="text-center">
+                    <th></th>
                     <th>ID</th>
                     <th>Album</th>
                     <th>Title</th>
@@ -90,7 +91,6 @@
                     <th>Rating</th>
                     <th>Ratings</th>
                     <th>Filename</th>
-                    <th></th>
                 </tr>
                 </thead>
                 <tbody hx-post="{{ url_for('song_table_rows') }}" hx-trigger="load">
