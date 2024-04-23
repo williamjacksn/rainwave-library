@@ -1,6 +1,11 @@
 <div class="end-0 fade m-5 position-fixed show toast top-0">
     <div class="toast-header">
-        <div class="me-auto">
+        <div class="me-auto">Music player</div>
+        <button class="btn-close" data-bs-dismiss="toast" hx-get="{{ url_for('nothing') }}" hx-target="#audio"
+                type="button"></button>
+    </div>
+    <div class="toast-body">
+        <div class="pb-1" id="audio-metadata">
             <strong>
                 <i class="bi-disc"></i>
                 {{ g.song.album_name }}
@@ -16,9 +21,6 @@
                 {{ g.song.song_artist_tag }}
             </strong>
         </div>
-        <button class="btn-close" data-bs-dismiss="toast" type="button"></button>
-    </div>
-    <div class="toast-body">
         <audio autoplay controls preload="metadata" src="{{ url_for('stream_song', song_id=g.song.song_id) }}"></audio>
     </div>
 </div>

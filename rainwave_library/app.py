@@ -91,6 +91,12 @@ def download_song(song_id: int):
     return flask.send_file(song.get('song_filename'), as_attachment=True)
 
 
+@app.get('/nothing')
+@secure
+def nothing():
+    return ''
+
+
 @app.get('/play/<int:song_id>')
 @secure
 def play_song(song_id: int):
