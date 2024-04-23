@@ -9,13 +9,20 @@ def get_db() -> fort.PostgresDatabase:
 
 def get_song(db: fort.PostgresDatabase, song_id: int) -> dict:
     sql = '''
+        with g as (
+            select s.song_id, array_agg(g.group_name order by g.group_name) song_groups
+            from r4_song_group s
+            join r4_groups g on g.group_id = s.group_id
+            group by s.song_id
+        )
         select
-            s.song_added_on, a.album_name, s.song_artist_tag, s.song_fave_count, s.song_filename, s.song_id,
-            s.song_length, s.song_link_text, s.song_rating, s.song_rating_count, s.song_request_count, s.song_title,
-            s.song_url
+            s.song_added_on, a.album_name, s.song_artist_tag, s.song_fave_count, s.song_filename,
+            coalesce(g.song_groups, array[]::text[]) as song_groups, s.song_id, s.song_length, s.song_link_text,
+            s.song_rating, s.song_rating_count, s.song_request_count, s.song_title, s.song_url
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id
-        where song_id = %(song_id)s
+        left join g on g.song_id = s.song_id
+        where s.song_id = %(song_id)s
     '''
     params = {
         'song_id': song_id,
@@ -55,13 +62,21 @@ def get_songs(db: fort.PostgresDatabase, query: str = None, page: int = 1,
             from r4_song_sid
             where song_exists is true
             group by song_id
+        ),
+        g as (
+            select s.song_id, array_agg(g.group_name order by g.group_name) song_groups
+            from r4_song_group s
+            join r4_groups g on g.group_id = s.group_id
+            group by s.song_id
         )
         select
-            a.album_name, c.channels, s.song_added_on, s.song_artist_tag, s.song_filename, s.song_id, s.song_rating,
-            s.song_rating_count, s.song_title
+            a.album_name, c.channels, s.song_added_on, s.song_artist_tag, s.song_filename,
+            coalesce(g.song_groups, array[]::text[]) as song_groups, s.song_id, s.song_rating, s.song_rating_count,
+            s.song_title
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id
         join c on c.song_id = s.song_id
+        left join g on g.song_id = s.song_id
         where {where_clause}
         order by {sort_clause}
         limit 101 offset %(offset)s

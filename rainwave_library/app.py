@@ -139,6 +139,13 @@ def download_song(song_id: int):
     return flask.send_file(song.get('song_filename'), as_attachment=True)
 
 
+@app.get('/songs/<int:song_id>/edit')
+@secure
+def songs_edit(song_id: int):
+    flask.g.song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    return flask.render_template('songs/edit.html')
+
+
 @app.get('/songs/<int:song_id>/play')
 @secure
 def play_song(song_id: int):

@@ -44,6 +44,14 @@
                     <td>{{ g.song.song_artist_tag }}</td>
                 </tr>
                 <tr>
+                    <th>Categories</th>
+                    <td>
+                    {% for cat in g.song.song_groups %}
+                        <span class="badge text-bg-secondary">{{ cat }}</span>
+                    {% endfor %}
+                    </td>
+                </tr>
+                <tr>
                     <th>Duration</th>
                     <td>{{ g.song.song_length }}s</td>
                 </tr>
@@ -94,4 +102,15 @@
             </table>
         </div>
     </div>
+
+    {#
+    <div class="pt-3 row">
+        <div class="col">
+            <a class="btn btn-outline-success" href="{{ url_for('songs_edit', song_id=g.song.song_id) }}">
+                <i class="bi-pencil"></i>
+                Edit MP3 tags
+            </a>
+        </div>
+    </div>
+    #}
 {% endblock %}
