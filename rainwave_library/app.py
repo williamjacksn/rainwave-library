@@ -84,31 +84,10 @@ def authorize():
     return flask.redirect(flask.url_for('index'))
 
 
-@app.get('/songs/<int:song_id>/download')
-@secure
-def download_song(song_id: int):
-    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
-    return flask.send_file(song.get('song_filename'), as_attachment=True)
-
-
 @app.get('/nothing')
 @secure
 def nothing():
     return ''
-
-
-@app.get('/songs/<int:song_id>/play')
-@secure
-def play_song(song_id: int):
-    flask.g.song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
-    return flask.render_template('audio-player.html')
-
-
-@app.get('/songs/<int:song_id>/stream')
-@secure
-def stream_song(song_id: int):
-    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
-    return flask.send_file(song.get('song_filename'))
 
 
 @app.get('/sign-in')
@@ -137,7 +116,28 @@ def sign_out():
     return flask.redirect(flask.url_for('index'))
 
 
-@app.post('/song-table-rows')
+@app.get('/songs/<int:song_id>/download')
+@secure
+def download_song(song_id: int):
+    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    return flask.send_file(song.get('song_filename'), as_attachment=True)
+
+
+@app.get('/songs/<int:song_id>/play')
+@secure
+def play_song(song_id: int):
+    flask.g.song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    return flask.render_template('audio-player.html')
+
+
+@app.get('/songs/<int:song_id>/stream')
+@secure
+def stream_song(song_id: int):
+    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    return flask.send_file(song.get('song_filename'))
+
+
+@app.post('/songs/table-rows')
 @secure
 def song_table_rows():
     for k, v in flask.request.values.lists():
