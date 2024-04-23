@@ -1,5 +1,8 @@
-<div class="card end-0 m-5 p-1 position-fixed top-0">
-    <div class="card-body">
-        <audio autoplay controls preload="metadata" src="{{ url_for('stream_song', song_id=g.song_id) }}"></audio>
+<div class="alert alert-dismissible alert-light align-middle end-0 fade m-5 p-0 position-fixed show top-0">
+    <div class="p-1">
+        <div class="pe-5">
+            <audio autoplay controls preload="metadata" src="{{ url_for('stream_song', song_id=g.song_id) }}"></audio>
+        </div>
+        <button class="btn-close m-1" data-bs-dismiss="alert" type="button"></button>
     </div>
 </div>
