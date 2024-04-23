@@ -16,7 +16,7 @@ whitenoise_root = pathlib.Path(__file__).resolve().with_name('static')
 app.wsgi_app = whitenoise.WhiteNoise(app.wsgi_app, root=whitenoise_root, prefix='static/')
 
 app.secret_key = os.getenv('SECRET_KEY')
-
+app.config['PREFERRED_URL_SCHEME'] = os.getenv('SCHEME', 'https')
 
 def secure(f):
     @functools.wraps(f)
