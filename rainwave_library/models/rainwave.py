@@ -7,16 +7,17 @@ def get_db() -> fort.PostgresDatabase:
     return fort.PostgresDatabase(cnx_str)
 
 
-def get_song_filename(db: fort.PostgresDatabase, song_id: int) -> str:
+def get_song(db: fort.PostgresDatabase, song_id: int) -> dict:
     sql = '''
-        select song_filename
-        from r4_songs
+        select a.album_name, s.song_artist_tag, s.song_filename, s.song_id, s.song_title
+        from r4_songs s
+        join r4_albums a on a.album_id = s.album_id
         where song_id = %(song_id)s
     '''
     params = {
         'song_id': song_id,
     }
-    return db.q_val(sql, params)
+    return db.q_one(sql, params)
 
 
 def get_songs(db: fort.PostgresDatabase, query: str = None, page: int = 1,

@@ -87,22 +87,22 @@ def authorize():
 @app.get('/download/<int:song_id>')
 @secure
 def download_song(song_id: int):
-    song_filename = rainwave_library.models.rainwave.get_song_filename(flask.g.db, song_id)
-    return flask.send_file(song_filename, as_attachment=True)
+    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    return flask.send_file(song.get('song_filename'), as_attachment=True)
 
 
 @app.get('/play/<int:song_id>')
 @secure
 def play_song(song_id: int):
-    flask.g.song_id = song_id
+    flask.g.song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
     return flask.render_template('audio-player.html')
 
 
 @app.get('/stream/<int:song_id>')
 @secure
 def stream_song(song_id: int):
-    song_filename = rainwave_library.models.rainwave.get_song_filename(flask.g.db, song_id)
-    return flask.send_file(song_filename)
+    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    return flask.send_file(song.get('song_filename'))
 
 
 @app.get('/sign-in')
