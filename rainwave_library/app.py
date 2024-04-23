@@ -38,9 +38,13 @@ def secure(f):
 def before_request():
     flask.g.discord_id = flask.session.get('discord_id')
     flask.g.db = rainwave_library.models.rainwave.get_db()
-    flask.g.channel_names = [
-        'dj', 'game', 'ocr', 'cover', 'chip', 'all'
-    ]
+    flask.g.channels = {
+        1: 'Game',
+        2: 'OC ReMix',
+        3: 'Covers',
+        4: 'Chiptune',
+        5: 'All',
+    }
 
 
 @app.get('/')
@@ -158,7 +162,13 @@ def song_table_rows():
     flask.g.page = int(flask.request.values.get('page', 1))
     sort_col = flask.request.values.get('sort-col', 'song_id')
     sort_dir = flask.request.values.get('sort-dir', 'asc')
-    flask.g.songs = rainwave_library.models.rainwave.get_songs(flask.g.db, flask.g.q, flask.g.page, sort_col, sort_dir)
+    input_channels = flask.request.values.getlist('channels')
+    valid_channels = [int(c) for c in input_channels if c.isdigit() and 0 < int(c) < 6]
+    app.logger.debug(f'{valid_channels=}')
+    if not valid_channels:
+        valid_channels = None
+    flask.g.songs = rainwave_library.models.rainwave.get_songs(flask.g.db, flask.g.q, flask.g.page, sort_col, sort_dir,
+                                                               valid_channels)
     return flask.render_template('songs/table-rows.html')
 
 
