@@ -84,6 +84,13 @@ def authorize():
     return flask.redirect(flask.url_for('index'))
 
 
+@app.get('/download/<int:song_id>')
+@secure
+def download_song(song_id: int):
+    song_filename = rainwave_library.models.rainwave.get_song_filename(flask.g.db, song_id)
+    return flask.send_file(song_filename, as_attachment=True)
+
+
 @app.get('/sign-in')
 def sign_in():
     state = secrets.token_urlsafe()

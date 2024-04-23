@@ -90,11 +90,12 @@
                     <th>Rating</th>
                     <th>Ratings</th>
                     <th>Filename</th>
+                    <th></th>
                 </tr>
                 </thead>
                 <tbody hx-post="{{ url_for('song_table_rows') }}" hx-trigger="load">
                 <tr>
-                    <td class="py-3 text-center" colspan="7">
+                    <td class="py-3 text-center" colspan="8">
                         <span class="htmx-indicator spinner-border spinner-border-sm"></span>
                     </td>
                 </tr>

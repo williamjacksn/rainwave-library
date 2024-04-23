@@ -8,10 +8,11 @@
         <td class="text-end" title="{{ s.song_rating }}">{{ '{:.2f}'.format(s.song_rating) }}</td>
         <td class="text-end">{{ s.song_rating_count }}</td>
         <td class="user-select-all"><code>{{ s.song_filename }}</code></td>
+        <td><a href="{{ url_for('download_song', song_id=s.song_id) }}"><i class="bi-download"></i></a></td>
     </tr>
     {% else %}
     <tr>
-        <td class="py-3 text-center" colspan="7" hx-include="form"
+        <td class="py-3 text-center" colspan="8" hx-include="form"
             hx-post="{{ url_for('song_table_rows', page=g.page + 1) }}" hx-target="closest tr" hx-trigger="revealed"
             hx-swap="outerHTML">
             <span class="htmx-indicator spinner-border spinner-border-sm"></span>
@@ -20,6 +21,6 @@
     {% endif %}
 {% else %}
 <tr class="text-center">
-    <td colspan="7">No songs matched your criteria.</td>
+    <td colspan="8">No songs matched your criteria.</td>
 </tr>
 {% endfor %}
