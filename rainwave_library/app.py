@@ -91,6 +91,20 @@ def download_song(song_id: int):
     return flask.send_file(song_filename, as_attachment=True)
 
 
+@app.get('/play/<int:song_id>')
+@secure
+def play_song(song_id: int):
+    flask.g.song_id = song_id
+    return flask.render_template('audio-player.html')
+
+
+@app.get('/stream/<int:song_id>')
+@secure
+def stream_song(song_id: int):
+    song_filename = rainwave_library.models.rainwave.get_song_filename(flask.g.db, song_id)
+    return flask.send_file(song_filename)
+
+
 @app.get('/sign-in')
 def sign_in():
     state = secrets.token_urlsafe()

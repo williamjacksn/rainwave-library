@@ -8,7 +8,12 @@
         <td class="text-end" title="{{ s.song_rating }}">{{ '{:.2f}'.format(s.song_rating) }}</td>
         <td class="text-end">{{ s.song_rating_count }}</td>
         <td class="user-select-all"><code>{{ s.song_filename }}</code></td>
-        <td><a href="{{ url_for('download_song', song_id=s.song_id) }}"><i class="bi-download"></i></a></td>
+        <td class="text-nowrap">
+            <a href="{{ url_for('download_song', song_id=s.song_id) }}"><i class="bi-download"></i></a>
+            <a href="#" hx-get="{{ url_for('play_song', song_id=s.song_id) }}" hx-target="#audio">
+                <i class="bi-play"></i>
+            </a>
+        </td>
     </tr>
     {% else %}
     <tr>

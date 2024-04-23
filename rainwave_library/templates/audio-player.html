@@ -1,0 +1,5 @@
+<div class="card end-0 m-5 p-1 position-fixed top-0">
+    <div class="card-body">
+        <audio autoplay controls preload="metadata" src="{{ url_for('stream_song', song_id=g.song_id) }}"></audio>
+    </div>
+</div>
