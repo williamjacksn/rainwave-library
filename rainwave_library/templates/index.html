@@ -24,6 +24,7 @@
                     </button>
                     <div class="dropdown-menu">
                         <div class="px-2">
+                            <h6 class="dropdown-header">SORT OPTIONS</h6>
                             <div class="form-check">
                                 <input checked class="form-check-input" hx-indicator="#filters-indicator"
                                        hx-post="{{ url_for('song_table_rows') }}" id="sort-dir-asc" name="sort-dir"
@@ -79,6 +80,7 @@
                     </button>
                     <div class="dropdown-menu">
                         <div class="px-2">
+                            <h6 class="dropdown-header">CHANNEL SELECTION</h6>
                         {% for k, v in g.channels.items() %}
                             <div class="form-check">
                                 <input checked class="form-check-input" hx-indicator="#filters-indicator"
