@@ -38,6 +38,9 @@ def secure(f):
 def before_request():
     flask.g.discord_id = flask.session.get('discord_id')
     flask.g.db = rainwave_library.models.rainwave.get_db()
+    flask.g.channel_names = [
+        'dj', 'game', 'ocr', 'cover', 'chip', 'all'
+    ]
 
 
 @app.get('/')
@@ -136,7 +139,7 @@ def download_song(song_id: int):
 @secure
 def play_song(song_id: int):
     flask.g.song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
-    return flask.render_template('audio-player.html')
+    return flask.render_template('songs/play.html')
 
 
 @app.get('/songs/<int:song_id>/stream')
@@ -156,7 +159,7 @@ def song_table_rows():
     sort_col = flask.request.values.get('sort-col', 'song_id')
     sort_dir = flask.request.values.get('sort-dir', 'asc')
     flask.g.songs = rainwave_library.models.rainwave.get_songs(flask.g.db, flask.g.q, flask.g.page, sort_col, sort_dir)
-    return flask.render_template('song-table-rows.html')
+    return flask.render_template('songs/table-rows.html')
 
 
 def main(port: int):
