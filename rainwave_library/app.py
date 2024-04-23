@@ -18,6 +18,11 @@ app.wsgi_app = whitenoise.WhiteNoise(app.wsgi_app, root=whitenoise_root, prefix=
 app.secret_key = os.getenv('SECRET_KEY')
 app.config['PREFERRED_URL_SCHEME'] = os.getenv('SCHEME', 'https')
 
+
+def external_url_for(endpoint, *args, **kwargs):
+    return flask.url_for(endpoint, _scheme=app.config['PREFERRED_URL_SCHEME'], _external=True, *args, **kwargs)
+
+
 def secure(f):
     @functools.wraps(f)
     def decorated_function(*args, **kwargs):
@@ -53,7 +58,7 @@ def authorize():
         'client_secret': os.getenv('OPENID_CLIENT_SECRET'),
         'code': flask.request.values.get('code'),
         'grant_type': 'authorization_code',
-        'redirect_uri': flask.url_for('authorize', _external=True),
+        'redirect_uri': external_url_for('authorize'),
     }
     resp = httpx.post(token_endpoint, data=data).json()
     access_token = resp.get('access_token')
@@ -85,7 +90,7 @@ def sign_in():
     flask.session.update({
         'state': state
     })
-    redirect_uri = flask.url_for('authorize', _external=True)
+    redirect_uri = external_url_for('authorize')
     query = {
         'client_id': os.getenv('OPENID_CLIENT_ID'),
         'prompt': 'none',
