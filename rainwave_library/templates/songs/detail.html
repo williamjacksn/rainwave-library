@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block container_content %}
+    <div class="pt-3 row">
+        <div class="col-auto">
+            <a class="btn btn-outline-primary" href="{{ url_for('index') }}">
+                <i class="bi-caret-left-fill"></i>
+                Home
+            </a>
+        </div>
+        {% include 'sign-out-button.html' %}
+    </div>
+
+    <div class="pt-3 row">
+        <div class="col">
+            <h1>Song details</h1>
+        </div>
+    </div>
+
+    <div class="pt-3 row">
+        <div class="col">
+            <audio controls preload="metadata" src="{{ url_for('stream_song', song_id=g.song.song_id) }}"></audio>
+        </div>
+    </div>
+
+    <div class="pt-3 row">
+        <div class="col">
+            <table class="align-middle d-block table">
+                <tbody>
+                <tr>
+                    <th>ID</th>
+                    <td class="user-select-all"><code>{{ g.song.song_id }}</code></td>
+                </tr>
+                <tr>
+                    <th>Album</th>
+                    <td class="user-select-all">{{ g.song.album_name }}</td>
+                </tr>
+                <tr>
+                    <th>Title</th>
+                    <td class="user-select-all">{{ g.song.song_title }}</td>
+                </tr>
+                <tr>
+                    <th>Artist</th>
+                    <td>{{ g.song.song_artist_tag }}</td>
+                </tr>
+                <tr>
+                    <th>Duration</th>
+                    <td>{{ g.song.song_length }}s</td>
+                </tr>
+                <tr>
+                    <th>Added on</th>
+                    <td>{{ g.song_added_on }}</td>
+                </tr>
+                <tr>
+                    <th>Rating</th>
+                    <td>{{ g.song.song_rating }}</td>
+                </tr>
+                <tr>
+                    <th>Rating count</th>
+                    <td>{{ g.song.song_rating_count }}</td>
+                </tr>
+                <tr>
+                    <th>Fave count</th>
+                    <td>{{ g.song.song_fave_count }}</td>
+                </tr>
+                <tr>
+                    <th>Request count</th>
+                    <td>{{ g.song.song_request_count }}</td>
+                </tr>
+                <tr>
+                    <th>URL</th>
+                    <td>
+                    {% if g.song.song_url %}
+                        <a class="text-decoration-none" href="{{ g.song.song_url }}" target="_blank">
+                            {{ g.song.song_url }}
+                        </a>
+                    {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Link text</th>
+                    <td>{{ g.song.song_link_text or '' }}</td>
+                </tr>
+                <tr>
+                    <th>Filename</th>
+                    <td class="user-select-all">
+                        <a class="text-decoration-none" href="{{ url_for('download_song', song_id=g.song.song_id) }}"
+                           title="Download: {{ g.song.album_name }} / {{ g.song.song_title }}">
+                            <code>{{ g.song.song_filename }}</code>
+                        </a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

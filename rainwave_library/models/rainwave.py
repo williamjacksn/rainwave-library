@@ -9,7 +9,10 @@ def get_db() -> fort.PostgresDatabase:
 
 def get_song(db: fort.PostgresDatabase, song_id: int) -> dict:
     sql = '''
-        select a.album_name, s.song_artist_tag, s.song_filename, s.song_id, s.song_title
+        select
+            s.song_added_on, a.album_name, s.song_artist_tag, s.song_fave_count, s.song_filename, s.song_id,
+            s.song_length, s.song_link_text, s.song_rating, s.song_rating_count, s.song_request_count, s.song_title,
+            s.song_url
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id
         where song_id = %(song_id)s

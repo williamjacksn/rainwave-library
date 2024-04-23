@@ -2,6 +2,10 @@
     {% if loop.index < 101 %}
     <tr>
         <td class="text-center text-nowrap">
+            <a class="text-decoration-none" href="{{ url_for('songs_detail', song_id=s.song_id) }}"
+               title="Details: {{ s.album_name }} / {{ s.song_title }}">
+                <i class="bi-info-circle"></i>
+            </a>
             <a class="text-decoration-none" href="{{ url_for('download_song', song_id=s.song_id) }}"
                title="Download: {{ s.album_name }} / {{ s.song_title }}">
                 <i class="bi-download"></i>

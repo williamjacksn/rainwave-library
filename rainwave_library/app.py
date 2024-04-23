@@ -1,3 +1,4 @@
+import datetime
 import flask
 import functools
 import httpx
@@ -114,6 +115,14 @@ def sign_in():
 def sign_out():
     flask.session.pop('discord_id')
     return flask.redirect(flask.url_for('index'))
+
+
+@app.get('/songs/<int:song_id>')
+@secure
+def songs_detail(song_id: int):
+    flask.g.song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    flask.g.song_added_on = datetime.datetime.fromtimestamp(flask.g.song.get('song_added_on'), tz=datetime.UTC)
+    return flask.render_template('songs/detail.html')
 
 
 @app.get('/songs/<int:song_id>/download')
