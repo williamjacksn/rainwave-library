@@ -1,5 +1,13 @@
 import fort
 import os
+import pathlib
+
+
+def calculate_removed_location(filename: os.PathLike) -> pathlib.Path:
+    library_root = pathlib.Path(os.getenv('LIBRARY_ROOT'))
+    library_removed = pathlib.Path(os.getenv('LIBRARY_REMOVED'))
+    relative = pathlib.Path(filename).relative_to(library_root)
+    return library_removed / relative
 
 
 def get_db() -> fort.PostgresDatabase:

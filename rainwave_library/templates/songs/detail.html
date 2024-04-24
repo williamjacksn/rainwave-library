@@ -103,14 +103,16 @@
         </div>
     </div>
 
-    {#
     <div class="pt-3 row">
         <div class="col">
-            <a class="btn btn-outline-success" href="{{ url_for('songs_edit', song_id=g.song.song_id) }}">
-                <i class="bi-pencil"></i>
-                Edit MP3 tags
+{#            <a class="btn btn-outline-success" href="{{ url_for('songs_edit', song_id=g.song.song_id) }}">#}
+{#                <i class="bi-pencil"></i>#}
+{#                Edit MP3 tags#}
+{#            </a>#}
+            <a class="btn btn-outline-danger" href="{{ url_for('songs_remove', song_id=g.song.song_id) }}">
+                <i class="bi-file-earmark-break"></i>
+                Remove file
             </a>
         </div>
     </div>
-    #}
 {% endblock %}

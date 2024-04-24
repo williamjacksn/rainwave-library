@@ -6,6 +6,7 @@ import os
 import pathlib
 import rainwave_library.models
 import secrets
+import textwrap
 import urllib.parse
 import waitress
 import werkzeug.middleware.proxy_fix
@@ -36,6 +37,9 @@ def secure(f):
 
 @app.before_request
 def before_request():
+    app.logger.debug(f'{flask.request.method} {flask.request.path}')
+    for k, v in flask.request.values.lists():
+        app.logger.debug(f'{k}: {v}')
     flask.g.discord_id = flask.session.get('discord_id')
     flask.g.db = rainwave_library.models.rainwave.get_db()
     flask.g.channels = {
@@ -56,8 +60,6 @@ def index():
 
 @app.get('/authorize')
 def authorize():
-    for k, v in flask.request.values.lists():
-        app.logger.debug(f'{k}: {v}')
     if flask.session.get('state') != flask.request.values.get('state'):
         return 'State mismatch', 401
     token_endpoint = 'https://discord.com/api/v10/oauth2/token'
@@ -153,6 +155,36 @@ def play_song(song_id: int):
     return flask.render_template('songs/play.html')
 
 
+@app.route('/songs/<int:song_id>/remove', methods=['GET', 'POST'])
+@secure
+def songs_remove(song_id: int):
+    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    song_filename = pathlib.Path(song.get('song_filename'))
+    new_loc = rainwave_library.models.rainwave.calculate_removed_location(song_filename)
+
+    if flask.request.method == 'GET':
+        flask.g.song = song
+        flask.g.new_loc = new_loc
+        return flask.render_template('songs/remove.html')
+
+    reason = flask.request.values.get('reason')
+    if new_loc.exists():
+        flask.flash(f'Cannot proceed, there is already a file at {new_loc}')
+        return flask.redirect(flask.url_for('songs_detail', song_id=song_id))
+
+    new_loc.parent.mkdir(parents=True, exist_ok=True)
+    song_filename.rename(new_loc)
+    note_text = textwrap.dedent(f'''\
+        Song ID: {song_id}
+        Original location: {song_filename}
+        Removed: {datetime.datetime.now(tz=datetime.UTC)}
+        Removal reason: {reason}
+        ''')
+    note_loc = new_loc.with_suffix('.txt')
+    note_loc.write_text(note_text)
+    return flask.redirect(flask.url_for('index'))
+
+
 @app.get('/songs/<int:song_id>/stream')
 @secure
 def stream_song(song_id: int):
@@ -163,8 +195,6 @@ def stream_song(song_id: int):
 @app.post('/songs/table-rows')
 @secure
 def song_table_rows():
-    for k, v in flask.request.values.lists():
-        app.logger.debug(f'{k}: {v}')
     flask.g.q = flask.request.values.get('q')
     flask.g.page = int(flask.request.values.get('page', 1))
     sort_col = flask.request.values.get('sort-col', 'song_id')
