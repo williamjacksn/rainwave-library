@@ -28,8 +28,8 @@ def external_url_for(endpoint, *args, **kwargs):
 def secure(f):
     @functools.wraps(f)
     def decorated_function(*args, **kwargs):
-        discord_id = flask.session.get('discord_id')
-        if discord_id is None:
+        discord_username = flask.session.get('discord_username')
+        if discord_username is None:
             return flask.redirect(flask.url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
@@ -40,7 +40,7 @@ def before_request():
     app.logger.debug(f'{flask.request.method} {flask.request.path}')
     for k, v in flask.request.values.lists():
         app.logger.debug(f'{k}: {v}')
-    flask.g.discord_id = flask.session.get('discord_id')
+    flask.g.discord_username = flask.session.get('discord_username')
     flask.g.db = rainwave_library.models.rainwave.get_db()
     flask.g.channels = {
         1: 'Game',
@@ -53,7 +53,7 @@ def before_request():
 
 @app.get('/')
 def index():
-    if flask.g.discord_id is None:
+    if flask.g.discord_username is None:
         return flask.render_template('sign-in.html')
     return flask.render_template('index.html')
 
@@ -88,6 +88,7 @@ def authorize():
         app.logger.debug(f'{username} has the correct role')
         flask.session.update({
             'discord_id': user_id,
+            'discord_username': username,
         })
     else:
         app.logger.debug(f'{username} does not have the correct role')
@@ -123,6 +124,7 @@ def sign_in():
 @app.get('/sign-out')
 def sign_out():
     flask.session.pop('discord_id')
+    flask.session.pop('discord_username')
     return flask.redirect(flask.url_for('index'))
 
 
@@ -178,6 +180,7 @@ def songs_remove(song_id: int):
         Song ID: {song_id}
         Original location: {song_filename}
         Removed: {datetime.datetime.now(tz=datetime.UTC)}
+        Removed by: {flask.g.discord_username} ({flask.g.discord_id})
         Removal reason: {reason}
         ''')
     note_loc = new_loc.with_suffix('.txt')
