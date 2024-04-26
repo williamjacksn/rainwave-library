@@ -64,6 +64,12 @@
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" hx-indicator="#filters-indicator"
+                                       hx-post="{{ url_for('song_table_rows') }}" id="sort-col-length" name="sort-col"
+                                       type="radio" value="song_length">
+                                <label class="form-check-label" for="sort-col-length">Length</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" hx-indicator="#filters-indicator"
                                        hx-post="{{ url_for('song_table_rows') }}" id="sort-col-filename" name="sort-col"
                                        type="radio" value="song_filename">
                                 <label class="form-check-label" for="sort-col-filename">Filename</label>
@@ -111,12 +117,13 @@
                     <th>Artist</th>
                     <th>Rating</th>
                     <th>Ratings</th>
+                    <th>Length</th>
                     <th>Filename</th>
                 </tr>
                 </thead>
                 <tbody hx-post="{{ url_for('song_table_rows') }}" hx-trigger="load">
                 <tr>
-                    <td class="py-3 text-center" colspan="8">
+                    <td class="py-3 text-center" colspan="9">
                         <span class="htmx-indicator spinner-border spinner-border-sm"></span>
                     </td>
                 </tr>

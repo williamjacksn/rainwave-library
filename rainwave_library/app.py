@@ -36,6 +36,13 @@ def secure(f):
     return decorated_function
 
 
+@app.add_template_filter
+def length_display(length: int):
+    """Convert number of seconds to mm:ss format"""
+    minutes, seconds = divmod(length, 60)
+    return f'{minutes}:{seconds:02d}'
+
+
 @app.before_request
 def before_request():
     app.logger.debug(f'{flask.request.method} {flask.request.path}')

@@ -23,11 +23,12 @@
             {{ '{:.2f}'.format(s.song_rating) }}
         </td>
         <td class="text-end {{ 'text-secondary' if s.song_rating_count == 0 }}">{{ s.song_rating_count }}</td>
+        <td class="text-end">{{ s.song_length|length_display }}</td>
         <td class="user-select-all"><code>{{ s.song_filename }}</code></td>
     </tr>
     {% else %}
     <tr>
-        <td class="py-3 text-center" colspan="8" hx-include="form"
+        <td class="py-3 text-center" colspan="9" hx-include="form"
             hx-post="{{ url_for('song_table_rows', page=g.page + 1) }}" hx-target="closest tr" hx-trigger="revealed"
             hx-swap="outerHTML">
             <span class="htmx-indicator spinner-border spinner-border-sm"></span>
@@ -36,6 +37,6 @@
     {% endif %}
 {% else %}
 <tr class="text-center">
-    <td colspan="8">No songs matched your criteria.</td>
+    <td colspan="9">No songs matched your criteria.</td>
 </tr>
 {% endfor %}
