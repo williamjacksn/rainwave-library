@@ -167,7 +167,7 @@ def songs_edit(song_id: int):
             'url': flask.request.values.get('url'),
         }
         rainwave_library.models.mp3.set_tags(song.get('song_filename'), **kwargs)
-        time.sleep(1)
+        time.sleep(1)  # give the scanner some time to catch the file changes and update the database
         return flask.redirect(flask.url_for('songs_detail', song_id=song_id))
 
     flask.g.song = song
