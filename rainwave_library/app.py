@@ -7,6 +7,7 @@ import pathlib
 import rainwave_library.models
 import secrets
 import textwrap
+import time
 import urllib.parse
 import waitress
 import werkzeug.middleware.proxy_fix
@@ -144,10 +145,25 @@ def download_song(song_id: int):
     return flask.send_file(song.get('song_filename'), as_attachment=True)
 
 
-@app.get('/songs/<int:song_id>/edit')
+@app.route('/songs/<int:song_id>/edit', methods=['GET', 'POST'])
 @secure
 def songs_edit(song_id: int):
-    flask.g.song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+
+    if flask.request.method == 'POST':
+        kwargs = {
+            'album': flask.request.values.get('album'),
+            'artist': flask.request.values.get('artist'),
+            'categories': flask.request.values.get('categories'),
+            'link_text': flask.request.values.get('link-text'),
+            'title': flask.request.values.get('title'),
+            'url': flask.request.values.get('url'),
+        }
+        rainwave_library.models.mp3.set_tags(song.get('song_filename'), **kwargs)
+        time.sleep(1)
+        return flask.redirect(flask.url_for('songs_detail', song_id=song_id))
+
+    flask.g.song = song
     return flask.render_template('songs/edit.html')
 
 
