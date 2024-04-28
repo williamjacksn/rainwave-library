@@ -42,7 +42,7 @@
     <th><label for="categories">Categories</label></th>
     <td>
         <input class="form-control" id="categories" name="categories" required type="text"
-               value="{{ g.default_category or g.ocr_info.primary_game }}">
+               value="{{ g.categories|join(', ') }}">
     </td>
 </tr>
 <tr>

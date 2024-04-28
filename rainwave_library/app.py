@@ -151,7 +151,13 @@ def get_ocremix_fetch():
     flask.g.ocr_info = httpx.get(url).json()
     app.logger.debug(flask.g.ocr_info)
     album_name = flask.g.ocr_info.get('primary_game')
-    flask.g.default_category = rainwave_library.models.rainwave.get_category_for_album(flask.g.db, album_name)
+    default_category = rainwave_library.models.rainwave.get_category_for_album(flask.g.db, album_name)
+    if default_category:
+        flask.g.categories = [default_category]
+    else:
+        flask.g.categories = [album_name]
+    if flask.g.ocr_info.get('has_lyrics'):
+        flask.g.categories.append('Vocal')
     return flask.render_template('get-ocremix/fetch.html')
 
 
