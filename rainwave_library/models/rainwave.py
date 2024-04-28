@@ -14,6 +14,35 @@ def get_db() -> fort.PostgresDatabase:
     return fort.PostgresDatabase(cnx_str)
 
 
+def get_category_for_album(db: fort.PostgresDatabase, album_name: str) -> str:
+    sql = '''
+        select g.group_name, count(*) song_count
+        from r4_albums a
+        join r4_songs s on s.album_id = a.album_id
+        join r4_song_group sg on sg.song_id = s.song_id
+        join r4_groups g on g.group_id = sg.group_id
+        where a.album_name = %(album_name)s
+        group by g.group_name
+        order by song_count desc, g.group_name
+        limit 1
+    '''
+    params = {
+        'album_name': album_name,
+    }
+    for row in db.q(sql, params):
+        return row.get('group_name')
+
+
+def get_max_ocr_num(db: fort.PostgresDatabase) -> int:
+    sql = '''
+        select right(s.song_url, 5)::integer ocr_id
+        from r4_songs s
+        where s.song_verified is true and position('/remix/OCR' in s.song_url) > 0
+        order by s.song_url desc
+        limit 1
+    '''
+    return db.q_val(sql)
+
 def get_song(db: fort.PostgresDatabase, song_id: int) -> dict:
     sql = '''
         with g as (

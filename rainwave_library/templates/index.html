@@ -102,10 +102,20 @@
             <div class="col-auto">
                 <span class="htmx-indicator spinner-border spinner-border-sm" id="filters-indicator"></span>
             </div>
+            <div class="col-auto ms-auto">
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" type="button">
+                        <i class="bi-list"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{{ url_for('get_ocremix') }}">Get an OC ReMix</a></li>
+                    </ul>
+                </div>
+            </div>
         </div>
     </form>
 
-    <div class="pt-3 row">
+    <div class="row">
         <div class="col">
             <table class="align-middle table table-bordered table-sm table-striped">
                 <thead>

@@ -1,0 +1,66 @@
+<tr>
+    <th>Download from</th>
+    <td>
+        <input name="download-from" type="hidden" value="{{ g.ocr_info.download_url }}">
+        <code>{{ g.ocr_info.download_url }}</code>
+    </td>
+</tr>
+<tr>
+    <th><label for="album">Album</label></th>
+    <td>
+        <input class="form-control" hx-include="form" hx-indicator="#target-file-indicator"
+               hx-post="{{ url_for('get_ocremix_target_file') }}" hx-target="#target-file"
+               hx-trigger="keyup changed delay:300ms" id="album" name="album" type="text"
+               value="{{ g.ocr_info.primary_game }}">
+    </td>
+</tr>
+<tr>
+    <th><label for="title">Title</label></th>
+    <td>
+        <input class="form-control" hx-include="form" hx-indicator="#target-file-indicator"
+               hx-post="{{ url_for('get_ocremix_target_file') }}" hx-target="#target-file"
+               hx-trigger="keyup changed delay:300ms" id="title" name="title" type="text"
+               value="{{ g.ocr_info.title }}">
+    </td>
+</tr>
+<tr>
+    <th><label for="artist">Artist</label></th>
+    <td>
+        <input class="form-control" id="artist" name="artist" type="text"
+               value="{{ g.ocr_info.artists|map(attribute='name')|join(', ') }}">
+    </td>
+</tr>
+<tr>
+    <th><label for="url">URL</label></th>
+    <td><input class="form-control" id="url" name="url" type="text" value="{{ g.ocr_info.url }}"></td>
+</tr>
+<tr>
+    <th><label for="link-text">Link text</label></th>
+    <td><input class="form-control" id="link-text" name="link-text" type="text" value="Get @ OCR"></td>
+</tr>
+<tr>
+    <th><label for="categories">Categories</label></th>
+    <td>
+        <input class="form-control" id="categories" name="categories" required type="text"
+               value="{{ g.default_category or g.ocr_info.primary_game }}">
+    </td>
+</tr>
+<tr>
+    <th>Target file</th>
+    <td>
+        <code hx-include="form" hx-indicator="closest td" hx-post="{{ url_for('get_ocremix_target_file') }}"
+              hx-trigger="load" id="target-file"></code>
+        <span class="htmx-indicator spinner-border spinner-border-sm" id="target-file-indicator"></span>
+    </td>
+</tr>
+<tr>
+    <td colspan="2">
+        <button class="btn btn-success me-2" hx-include="form" hx-indicator="closest td"
+                hx-post="{{ url_for('get_ocremix_download') }}" hx-swap="outerHTML" hx-target="closest tr"
+                type="button">
+            <i class="bi-download"></i>
+            Download
+        </button>
+        <span class="htmx-indicator spinner-border spinner-border-sm"></span>
+    </td>
+</tr>

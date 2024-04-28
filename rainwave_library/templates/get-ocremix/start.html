@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block container_content %}
+    <div class="pt-3 row">
+        <div class="col-auto">
+            <a class="btn btn-outline-primary" href="{{ url_for('index') }}">
+                <i class="bi-caret-left-fill"></i>
+                Home
+            </a>
+        </div>
+        {% include 'sign-out-button.html' %}
+    </div>
+
+    <div class="pt-3 row">
+        <div class="col">
+            <h1>Get an OC ReMix</h1>
+        </div>
+    </div>
+
+    <div class="pt-3 row">
+        <div class="col">
+            <form>
+                <table class="align-middle d-block table">
+                    <tbody>
+                    <tr>
+                        <th><label for="ocr-id">OCR ID</label></th>
+                        <td>
+                            <input class="form-control" id="ocr-id" min="1" name="ocr-id" step="1" type="number"
+                                   value="{{ g.max_ocr_num + 1 }}">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2">
+                            <button class="btn btn-success me-2" hx-include="form" hx-indicator="closest td"
+                                    hx-post="{{ url_for('get_ocremix_fetch') }}" hx-swap="outerHTML"
+                                    hx-target="closest tr" type="button">
+                                <i class="bi-search"></i>
+                                Fetch info
+                            </button>
+                            <span class="htmx-indicator spinner-border spinner-border-sm"></span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </form>
+        </div>
+    </div>
+
+{% endblock %}

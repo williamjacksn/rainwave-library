@@ -2,10 +2,13 @@ import datetime
 import flask
 import functools
 import httpx
+import io
+import mutagen.id3
 import os
 import pathlib
 import rainwave_library.models
 import secrets
+import string
 import textwrap
 import time
 import urllib.parse
@@ -60,14 +63,14 @@ def before_request():
     }
 
 
-@app.get('/')
+@app.route('/', methods=['GET'])
 def index():
     if flask.g.discord_username is None:
         return flask.render_template('sign-in.html')
     return flask.render_template('index.html')
 
 
-@app.get('/authorize')
+@app.route('/authorize', methods=['GET'])
 def authorize():
     if flask.session.get('state') != flask.request.values.get('state'):
         return 'State mismatch', 401
@@ -104,13 +107,77 @@ def authorize():
     return flask.redirect(flask.url_for('index'))
 
 
-@app.get('/nothing')
+@app.route('/get-ocremix', methods=['GET'])
+@secure
+def get_ocremix():
+    flask.g.max_ocr_num = rainwave_library.models.rainwave.get_max_ocr_num(flask.g.db)
+    return flask.render_template('get-ocremix/start.html')
+
+
+@app.route('/get-ocremix/download', methods=['POST'])
+@secure
+def get_ocremix_download():
+    r = httpx.get(flask.request.values.get('download-from'))
+    mp3_data = io.BytesIO(r.content)
+    tags = mutagen.id3.ID3(mp3_data)
+    tags.delall('TALB')
+    tags.add(mutagen.id3.TALB(encoding=3, text=[flask.request.values.get('album')]))
+    tags.delall('TIT2')
+    tags.add(mutagen.id3.TIT2(encoding=3, text=[flask.request.values.get('title')]))
+    tags.delall('TPE1')
+    tags.add(mutagen.id3.TPE1(encoding=3, text=[flask.request.values.get('artist')]))
+    tags.delall('WXXX')
+    tags.add(mutagen.id3.WXXX(encoding=0, url=flask.request.values.get('url')))
+    tags.delall('COMM')
+    tags.add(mutagen.id3.COMM(encoding=3, text=[flask.request.values.get('link-text')]))
+    tags.delall('TCON')
+    tags.add(mutagen.id3.TCON(encoding=3, text=[flask.request.values.get('categories')]))
+    for tag in ['APIC', 'TCMP', 'TCOM', 'TCOP', 'TDRC', 'TENC', 'TIT1', 'TIT3', 'TOAL', 'TOPE', 'TPE2', 'TPUB', 'TRCK',
+                'TSSE', 'TXXX', 'USLT', 'WOAR']:
+        tags.delall(tag)
+    tags.save(mp3_data)
+    target_file = pathlib.Path(get_ocremix_target_file())
+    target_file.parent.mkdir(parents=True, exist_ok=True)
+    app.logger.debug(f'Saving file to {target_file}')
+    target_file.write_bytes(mp3_data.getvalue())
+    return flask.render_template('get-ocremix/download.html')
+
+
+@app.route('/get-ocremix/fetch', methods=['POST'])
+@secure
+def get_ocremix_fetch():
+    ocr_id = int(flask.request.values.get('ocr-id'))
+    url = f'https://williamjacksn.github.io/ocremix-data/remix/OCR{ocr_id:05}.json'
+    flask.g.ocr_info = httpx.get(url).json()
+    app.logger.debug(flask.g.ocr_info)
+    album_name = flask.g.ocr_info.get('primary_game')
+    flask.g.default_category = rainwave_library.models.rainwave.get_category_for_album(flask.g.db, album_name)
+    return flask.render_template('get-ocremix/fetch.html')
+
+
+@app.route('/get-ocremix/target-file', methods=['POST'])
+@secure
+def get_ocremix_target_file():
+    album = rainwave_library.models.mp3.make_safe(flask.request.values.get('album'))
+    if set(album) - (set(string.ascii_letters) | set(string.digits)):
+        return 'Unsupported character in album.'
+    title = rainwave_library.models.mp3.make_safe(flask.request.values.get('title'))
+    if set(title) - (set(string.ascii_letters) | set(string.digits)):
+        return 'Unsupported character in title'
+    first_letter = album[0].lower()
+    if first_letter not in string.ascii_lowercase:
+        first_letter = '0'
+    library_root = pathlib.Path(os.getenv('LIBRARY_ROOT'))
+    return str(library_root / 'ocr-all' / first_letter / album / f'{title}.mp3')
+
+
+@app.route('/nothing', methods=['GET'])
 @secure
 def nothing():
     return ''
 
 
-@app.get('/sign-in')
+@app.route('/sign-in', methods=['GET'])
 def sign_in():
     state = secrets.token_urlsafe()
     flask.session.update({
@@ -130,14 +197,14 @@ def sign_in():
     return flask.redirect(auth_url, 307)
 
 
-@app.get('/sign-out')
+@app.route('/sign-out', methods=['GET'])
 def sign_out():
     flask.session.pop('discord_id')
     flask.session.pop('discord_username')
     return flask.redirect(flask.url_for('index'))
 
 
-@app.get('/songs/<int:song_id>')
+@app.route('/songs/<int:song_id>', methods=['GET'])
 @secure
 def songs_detail(song_id: int):
     flask.g.song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
@@ -145,7 +212,7 @@ def songs_detail(song_id: int):
     return flask.render_template('songs/detail.html')
 
 
-@app.get('/songs/<int:song_id>/download')
+@app.route('/songs/<int:song_id>/download', methods=['GET'])
 @secure
 def download_song(song_id: int):
     song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
@@ -174,7 +241,7 @@ def songs_edit(song_id: int):
     return flask.render_template('songs/edit.html')
 
 
-@app.get('/songs/<int:song_id>/play')
+@app.route('/songs/<int:song_id>/play', methods=['GET'])
 @secure
 def play_song(song_id: int):
     flask.g.song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
@@ -212,14 +279,14 @@ def songs_remove(song_id: int):
     return flask.redirect(flask.url_for('index'))
 
 
-@app.get('/songs/<int:song_id>/stream')
+@app.route('/songs/<int:song_id>/stream', methods=['GET'])
 @secure
 def stream_song(song_id: int):
     song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
     return flask.send_file(song.get('song_filename'))
 
 
-@app.post('/songs/table-rows')
+@app.route('/songs/table-rows', methods=['POST'])
 @secure
 def song_table_rows():
     flask.g.q = flask.request.values.get('q')
