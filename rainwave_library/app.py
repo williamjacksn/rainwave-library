@@ -67,7 +67,7 @@ def before_request():
 def index():
     if flask.g.discord_username is None:
         return flask.render_template('sign-in.html')
-    return flask.render_template('index.html')
+    return flask.redirect(flask.url_for('songs'))
 
 
 @app.route('/authorize', methods=['GET'])
@@ -208,6 +208,12 @@ def sign_out():
     flask.session.pop('discord_id')
     flask.session.pop('discord_username')
     return flask.redirect(flask.url_for('index'))
+
+
+@app.route('/songs', methods=['GET'])
+@secure
+def songs():
+    return flask.render_template('songs/index.html')
 
 
 @app.route('/songs/<int:song_id>', methods=['GET'])
