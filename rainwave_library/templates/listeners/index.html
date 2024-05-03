@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block container_content %}
+    <div class="align-items-center d-flex g-1 pt-3 row">
+        <div class="col-auto">
+            <h1>Rainwave Library</h1>
+        </div>
+        <div class="col-auto">
+            <h1 class="bi-chevron-compact-right"></h1>
+        </div>
+        <div class="col-auto">
+            <h1>Listeners</h1>
+        </div>
+        {% include 'sign-out-button.html' %}
+    </div>
+
+    <form hx-target="tbody">
+        <div class="align-items-center d-flex g-2 pt-3 row">
+            <div class="col-auto">
+                <input aria-label="Search listeners" class="form-control" hx-indicator="#filters-indicator"
+                       hx-post="{{ url_for('listeners_rows') }}" hx-trigger="search, keyup changed delay:300ms"
+                       name="q" placeholder="Search listeners..."
+                       title="Case-insensitive search for username or Discord ID" type="search">
+            </div>
+            <div class="col-auto">
+                <span class="htmx-indicator spinner-border spinner-border-sm" id="filters-indicator"></span>
+            </div>
+        </div>
+    </form>
+
+    <div class="row">
+        <div class="col">
+            <table class="align-middle d-block table table-bordered table-sm table-striped">
+                <thead>
+                <tr class="text-center">
+                    <th></th>
+                    <th>ID</th>
+                    <th>User name</th>
+                    <th>Rank</th>
+                    <th>Discord</th>
+                </tr>
+                </thead>
+                <tbody hx-post="{{ url_for('listeners_rows') }}" hx-trigger="load">
+                <tr>
+                    <td class="py-3 text-center" colspan="5">
+                        <span class="htmx-indicator spinner-border spinner-border-sm"></span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

@@ -177,6 +177,21 @@ def get_ocremix_target_file():
     return str(library_root / 'ocr-all' / first_letter / album / f'{title}.mp3')
 
 
+@app.route('/listeners', methods=['GET'])
+@secure
+def listeners():
+    return flask.render_template('listeners/index.html')
+
+
+@app.route('/listeners/rows', methods=['POST'])
+@secure
+def listeners_rows():
+    q = flask.request.values.get('q')
+    flask.g.page = int(flask.request.values.get('page', 1))
+    flask.g.listeners = rainwave_library.models.rainwave.get_listeners(flask.g.db, q, flask.g.page)
+    return flask.render_template('listeners/rows.html')
+
+
 @app.route('/nothing', methods=['GET'])
 @secure
 def nothing():

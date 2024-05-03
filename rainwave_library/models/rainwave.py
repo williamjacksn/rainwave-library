@@ -33,6 +33,34 @@ def get_category_for_album(db: fort.PostgresDatabase, album_name: str) -> str:
         return row.get('group_name')
 
 
+def get_listeners(db: fort.PostgresDatabase, query: str = None, page: int = 1) -> list[dict]:
+    where_clause = 'user_type <> 2 and user_id > 1'
+    if query:
+        where_clause = f'''
+            {where_clause}
+            and position(
+                lower(%(query)s) in
+                lower(concat_ws(' ', u.radio_username, u.username, u.discord_user_id))
+            ) > 0
+        '''
+    sql = f'''
+        select
+            discord_user_id, case when discord_user_id is null then false else true end is_discord_user,
+            to_timestamp(radio_last_active) as radio_last_active, user_avatar, user_id,
+            coalesce(radio_username, username) as user_name, r.rank_title
+        from phpbb_users u
+        left join phpbb_ranks r on r.rank_id = u.user_rank
+        where {where_clause}
+        order by user_id asc
+        limit 101 offset %(offset)s
+    '''
+    params = {
+        'offset': 100 * (page - 1),
+        'query': query,
+    }
+    return db.q(sql, params)
+
+
 def get_max_ocr_num(db: fort.PostgresDatabase) -> int:
     sql = '''
         select right(s.song_url, 5)::integer ocr_id
