@@ -313,9 +313,9 @@ def stream_song(song_id: int):
     return flask.send_file(song.get('song_filename'))
 
 
-@app.route('/songs/table-rows', methods=['POST'])
+@app.route('/songs/rows', methods=['POST'])
 @secure
-def song_table_rows():
+def songs_rows():
     flask.g.q = flask.request.values.get('q')
     flask.g.page = int(flask.request.values.get('page', 1))
     sort_col = flask.request.values.get('sort-col', 'song_id')
@@ -327,7 +327,7 @@ def song_table_rows():
         valid_channels = None
     flask.g.songs = rainwave_library.models.rainwave.get_songs(flask.g.db, flask.g.q, flask.g.page, sort_col, sort_dir,
                                                                valid_channels)
-    return flask.render_template('songs/table-rows.html')
+    return flask.render_template('songs/rows.html')
 
 
 def main(port: int):
