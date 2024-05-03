@@ -6,11 +6,11 @@
                title="Details: {{ s.album_name }} / {{ s.song_title }}">
                 <i class="bi-info-circle"></i>
             </a>
-            <a class="text-decoration-none" href="{{ url_for('download_song', song_id=s.song_id) }}"
+            <a class="text-decoration-none" href="{{ url_for('songs_download', song_id=s.song_id) }}"
                title="Download: {{ s.album_name }} / {{ s.song_title }}">
                 <i class="bi-download"></i>
             </a>
-            <a class="text-decoration-none" href="#" hx-get="{{ url_for('play_song', song_id=s.song_id) }}"
+            <a class="text-decoration-none" href="#" hx-get="{{ url_for('songs_play', song_id=s.song_id) }}"
                hx-target="#audio" title="Stream: {{ s.album_name }} / {{ s.song_title }}">
                 <i class="bi-play"></i>
             </a>

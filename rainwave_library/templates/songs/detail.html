@@ -92,7 +92,7 @@
                 <tr>
                     <th>Filename</th>
                     <td class="user-select-all">
-                        <a class="text-decoration-none" href="{{ url_for('download_song', song_id=g.song.song_id) }}"
+                        <a class="text-decoration-none" href="{{ url_for('songs_download', song_id=g.song.song_id) }}"
                            title="Download: {{ g.song.album_name }} / {{ g.song.song_title }}">
                             <code>{{ g.song.song_filename }}</code>
                         </a>

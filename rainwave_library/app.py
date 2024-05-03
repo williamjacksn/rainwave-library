@@ -241,7 +241,7 @@ def songs_detail(song_id: int):
 
 @app.route('/songs/<int:song_id>/download', methods=['GET'])
 @secure
-def download_song(song_id: int):
+def songs_download(song_id: int):
     song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
     return flask.send_file(song.get('song_filename'), as_attachment=True)
 
@@ -270,7 +270,7 @@ def songs_edit(song_id: int):
 
 @app.route('/songs/<int:song_id>/play', methods=['GET'])
 @secure
-def play_song(song_id: int):
+def songs_play(song_id: int):
     flask.g.song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
     return flask.render_template('songs/play.html')
 
