@@ -11,10 +11,11 @@
             <i class="bi-check-lg" title="{{ l.discord_user_id }}"></i>
         {% endif %}
         </td>
+        <td>{% if l.radio_last_active %}{{ l.radio_last_active.date() }}{% endif %}</td>
     </tr>
     {% else %}
     <tr>
-        <td class="py-3 text-center" colspan="5" hx-include="form"
+        <td class="py-3 text-center" colspan="6" hx-include="form"
             hx-post="{{ url_for('listeners_rows', page=g.page + 1) }}" hx-target="closest tr" hx-trigger="revealed"
             hx-swap="outerHTML">
             <span class="htmx-indicator spinner-border spinner-border-sm"></span>
@@ -23,6 +24,6 @@
     {% endif %}
 {% else %}
 <tr class="text-center">
-    <td colspan="5">No listeners matched your criteria.</td>
+    <td colspan="6">No listeners matched your criteria.</td>
 </tr>
 {% endfor %}

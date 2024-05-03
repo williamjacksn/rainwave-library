@@ -46,8 +46,8 @@ def get_listeners(db: fort.PostgresDatabase, query: str = None, page: int = 1) -
     sql = f'''
         select
             discord_user_id, case when discord_user_id is null then false else true end is_discord_user,
-            to_timestamp(radio_last_active) as radio_last_active, user_avatar, user_id,
-            coalesce(radio_username, username) as user_name, r.rank_title
+            case when radio_last_active > 0 then to_timestamp(radio_last_active) end as radio_last_active, user_avatar,
+            user_id, coalesce(radio_username, username) as user_name, r.rank_title
         from phpbb_users u
         left join phpbb_ranks r on r.rank_id = u.user_rank
         where {where_clause}
