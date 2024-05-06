@@ -49,13 +49,17 @@ def make_safe(s: str) -> str:
     return s.translate(translate_table)
 
 
-def set_tags(filename: str, **kwargs):
+def set_tags(filename: str, **kwargs) -> str:
     """Takes a filename and the following possible kwargs: album, artist, categories, link_text, title, url"""
     log.info(f'Attempting to update tags for {filename}')
+    result = ''
     try:
         md = mutagen.id3.ID3(filename)
     except mutagen.id3.ID3NoHeaderError:
         md = mutagen.id3.ID3()
+    except mutagen.MutagenError as e:
+        log.error(e)
+        return str(e)
     for tag_name, tag_value in kwargs.items():
         if tag_name == 'album':
             md.delall('TALB')
@@ -78,5 +82,11 @@ def set_tags(filename: str, **kwargs):
             md.delall('WXXX')
             if tag_value:
                 md.add(mutagen.id3.WXXX(encoding=0, url=tag_value))
-    md.save(filename)
-    log.info(f'Updated tags for {filename}')
+    try:
+        md.save(filename)
+        log.info(f'Updated tags for {filename}')
+    except mutagen.MutagenError as e:
+        log.error(e)
+        result = str(e)
+    finally:
+        return result

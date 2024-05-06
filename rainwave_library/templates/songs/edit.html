@@ -19,7 +19,8 @@
 
     <div class="pt-3 row">
         <div class="col">
-            <form method="post">
+            <form hx-disabled-elt="button" hx-post="{{ url_for('songs_edit', song_id=g.song.song_id) }}"
+                  hx-swap="outerHTML">
                 <table class="align-middle d-block table">
                     <tbody>
                     <tr>
@@ -70,10 +71,17 @@
                     </tr>
                     </tbody>
                 </table>
-                <button class="btn btn-outline-success" type="submit">
-                    <i class="bi-file-earmark-play"></i>
-                    Save
-                </button>
+                <div class="align-items-center d-flex g-2 pt-3 row">
+                    <div class="col-auto">
+                        <button class="btn btn-outline-success" type="submit">
+                            <i class="bi-file-earmark-play"></i>
+                            Save
+                        </button>
+                    </div>
+                    <div class="col-auto">
+                        <span class="htmx-indicator spinner-border spinner-border-sm"></span>
+                    </div>
+                </div>
             </form>
         </div>
     </div>

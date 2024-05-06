@@ -249,23 +249,27 @@ def songs_download(song_id: int):
 @app.route('/songs/<int:song_id>/edit', methods=['GET', 'POST'])
 @secure
 def songs_edit(song_id: int):
-    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    flask.g.song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    if flask.request.method == 'GET':
+        return flask.render_template('songs/edit.html')
 
-    if flask.request.method == 'POST':
-        kwargs = {
-            'album': flask.request.values.get('album'),
-            'artist': flask.request.values.get('artist'),
-            'categories': flask.request.values.get('categories'),
-            'link_text': flask.request.values.get('link-text'),
-            'title': flask.request.values.get('title'),
-            'url': flask.request.values.get('url'),
-        }
-        rainwave_library.models.mp3.set_tags(song.get('song_filename'), **kwargs)
-        time.sleep(1)  # give the scanner some time to catch the file changes and update the database
-        return flask.redirect(flask.url_for('songs_detail', song_id=song_id))
-
-    flask.g.song = song
-    return flask.render_template('songs/edit.html')
+    kwargs = {
+        'album': flask.request.values.get('album'),
+        'artist': flask.request.values.get('artist'),
+        'categories': flask.request.values.get('categories'),
+        'link_text': flask.request.values.get('link-text'),
+        'title': flask.request.values.get('title'),
+        'url': flask.request.values.get('url'),
+    }
+    result = rainwave_library.models.mp3.set_tags(flask.g.song.get('song_filename'), **kwargs)
+    if result:
+        flask.g.edit_result = result
+        flask.g.alert_class = 'alert-danger'
+    else:
+        flask.g.edit_result = 'Song tags updated'
+        flask.g.alert_class = 'alert-success'
+    time.sleep(1)  # give the scanner some time to catch the file changes and update the database
+    return flask.render_template('songs/edit-result.html')
 
 
 @app.route('/songs/<int:song_id>/play', methods=['GET'])
