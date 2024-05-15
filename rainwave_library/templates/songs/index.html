@@ -20,7 +20,7 @@
                 <input aria-label="Search songs" class="form-control" hx-indicator="#filters-indicator"
                        hx-post="{{ url_for('songs_rows') }}" hx-trigger="search, keyup changed delay:300ms"
                        name="q" placeholder="Search songs..."
-                       title="Case-insensitive search for album, title, artist, or filename" type="search">
+                       title="Case-insensitive search for album, title, artist, filename, or URL" type="search">
             </div>
             <div class="col-auto">
                 <div class="dropdown">
@@ -73,6 +73,12 @@
                                        hx-post="{{ url_for('songs_rows') }}" id="sort-col-length" name="sort-col"
                                        type="radio" value="song_length">
                                 <label class="form-check-label" for="sort-col-length">Length</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" hx-indicator="#filters-indicator"
+                                       hx-post="{{ url_for('songs_rows') }}" id="sort-col-url" name="sort-col"
+                                       type="radio" value="song_url">
+                                <label class="form-check-label" for="sort-col-url">URL</label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" hx-indicator="#filters-indicator"
@@ -134,12 +140,13 @@
                     <th>Rating</th>
                     <th>Ratings</th>
                     <th>Length</th>
+                    <th>URL</th>
                     <th>Filename</th>
                 </tr>
                 </thead>
                 <tbody hx-post="{{ url_for('songs_rows') }}" hx-trigger="load">
                 <tr>
-                    <td class="py-3 text-center" colspan="9">
+                    <td class="py-3 text-center" colspan="10">
                         <span class="htmx-indicator spinner-border spinner-border-sm"></span>
                     </td>
                 </tr>
