@@ -117,7 +117,10 @@ def get_songs(db: fort.PostgresDatabase, query: str = None, page: int = 1,
     if sort_col not in ('album_name', 'song_filename', 'song_id', 'song_length', 'song_rating', 'song_title',
                         'song_url'):
         sort_col = 'song_id'
-    sort_clause = f'{sort_col} {sort_dir}'
+    if sort_col in ('album_name', 'song_filename', 'song_title'):
+        sort_clause = f'{sort_col} collate "C" {sort_dir}'
+    else:
+        sort_clause = f'{sort_col} {sort_dir}'
     if sort_col != 'song_id':
         sort_clause = f'{sort_clause}, song_id asc'
 
