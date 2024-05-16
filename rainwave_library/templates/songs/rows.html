@@ -24,7 +24,13 @@
         </td>
         <td class="text-end {{ 'text-secondary' if s.song_rating_count == 0 }}">{{ s.song_rating_count }}</td>
         <td class="text-end">{{ s.song_length|length_display }}</td>
-        <td>{{ s.song_url or '' }}</td>
+        <td>
+        {% if s.song_url %}
+            <a class="text-decoration-none" href="{{ s.song_url }}" target="_blank" title="{{ s.song_link_text }}">
+                {{ s.song_url }}
+            </a>
+        {% endif %}
+        </td>
         <td class="user-select-all"><code>{{ s.song_filename }}</code></td>
     </tr>
     {% else %}
