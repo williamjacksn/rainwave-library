@@ -51,7 +51,7 @@ def get_listeners(db: fort.PostgresDatabase, query: str = None, page: int = 1) -
         from phpbb_users u
         left join phpbb_ranks r on r.rank_id = u.user_rank
         where {where_clause}
-        order by user_id asc
+        order by user_id
         limit 101 offset %(offset)s
     '''
     params = {
