@@ -51,6 +51,7 @@ def before_request():
     app.logger.debug(f'{flask.request.method} {flask.request.path}')
     for k, v in flask.request.values.lists():
         app.logger.debug(f'{k}: {v}')
+    flask.session.permanent = True
     flask.g.discord_id = flask.session.get('discord_id')
     flask.g.discord_username = flask.session.get('discord_username')
     flask.g.db = rainwave_library.models.rainwave.get_db()
