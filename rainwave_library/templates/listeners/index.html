@@ -3,9 +3,12 @@
 {% block container_content %}
     <div class="align-items-center d-flex g-1 pt-3 row">
         <div class="col-auto">
-            <h1 data-bs-target="#nav-modal" data-bs-toggle="modal" role="button">
-                Listeners
-                <i class="bi-caret-down-fill small"></i>
+            <h1>
+                <a class="link-body-emphasis text-decoration-none" href="#" data-bs-target="#nav-modal"
+                   data-bs-toggle="modal">
+                    Listeners
+                    <i class="bi-caret-down-fill small"></i>
+                </a>
             </h1>
         </div>
         {% include 'sign-out-button.html' %}
