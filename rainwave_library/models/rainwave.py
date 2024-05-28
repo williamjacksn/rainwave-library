@@ -95,7 +95,8 @@ def get_song(db: fort.PostgresDatabase, song_id: int) -> dict:
 
 
 def get_songs(db: fort.PostgresDatabase, query: str = None, page: int = 1,
-              sort_col: str = 'song_id', sort_dir: str = 'asc', channels: list[int] = None) -> list[dict]:
+              sort_col: str = 'song_id', sort_dir: str = 'asc', channels: list[int] = None,
+              include_unrated: bool = True) -> list[dict]:
 
     where_clause = 's.song_verified is true'
 
@@ -108,9 +109,18 @@ def get_songs(db: fort.PostgresDatabase, query: str = None, page: int = 1,
             ) > 0
         '''
 
+    if not include_unrated:
+        where_clause = f'''
+            {where_clause}
+            and s.song_rating > 0
+        '''
+
     if channels is None:
         channels = [1, 2, 3, 4, 5]
-    where_clause = f'{where_clause} and %(channels)s && c.channels'
+    where_clause = f'''
+        {where_clause}
+        and %(channels)s && c.channels
+    '''
 
     if sort_dir not in ('asc', 'desc'):
         sort_dir = 'asc'

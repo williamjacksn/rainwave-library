@@ -330,8 +330,9 @@ def songs_rows():
     app.logger.debug(f'{valid_channels=}')
     if not valid_channels:
         valid_channels = None
+    include_unrated = 'include-unrated' in flask.request.values
     flask.g.songs = rainwave_library.models.rainwave.get_songs(flask.g.db, flask.g.q, flask.g.page, sort_col, sort_dir,
-                                                               valid_channels)
+                                                               valid_channels, include_unrated)
     return flask.render_template('songs/rows.html')
 
 

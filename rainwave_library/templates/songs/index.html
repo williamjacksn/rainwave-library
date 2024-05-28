@@ -109,6 +109,25 @@
                 </div>
             </div>
             <div class="col-auto">
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown"
+                            title="Filter options" type="button">
+                        <i class="bi-list-check"></i>
+                    </button>
+                    <div class="dropdown-menu">
+                        <div class="px-2">
+                            <h6 class="dropdown-header">FILTER OPTIONS</h6>
+                            <div class="form-check">
+                                <input checked class="form-check-input" hx-indicator="#filters-indicator"
+                                       hx-post="{{ url_for('songs_rows') }}" id="include-unrated" name="include-unrated"
+                                       type="checkbox">
+                                <label class="form-check-label" for="include-unrated">Include unrated</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-auto">
                 <span class="htmx-indicator spinner-border spinner-border-sm" id="filters-indicator"></span>
             </div>
         </div>
