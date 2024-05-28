@@ -16,11 +16,38 @@
 
     <form hx-target="tbody">
         <div class="align-items-center d-flex g-2 pt-3 row">
-            <div class="col-auto">
+            <div class="col-12 col-sm-auto">
                 <input aria-label="Search listeners" class="form-control" hx-indicator="#filters-indicator"
                        hx-post="{{ url_for('listeners_rows') }}" hx-trigger="search, keyup changed delay:300ms"
                        name="q" placeholder="Search listeners..."
                        title="Case-insensitive search for username or Discord ID" type="search">
+            </div>
+            <div class="col-auto">
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown"
+                            title="Rank selection" type="button">
+                        <i class="bi-person-badge"></i>
+                    </button>
+                    <div class="dropdown-menu">
+                        <div class="px-2">
+                            <h6 class="dropdown-header">RANK SELECTION</h6>
+                            <div class="form-check">
+                                <input checked class="form-check-input" hx-indicator="#filters-indicator"
+                                       hx-post="{{ url_for('listeners_rows') }}" id="rank-none" name="ranks"
+                                       type="checkbox" value="0">
+                                <label class="form-check-label" for="rank-none">(no rank)</label>
+                            </div>
+                        {% for r in g.ranks %}
+                            <div class="form-check">
+                                <input checked class="form-check-input" hx-indicator="#filters-indicator"
+                                       hx-post="{{ url_for('listeners_rows') }}" id="rank-{{ r.rank_id }}"
+                                       name="ranks" type="checkbox" value="{{ r.rank_id }}">
+                                <label class="form-check-label text-nowrap" for="rank-{{ r.rank_id }}">{{ r.rank_title }}</label>
+                            </div>
+                        {% endfor %}
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="col-auto">
                 <span class="htmx-indicator spinner-border spinner-border-sm" id="filters-indicator"></span>

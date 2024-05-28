@@ -181,6 +181,7 @@ def get_ocremix_target_file():
 @app.route('/listeners', methods=['GET'])
 @secure
 def listeners():
+    flask.g.ranks = rainwave_library.models.rainwave.get_ranks(flask.g.db)
     return flask.render_template('listeners/index.html')
 
 
@@ -189,7 +190,8 @@ def listeners():
 def listeners_rows():
     q = flask.request.values.get('q')
     flask.g.page = int(flask.request.values.get('page', 1))
-    flask.g.listeners = rainwave_library.models.rainwave.get_listeners(flask.g.db, q, flask.g.page)
+    ranks = list(map(int, flask.request.values.getlist('ranks')))
+    flask.g.listeners = rainwave_library.models.rainwave.get_listeners(flask.g.db, q, flask.g.page, ranks)
     return flask.render_template('listeners/rows.html')
 
 
