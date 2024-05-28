@@ -20,7 +20,7 @@
             <i class="bi-music-note-beamed"></i> {{ s.song_title }}<br>
             <i class="bi-person"></i> {{ s.song_artist_tag }}<br>
             <i class="bi-clock-history"></i> {{ s.song_length|length_display }}<br>
-            <i class="bi-award"></i> {{ '{:.2f}'.format(s.song_rating) }}/{{ s.song_rating_count }}<br>
+            <i class="bi-award"></i> {{ '{:.2f}'.format(s.song_rating) }} ({{ s.song_rating_count }})<br>
             {% if s.song_url %}
                 <i class="bi-link-45deg"></i>
                 <a class="text-decoration-none" href="{{ s.song_url }}">{{ s.song_link_text }}</a><br>
