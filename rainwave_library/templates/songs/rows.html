@@ -1,6 +1,34 @@
 {% for s in g.songs %}
     {% if loop.index < 101 %}
-    <tr>
+    <tr class="d-table-row d-md-none">
+        <td class="p-2">
+            <a class="btn btn-outline-primary mb-1" href="{{ url_for('songs_detail', song_id=s.song_id) }}">
+                <i class="bi-info-circle"></i>
+            </a>
+            <br>
+            <a class="btn btn-outline-primary mb-1" href="{{ url_for('songs_download', song_id=s.song_id) }}">
+                <i class="bi-download"></i>
+            </a>
+            <br>
+            <a class="btn btn-outline-primary" href="#" hx-get="{{ url_for('songs_play', song_id=s.song_id) }}"
+               hx-target="#audio">
+                <i class="bi-play"></i>
+            </a>
+        </td>
+        <td class="p-2">
+            <i class="bi-disc"></i> {{ s.album_name }}<br>
+            <i class="bi-music-note-beamed"></i> {{ s.song_title }}<br>
+            <i class="bi-person"></i> {{ s.song_artist_tag }}<br>
+            <i class="bi-clock-history"></i> {{ s.song_length|length_display }}<br>
+            <i class="bi-award"></i> {{ '{:.2f}'.format(s.song_rating) }}/{{ s.song_rating_count }}<br>
+            {% if s.song_url %}
+                <i class="bi-link-45deg"></i>
+                <a class="text-decoration-none" href="{{ s.song_url }}">{{ s.song_link_text }}</a><br>
+            {% endif %}
+            <i class="bi-filetype-mp3"></i> <code>{{ s.song_filename }}</code>
+        </td>
+    </tr>
+    <tr class="d-none d-md-table-row">
         <td class="text-center text-nowrap">
             <a class="text-decoration-none" href="{{ url_for('songs_detail', song_id=s.song_id) }}"
                title="Details: {{ s.album_name }} / {{ s.song_title }}">
