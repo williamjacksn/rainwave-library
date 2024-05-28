@@ -13,7 +13,7 @@
 
     <form hx-target="tbody">
         <div class="align-items-center d-flex g-2 pt-3 row">
-            <div class="col-auto">
+            <div class="col-xs-12 col-sm-auto">
                 <input aria-label="Search songs" class="form-control" hx-indicator="#filters-indicator"
                        hx-post="{{ url_for('songs_rows') }}" hx-trigger="search, keyup changed delay:300ms"
                        name="q" placeholder="Search songs..."
