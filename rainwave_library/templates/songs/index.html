@@ -3,7 +3,10 @@
 {% block container_content %}
     <div class="align-items-center d-flex g-1 pt-3 row">
         <div class="col-auto">
-            <h1>Songs</h1>
+            <h1 data-bs-target="#nav-modal" data-bs-toggle="modal" role="button">
+                Songs
+                <i class="bi-caret-down-fill small"></i>
+            </h1>
         </div>
         {% include 'sign-out-button.html' %}
     </div>
@@ -107,16 +110,6 @@
             </div>
             <div class="col-auto">
                 <span class="htmx-indicator spinner-border spinner-border-sm" id="filters-indicator"></span>
-            </div>
-            <div class="col-auto ms-auto">
-                <div class="dropdown">
-                    <button class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" type="button">
-                        <i class="bi-list"></i>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{{ url_for('get_ocremix') }}">Get an OC ReMix</a></li>
-                    </ul>
-                </div>
             </div>
         </div>
     </form>

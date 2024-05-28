@@ -1,20 +1,14 @@
 {% extends 'base.html' %}
 
 {% block container_content %}
-    <div class="pt-3 row">
+    <div class="align-items-center d-flex g-1 pt-3 row">
         <div class="col-auto">
-            <a class="btn btn-outline-primary" href="{{ url_for('index') }}">
-                <i class="bi-caret-left-fill"></i>
-                Home
-            </a>
+            <h1 data-bs-target="#nav-modal" data-bs-toggle="modal" role="button">
+                Get an OC ReMix
+                <i class="bi-caret-down-fill small"></i>
+            </h1>
         </div>
         {% include 'sign-out-button.html' %}
-    </div>
-
-    <div class="pt-3 row">
-        <div class="col">
-            <h1>Get an OC ReMix</h1>
-        </div>
     </div>
 
     <div class="pt-3 row">

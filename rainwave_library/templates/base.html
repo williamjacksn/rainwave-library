@@ -11,6 +11,48 @@
 
 <div class="container-fluid">
     {% block container_content %}{% endblock %}
+    <div class="row pt-3">
+        <div class="col"><hr></div>
+    </div>
+</div>
+
+<div class="modal" id="nav-modal">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body">
+                <div class="card mb-3 text-center">
+                    <div class="card-body">
+                        <h2>
+                            <a class="link-body-emphasis stretched-link text-decoration-none"
+                               href="{{ url_for('songs') }}">
+                                Songs
+                            </a>
+                        </h2>
+                    </div>
+                </div>
+                <div class="card mb-3 text-center">
+                    <div class="card-body">
+                        <h3>
+                            <a class="link-body-emphasis stretched-link text-decoration-none"
+                               href="{{ url_for('listeners') }}">
+                                Listeners
+                            </a>
+                        </h3>
+                    </div>
+                </div>
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h4>
+                            <a class="link-body-emphasis stretched-link text-decoration-none"
+                               href="{{ url_for('get_ocremix') }}">
+                                Get an OC ReMix
+                            </a>
+                        </h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="{{ url_for('static', filename='bootstrap-5.3.3.bundle.js') }}"></script>
