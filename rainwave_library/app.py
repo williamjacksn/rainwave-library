@@ -54,7 +54,7 @@ def before_request():
     flask.session.permanent = True
     flask.g.discord_id = flask.session.get('discord_id')
     flask.g.discord_username = flask.session.get('discord_username')
-    flask.g.db = rainwave_library.models.rainwave.get_db()
+    flask.g.db = rainwave_library.models.rainwave.cnx
     flask.g.channels = {
         1: 'Game',
         2: 'OC ReMix',

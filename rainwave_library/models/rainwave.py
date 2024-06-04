@@ -3,15 +3,14 @@ import os
 import pathlib
 
 
+cnx_str = os.getenv('RW_CNX')
+cnx = fort.PostgresDatabase(cnx_str, maxconn=5)
+
+
 def calculate_removed_location(filename: os.PathLike) -> pathlib.Path:
     library_root = pathlib.Path(os.getenv('LIBRARY_ROOT'))
     relative = pathlib.Path(filename).relative_to(library_root)
     return library_root / 'removed' / relative
-
-
-def get_db() -> fort.PostgresDatabase:
-    cnx_str = os.getenv('RW_CNX')
-    return fort.PostgresDatabase(cnx_str)
 
 
 def get_category_for_album(db: fort.PostgresDatabase, album_name: str) -> str:
