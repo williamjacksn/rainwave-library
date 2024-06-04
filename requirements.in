@@ -6,3 +6,4 @@ notch
 psycopg2-binary
 waitress
 whitenoise
+xlsxwriter
