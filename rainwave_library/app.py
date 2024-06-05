@@ -6,6 +6,7 @@ import io
 import mutagen.id3
 import os
 import pathlib
+import rainwave_library.filters
 import rainwave_library.models
 import secrets
 import string
@@ -15,6 +16,7 @@ import urllib.parse
 import waitress
 import werkzeug.middleware.proxy_fix
 import whitenoise
+import xlsxwriter
 
 app = flask.Flask(__name__)
 app.wsgi_app = werkzeug.middleware.proxy_fix.ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_port=1)
@@ -23,6 +25,7 @@ app.wsgi_app = whitenoise.WhiteNoise(app.wsgi_app, root=whitenoise_root, prefix=
 
 app.secret_key = os.getenv('SECRET_KEY')
 app.config['PREFERRED_URL_SCHEME'] = os.getenv('SCHEME', 'https')
+app.add_template_filter(rainwave_library.filters.length_display)
 
 
 def external_url_for(endpoint, *args, **kwargs):
@@ -37,13 +40,6 @@ def secure(f):
             return flask.redirect(flask.url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
-
-
-@app.add_template_filter
-def length_display(length: int):
-    """Convert number of seconds to mm:ss format"""
-    minutes, seconds = divmod(length, 60)
-    return f'{minutes}:{seconds:02d}'
 
 
 @app.before_request
@@ -336,6 +332,68 @@ def songs_rows():
     flask.g.songs = rainwave_library.models.rainwave.get_songs(flask.g.db, flask.g.q, flask.g.page, sort_col, sort_dir,
                                                                valid_channels, include_unrated)
     return flask.render_template('songs/rows.html')
+
+
+@app.route('/songs.xlsx', methods=['POST'])
+@secure
+def songs_xlsx():
+    query = flask.request.values.get('q')
+    page = 0
+    sort_col = flask.request.values.get('sort-col')
+    sort_dir = flask.request.values.get('sort-dir')
+    input_channels = flask.request.values.getlist('channels')
+    channels = [int(c) for c in input_channels if c.isdigit() and 0 < int(c) < 6] or None
+    include_unrated = 'include-unrated' in flask.request.values
+    data = rainwave_library.models.rainwave.get_songs(flask.g.db, query, page, sort_col, sort_dir, channels,
+                                                      include_unrated)
+    headers = [
+        'song_id', 'channels', 'album_name', 'song_title', 'song_artist_tag', 'song_added_on', 'song_filename',
+        'song_groups', 'song_length', 'song_rating', 'song_rating_count', 'song_url', 'song_link_text',
+    ]
+    col_widths = [len(h) for h in headers]
+    output = io.BytesIO()
+    workbook_options = {
+        'default_date_format': 'yyyy-mm-dd HH:mm:ss',
+        'in_memory': True,
+        'remove_timezone': True,
+    }
+    workbook = xlsxwriter.Workbook(output, workbook_options)
+    worksheet = workbook.add_worksheet()
+    for i, row in enumerate(data, start=1):
+        for j, col_name in enumerate(headers):
+            if col_name == 'channels':
+                col_data = ', '.join([flask.g.channels[c] for c in row.get(col_name)])
+                col_widths[j] = max(col_widths[j], len(col_data))
+            elif col_name == 'song_groups':
+                col_data = ', '.join(row.get(col_name))
+                col_widths[j] = max(col_widths[j], len(col_data))
+            elif col_name == 'song_id':
+                col_data = str(row.get(col_name))
+                col_widths[j] = max(10, col_widths[j], len(col_data))
+            elif col_name == 'song_length':
+                col_data = rainwave_library.filters.length_display(row.get(col_name))
+                col_widths[j] = max(14, col_widths[j], len(col_data))
+            elif col_name == 'song_rating':
+                col_data = row.get(col_name)
+                col_widths[j] = max(13, col_widths[j], len(str(col_data)))
+            else:
+                col_data = row.get(col_name)
+                col_widths[j] = max(col_widths[j], len(str(col_data)))
+            worksheet.write(i, j, col_data)
+    for i, width in enumerate(col_widths):
+        worksheet.set_column(i, i, width)
+    table_options = {
+        'name': 'songs',
+        'columns': [{'header': h} for h in headers]
+    }
+    worksheet.add_table(0, 0, len(data), len(headers) - 1, table_options)
+    workbook.close()
+    response = flask.make_response(output.getvalue())
+    response.headers.update({
+        'Content-Disposition': 'attachment; filename="rainwave-songs.xlsx"',
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    return response
 
 
 def main(port: int):

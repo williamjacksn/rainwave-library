@@ -150,6 +150,10 @@ def get_songs(db: fort.PostgresDatabase, query: str = None, page: int = 1,
     if sort_col != 'song_id':
         sort_clause = f'{sort_clause}, song_id asc'
 
+    limit_clause = ''
+    if page > 0:
+        limit_clause = 'limit 101 offset %(offset)s'
+
     sql = f'''
         with c as (
             select song_id, array_agg(sid::integer order by sid) channels
@@ -164,16 +168,16 @@ def get_songs(db: fort.PostgresDatabase, query: str = None, page: int = 1,
             group by s.song_id
         )
         select
-            a.album_name, c.channels, s.song_added_on, s.song_artist_tag, s.song_filename,
-            coalesce(g.song_groups, array[]::text[]) as song_groups, s.song_id, s.song_length, s.song_link_text,
-            s.song_rating, s.song_rating_count, s.song_title, s.song_url
+            a.album_name, c.channels, to_timestamp(s.song_added_on) as song_added_on, s.song_artist_tag,
+            s.song_filename, coalesce(g.song_groups, array[]::text[]) as song_groups, s.song_id, s.song_length,
+            s.song_link_text, s.song_rating, s.song_rating_count, s.song_title, s.song_url
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id
         join c on c.song_id = s.song_id
         left join g on g.song_id = s.song_id
         where {where_clause}
         order by {sort_clause}
-        limit 101 offset %(offset)s
+        {limit_clause}
     '''
     params = {
         'channels': channels,

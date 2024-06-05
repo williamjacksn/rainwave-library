@@ -14,7 +14,7 @@
         {% include 'sign-out-button.html' %}
     </div>
 
-    <form hx-target="tbody">
+    <form action="{{ url_for('songs_xlsx') }}" hx-target="tbody" method="post">
         <div class="align-items-center d-flex g-2 pt-3 row">
             <div class="col-12 col-sm-auto">
                 <input aria-label="Search songs" class="form-control" hx-indicator="#filters-indicator"
@@ -129,6 +129,12 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-outline-primary" href="#" name="page" type="submit" value="0">
+                    <i class="bi-file-earmark-spreadsheet"></i>
+                    &darr;
+                </button>
             </div>
             <div class="col-auto">
                 <span class="htmx-indicator spinner-border spinner-border-sm text-primary" id="filters-indicator"></span>
