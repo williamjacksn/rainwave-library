@@ -19,5 +19,8 @@ jobs:
       - name: Pull changes on remote server
         run: ssh ssh://${{ secrets.ssh_user }}@${{ secrets.ssh_host }}:2234 git -C /home/${{ secrets.ssh_user }}/projects/rainwave-library pull
 
+      - name: Ensure requirements are installed
+        run: ssh ssh://${{ secrets.ssh_user }}@${{ secrets.ssh_host }}:2234 /home/${{ secrets.ssh_user }}/.pyenv/versions/rainwave-library-3.11.6/bin/pip install --requirement /home/${{ secrets.ssh_user }}/projects/rainwave-library/requirements.txt
+
       - name: Restart app
         run: ssh ssh://${{ secrets.ssh_user }}@${{ secrets.ssh_host }}:2234 sudo systemctl restart rainwave-library.service
