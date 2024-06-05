@@ -356,30 +356,37 @@ def songs_xlsx():
         'default_date_format': 'yyyy-mm-dd HH:mm:ss',
         'in_memory': True,
         'remove_timezone': True,
+        'strings_to_formulas': False,
     }
     workbook = xlsxwriter.Workbook(output, workbook_options)
+    rating_format = workbook.add_format({'num_format': '0.00'})
     worksheet = workbook.add_worksheet()
     for i, row in enumerate(data, start=1):
         for j, col_name in enumerate(headers):
             if col_name == 'channels':
                 col_data = ', '.join([flask.g.channels[c] for c in row.get(col_name)])
                 col_widths[j] = max(col_widths[j], len(col_data))
+                worksheet.write(i, j, col_data)
             elif col_name == 'song_groups':
                 col_data = ', '.join(row.get(col_name))
                 col_widths[j] = max(col_widths[j], len(col_data))
+                worksheet.write(i, j, col_data)
             elif col_name == 'song_id':
                 col_data = str(row.get(col_name))
                 col_widths[j] = max(10, col_widths[j], len(col_data))
+                worksheet.write(i, j, col_data)
             elif col_name == 'song_length':
                 col_data = rainwave_library.filters.length_display(row.get(col_name))
                 col_widths[j] = max(14, col_widths[j], len(col_data))
+                worksheet.write(i, j, col_data)
             elif col_name == 'song_rating':
                 col_data = row.get(col_name)
                 col_widths[j] = max(13, col_widths[j], len(str(col_data)))
+                worksheet.write(i, j, col_data, rating_format)
             else:
                 col_data = row.get(col_name)
                 col_widths[j] = max(col_widths[j], len(str(col_data)))
-            worksheet.write(i, j, col_data)
+                worksheet.write(i, j, col_data)
     for i, width in enumerate(col_widths):
         worksheet.set_column(i, i, width)
     table_options = {
