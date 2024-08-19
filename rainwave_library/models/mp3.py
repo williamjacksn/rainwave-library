@@ -26,6 +26,7 @@ log = logging.getLogger(__name__)
 #  'ú': 250,
 #  'ü': 252,
 #  'ş': 351,
+#  'ū': 363,
 #  'К': 1050,
 #  'С': 1057,
 #  'а': 1072,
@@ -44,7 +45,7 @@ log = logging.getLogger(__name__)
 def make_safe(s: str) -> str:
     """Converts a string to a safe string, with no spaces or special characters"""
     translate_table = {ord(char): None for char in ' !"#%&\'()*+,-./:;<=>?@[\\]^_`{|}~–—あいごま고말싶은하•'}
-    special = dict(zip(map(ord, '²ÉÜàáâãäçèéêíðñóöúüşКСавеийкмност'), '2EUaaaaaceeeidnoouusKSaveijkmnost'))
+    special = dict(zip(map(ord, '²ÉÜàáâãäçèéêíðñóöúüşūКСавеийкмност'), '2EUaaaaaceeeidnoouusuKSaveijkmnost'))
     translate_table.update(special)
     return s.translate(translate_table)
 
