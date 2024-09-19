@@ -1,9 +1,10 @@
 {% extends 'base.html' %}
 
 {% block container_content %}
-    <div class="pt-3 row">
-        <div class="col">
+    <div class="align-items-center d-flex g-1 pt-3 row">
+        <div class="col-auto">
             <h1>Not authorized</h1>
         </div>
+        {% include 'sign-out-button.html' %}
     </div>
 {% endblock %}

@@ -35,8 +35,7 @@ def external_url_for(endpoint, *args, **kwargs):
 def secure(f):
     @functools.wraps(f)
     def decorated_function(*args, **kwargs):
-        discord_username = flask.session.get('discord_username')
-        if discord_username is None:
+        if 'role' not in flask.session or flask.session.get('role') == 'member':
             return flask.redirect(flask.url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
@@ -62,9 +61,20 @@ def before_request():
 
 @app.route('/', methods=['GET'])
 def index():
-    if flask.g.discord_username is None:
+    if 'role' not in flask.session:
         return flask.render_template('sign-in.html')
+    if flask.session.get('role') == 'member':
+        return flask.render_template('not-authorized.html')
     return flask.redirect(flask.url_for('songs'))
+
+
+@app.route('/assume-member', methods=['GET'])
+@secure
+def assume_member():
+    flask.session.update({
+        'role': 'member',
+    })
+    return flask.redirect(flask.url_for('index'))
 
 
 @app.route('/authorize', methods=['GET'])
@@ -89,18 +99,24 @@ def authorize():
     resp = httpx.get(guild_member_url, headers=headers).json()
     username = resp.get('user', {}).get('username')
     user_id = resp.get('user', {}).get('id')
+    flask.session.update({
+        'discord_id': user_id,
+        'discord_username': username,
+    })
     user_roles = resp.get('roles')
     app.logger.debug(f'Sign in attempt from {username} with roles {user_roles}')
     staff_role = os.getenv('DISCORD_ROLE_ID_STAFF')
     app.logger.debug(f'Staff role is {staff_role}')
     if staff_role in user_roles:
-        app.logger.debug(f'{username} has the correct role')
+        app.logger.debug(f'{username} is staff')
         flask.session.update({
-            'discord_id': user_id,
-            'discord_username': username,
+            'role': 'staff',
         })
     else:
-        app.logger.debug(f'{username} does not have the correct role')
+        app.logger.debug(f'{username} is member')
+        flask.session.update({
+            'role': 'member',
+        })
     return flask.redirect(flask.url_for('index'))
 
 
@@ -221,6 +237,7 @@ def sign_in():
 def sign_out():
     flask.session.pop('discord_id')
     flask.session.pop('discord_username')
+    flask.session.pop('role')
     return flask.redirect(flask.url_for('index'))
 
 
