@@ -17,10 +17,10 @@ jobs:
           ssh-keyscan -H -p 2234 ${{ secrets.ssh_host }} > ~/.ssh/known_hosts
 
       - name: Pull changes on remote server
-        run: ssh ssh://${{ secrets.ssh_user }}@${{ secrets.ssh_host }}:2234 git -C /home/${{ secrets.ssh_user }}/projects/rainwave-library pull
+        run: ssh ssh://${{ secrets.ssh_user }}@${{ secrets.ssh_host }}:2234 git -C /opt/rainwave-library pull
 
       - name: Ensure requirements are installed
-        run: ssh ssh://${{ secrets.ssh_user }}@${{ secrets.ssh_host }}:2234 /home/${{ secrets.ssh_user }}/.pyenv/versions/rainwave-library-3.11.6/bin/pip install --requirement /home/${{ secrets.ssh_user }}/projects/rainwave-library/requirements.txt
+        run: ssh ssh://${{ secrets.ssh_user }}@${{ secrets.ssh_host }}:2234 /opt/venv/rainwave-library-3.12/bin/pip install --requirement /opt/rainwave-library/requirements.txt
 
       - name: Restart app
         run: ssh ssh://${{ secrets.ssh_user }}@${{ secrets.ssh_host }}:2234 sudo systemctl restart rainwave-library.service
