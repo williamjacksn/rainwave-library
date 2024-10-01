@@ -1,3 +1,4 @@
+import datetime
 import fort
 import os
 import pathlib
@@ -30,6 +31,45 @@ def get_category_for_album(db: fort.PostgresDatabase, album_name: str) -> str:
     }
     for row in db.q(sql, params):
         return row.get('group_name')
+
+
+def get_elections(db: fort.PostgresDatabase, sid: int, day: datetime.date) -> list[dict]:
+    where_clause = 'elec_used is true'
+
+    if sid not in (1, 2, 3, 4, 5):
+        sid = 1
+
+    where_clause = f'''
+        {where_clause} and sid = %(sid)s and to_timestamp(elec_start_actual)::date = %(day)s
+    '''
+
+    sql = f'''
+        select
+            e.elec_id, elec_start_actual,
+            json_agg(
+                jsonb_build_object(
+                    'entry_id', entry_id,
+                    'id', s.song_id,
+                    'entry_votes', entry_votes,
+                    'title', song_title,
+                    'album', album_name,
+                    'artist', song_artist_tag
+                )
+            ) songs
+        from r4_elections e
+        join r4_election_entries n on n.elec_id = e.elec_id
+        join r4_songs s on s.song_id = n.song_id
+        join r4_albums a on a.album_id = s.album_id
+        where {where_clause}
+        group by e.elec_id, elec_start_actual
+        order by elec_start_actual, e.elec_id
+    '''
+    params = {
+        'sid': sid,
+        'day': day,
+    }
+
+    return db.q(sql, params)
 
 
 def get_listeners(db: fort.PostgresDatabase, query: str = None, page: int = 1, ranks: list[int] = None) -> list[dict]:

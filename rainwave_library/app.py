@@ -68,6 +68,23 @@ def index():
     return flask.redirect(flask.url_for('songs'))
 
 
+@app.route('/api/elections')
+def api_elections():
+    sid = int(flask.request.values.get('sid', 1))
+    day = datetime.date.fromisoformat(flask.request.values.get('day', '2024-01-01'))
+    return flask.jsonify({
+        'sid': sid,
+        'day': day.isoformat(),
+        'elections': [
+            {
+                'id': e.get('elec_id'),
+                'start_actual': e.get('elec_start_actual'),
+                'songs': e.get('songs'),
+            } for e in rainwave_library.models.rainwave.get_elections(flask.g.db, sid, day)
+        ]
+    })
+
+
 @app.route('/assume-member', methods=['GET'])
 @secure
 def assume_member():
