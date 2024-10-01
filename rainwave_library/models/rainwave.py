@@ -49,12 +49,13 @@ def get_elections(db: fort.PostgresDatabase, sid: int, day: datetime.date) -> li
             json_agg(
                 jsonb_build_object(
                     'entry_id', entry_id,
+                    'entry_position', entry_position,
                     'id', s.song_id,
                     'entry_votes', entry_votes,
                     'title', song_title,
                     'album', album_name,
                     'artist', song_artist_tag
-                )
+                ) order by entry_position
             ) songs
         from r4_elections e
         join r4_election_entries n on n.elec_id = e.elec_id
