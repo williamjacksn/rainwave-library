@@ -75,7 +75,7 @@ def api_elections():
     return flask.jsonify({
         'sid': sid,
         'day': day.isoformat(),
-        'elections': [
+        'sched_history': [
             {
                 'id': e.get('elec_id'),
                 'start_actual': e.get('elec_start_actual'),
