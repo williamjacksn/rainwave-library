@@ -1,5 +1,6 @@
 import logging
 import mutagen.id3
+import pathlib
 
 log = logging.getLogger(__name__)
 
@@ -91,3 +92,11 @@ def set_tags(filename: str, **kwargs) -> str:
         result = str(e)
     finally:
         return result
+
+
+def yield_all(starting_dir: pathlib.Path):
+    for child in starting_dir.iterdir():
+        if child.is_dir():
+            yield from yield_all(child)
+        elif child.suffix.lower() == '.mp3':
+            yield child

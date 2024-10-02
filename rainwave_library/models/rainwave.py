@@ -151,6 +151,15 @@ def get_song(db: fort.PostgresDatabase, song_id: int) -> dict:
     return db.q_one(sql, params)
 
 
+def get_song_filenames(db: fort.PostgresDatabase) -> list[str]:
+    sql = '''
+        select song_filename
+        from r4_songs
+        order by song_filename
+    '''
+    return [r.get('song_filename') for r in db.q(sql)]
+
+
 def get_songs(db: fort.PostgresDatabase, query: str = None, page: int = 1,
               sort_col: str = 'song_id', sort_dir: str = 'asc', channels: list[int] = None,
               include_unrated: bool = True) -> list[dict]:

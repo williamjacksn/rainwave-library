@@ -230,6 +230,18 @@ def nothing():
     return ''
 
 
+@app.route('/orphan-files', methds=['GET'])
+@secure
+def orphan_files():
+    known_filenames = rainwave_library.models.rainwave.get_song_filenames(flask.g.db)
+    orphan_filenames = []
+    library_root = pathlib.Path(os.getenv('LIBRARY_ROOT'))
+    for mp3 in rainwave_library.models.mp3.yield_all(library_root):
+        if mp3 not in known_filenames:
+            orphan_filenames.append(str(mp3))
+    return str(orphan_filenames)
+
+
 @app.route('/sign-in', methods=['GET'])
 def sign_in():
     state = secrets.token_urlsafe()
