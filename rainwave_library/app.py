@@ -230,7 +230,7 @@ def nothing():
     return ''
 
 
-@app.route('/orphan-files', methds=['GET'])
+@app.route('/orphan-files', methods=['GET'])
 @secure
 def orphan_files():
     known_filenames = rainwave_library.models.rainwave.get_song_filenames(flask.g.db)
