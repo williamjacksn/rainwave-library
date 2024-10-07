@@ -54,7 +54,8 @@ def get_elections(db: fort.PostgresDatabase, sid: int, day: datetime.date) -> li
                     'entry_votes', entry_votes,
                     'title', song_title,
                     'album', album_name,
-                    'artist', song_artist_tag
+                    'artist', song_artist_tag,
+                    'rating', song_rating
                 ) order by entry_position
             ) songs
         from r4_elections e
