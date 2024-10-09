@@ -3,6 +3,7 @@ import flask
 import functools
 import httpx
 import io
+import json
 import mutagen.id3
 import os
 import pathlib
@@ -178,8 +179,11 @@ def get_ocremix_download():
 def get_ocremix_fetch():
     ocr_id = int(flask.request.values.get('ocr-id'))
     url = f'https://williamjacksn.github.io/ocremix-data/remix/OCR{ocr_id:05}.json'
-    flask.g.ocr_info = httpx.get(url).json()
-    app.logger.debug(flask.g.ocr_info)
+    try:
+        flask.g.ocr_info = httpx.get(url).json()
+        app.logger.debug(flask.g.ocr_info)
+    except json.decoder.JSONDecodeError:
+        return ''
     album_name = flask.g.ocr_info.get('primary_game')
     default_category = rainwave_library.models.rainwave.get_category_for_album(flask.g.db, album_name)
     if default_category:
