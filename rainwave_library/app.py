@@ -183,7 +183,7 @@ def get_ocremix_fetch():
         flask.g.ocr_info = httpx.get(url).json()
         app.logger.debug(flask.g.ocr_info)
     except json.decoder.JSONDecodeError:
-        return ''
+        return '', 204
     album_name = flask.g.ocr_info.get('primary_game')
     default_category = rainwave_library.models.rainwave.get_category_for_album(flask.g.db, album_name)
     if default_category:
