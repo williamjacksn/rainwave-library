@@ -46,7 +46,7 @@ sniffio==1.3.1
     # via
     #   anyio
     #   httpx
-waitress==3.0.1
+waitress==3.0.2
     # via -r requirements.in
 werkzeug==3.1.3
     # via flask
