@@ -20,6 +20,11 @@ services:
       - ./:/home/python/rainwave-library
     working_dir: /home/python/rainwave-library
 
+  ruff:
+    image: ghcr.io/astral-sh/ruff
+    volumes:
+      - ./:/io
+
   shell:
     entrypoint:
       - /bin/bash
