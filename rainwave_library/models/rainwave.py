@@ -97,7 +97,11 @@ def get_listeners(
         select
             discord_user_id,
             case group_id
+                when 1 then 'Anonymous'
+                when 2 then 'Legacy Listeners'
+                when 3 then 'Discord Listeners'
                 when 5 then 'Admins'
+                when 6 then 'Bot'
                 when 8 then 'Donors'
                 when 18 then 'Managers'
                 else concat('Unknown (', group_id::text, ')')
