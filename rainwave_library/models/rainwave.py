@@ -95,9 +95,20 @@ def get_listeners(
         """
     sql = f"""
         select
-            discord_user_id, case when discord_user_id is null then false else true end is_discord_user,
-            case when radio_last_active > 0 then to_timestamp(radio_last_active) end as radio_last_active, user_avatar,
-            user_id, coalesce(radio_username, username) as user_name, u.user_rank, r.rank_title
+            discord_user_id,
+            case group_id
+                when 5 then 'Admins'
+                when 8 then 'Donors'
+                when 18 then 'Managers'
+                else concat('Unknown (', group_id::text, ')')
+            end as group_name,
+            case when discord_user_id is null then false else true end as is_discord_user,
+            case when radio_last_active > 0 then to_timestamp(radio_last_active) end as radio_last_active,
+            r.rank_title,
+            user_avatar,
+            user_id,
+            coalesce(radio_username, username) as user_name,
+            u.user_rank
         from phpbb_users u
         left join phpbb_ranks r on r.rank_id = u.user_rank
         where {where_clause}
