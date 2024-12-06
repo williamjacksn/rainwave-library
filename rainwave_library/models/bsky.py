@@ -55,7 +55,7 @@ class BlueskyClient:
 
 
 def get_client_from_env() -> BlueskyClient:
-    return BlueskyClient(os.getenv('BSKY_HANDLE'), os.getenv('BSKY_PASSWORD'))
+    return BlueskyClient(os.getenv("BSKY_HANDLE"), os.getenv("BSKY_PASSWORD"))
 
 
 def main():
