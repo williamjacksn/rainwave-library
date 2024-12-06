@@ -160,6 +160,14 @@ def authorize():
     return flask.redirect(flask.url_for("index"))
 
 
+@app.route("/bluesky", methods=["POST"])
+@secure
+def bluesky():
+    b = rainwave_library.models.bsky.get_client_from_env()
+    b.post(flask.request.values.get("body"))
+    return flask.redirect(flask.url_for("index"))
+
+
 @app.route("/get-ocremix", methods=["GET"])
 @secure
 def get_ocremix():
