@@ -1,0 +1,24 @@
+### create-record
+POST https://bsky.social/xrpc/com.atproto.repo.createRecord
+Authorization: Bearer {{ access-token }}
+Content-Type: application/json
+
+{
+  "collection": "app.bsky.feed.post",
+  "record": {
+    "createdAt": "2024-12-06T16:15:00Z",
+    "text": "Test post."
+  },
+  "repo": "{{ bsky-handle }}"
+}
+
+### create-session
+POST https://bsky.social/xrpc/com.atproto.server.createSession
+Content-Type: application/json
+
+{
+  "identifier": "{{ bsky-handle }}",
+  "password": "{{ bsky-password }}"
+}
+
+> {% client.global.set('access-token', response.body['accessJwt']) %}
