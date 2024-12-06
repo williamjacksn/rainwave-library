@@ -54,9 +54,13 @@ class BlueskyClient:
         return self.create_record(record)
 
 
+def get_client_from_env() -> BlueskyClient:
+    return BlueskyClient(os.getenv('BSKY_HANDLE'), os.getenv('BSKY_PASSWORD'))
+
+
 def main():
     notch.make_log("bsky")
-    b = BlueskyClient(os.getenv("BSKY_HANDLE"), os.getenv("BSKY_PASSWORD"))
+    b = get_client_from_env()
     print(b.post("Test post"))
 
 
