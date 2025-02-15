@@ -26,6 +26,7 @@ log = logging.getLogger(__name__)
 #  'ö': 246,
 #  'ú': 250,
 #  'ü': 252,
+#  'ā': 257,
 #  'ş': 351,
 #  'ū': 363,
 #  'К': 1050,
@@ -40,7 +41,8 @@ log = logging.getLogger(__name__)
 #  'н': 1085,
 #  'о': 1086,
 #  'с': 1089,
-#  'т': 1090
+#  'т': 1090,
+#  'ṃ': 7747,
 # }
 
 
@@ -52,8 +54,8 @@ def make_safe(s: str) -> str:
     }
     special = dict(
         zip(
-            map(ord, "²ÉÜàáâãäçèéêíðñóöúüşūКСавеийкмност"),
-            "2EUaaaaaceeeidnoouusuKSaveijkmnost",
+            map(ord, "²ÉÜàáâãäçèéêíðñóöúüāşūКСавеийкмностṃ"),
+            "2EUaaaaaceeeidnoouuasuKSaveijkmnostm",
         )
     )
     translate_table.update(special)
