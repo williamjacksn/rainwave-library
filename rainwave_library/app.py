@@ -250,11 +250,15 @@ def get_ocremix_fetch():
 @secure
 def get_ocremix_target_file():
     album = rainwave_library.models.mp3.make_safe(flask.request.values.get("album"))
-    if set(album) - (set(string.ascii_letters) | set(string.digits)):
-        return "Unsupported character in album."
+    album_bad_chars = set(album) - (set(string.ascii_letters) | set(string.digits))
+    if album_bad_chars:
+        bad_char = sorted(album_bad_chars)[0]
+        return f"Unsupported character in album: {bad_char!r} [{ord(bad_char)}]"
     title = rainwave_library.models.mp3.make_safe(flask.request.values.get("title"))
-    if set(title) - (set(string.ascii_letters) | set(string.digits)):
-        return "Unsupported character in title"
+    title_bad_chars = set(title) - (set(string.ascii_letters) | set(string.digits))
+    if title_bad_chars:
+        bad_char = sorted(title_bad_chars)[0]
+        return f"Unsupported character in title: {bad_char!r} [{ord(bad_char)}]"
     first_letter = album[0].lower()
     if first_letter not in string.ascii_lowercase:
         first_letter = "0"
