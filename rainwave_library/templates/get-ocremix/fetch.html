@@ -56,16 +56,16 @@
 <tr>
     <td></td>
     <td>
-        <button class="btn btn-success me-1" hx-include="form" hx-indicator="closest td"
+        <a class="btn btn-outline-success" href="{{ url_for('get_ocremix') }}">
+            <i class="bi-arrow-counterclockwise"></i>
+            Start over
+        </a>
+        <button class="btn btn-success me-2" hx-include="form" hx-indicator="closest td"
                 hx-post="{{ url_for('get_ocremix_download') }}" hx-swap="outerHTML" hx-target="closest tr"
                 type="button">
             <i class="bi-download"></i>
             Download
         </button>
         <span class="htmx-indicator spinner-border spinner-border-sm"></span>
-        <a class="btn btn-outline-success" href="{{ url_for('get_ocremix') }}">
-            <i class="bi-arrow-counterclockwise"></i>
-            Start over
-        </a>
     </td>
 </tr>
