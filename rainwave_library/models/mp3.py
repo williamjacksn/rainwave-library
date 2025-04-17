@@ -7,7 +7,8 @@ log = logging.getLogger(__name__)
 
 # Special characters sorted by results of ord()
 # {
-#  '²': 178
+#  '²': 178,
+#  'À': 192,
 #  'É': 201,
 #  'Ü': 220,
 #  'à': 224,
@@ -55,8 +56,8 @@ def make_safe(s: str) -> str:
     }
     special = dict(
         zip(
-            map(ord, "²ÉÜàáâãäçèéêíðñóöúüāōşūКСавеийкмностṃ"),
-            "2EUaaaaaceeeidnoouuaosuKSaveijkmnostm",
+            map(ord, "²ÀÉÜàáâãäçèéêíðñóöúüāōşūКСавеийкмностṃ"),
+            "2AEUaaaaaceeeidnoouuaosuKSaveijkmnostm",
         )
     )
     translate_table.update(special)
