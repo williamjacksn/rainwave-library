@@ -1,9 +1,0 @@
-flask
-fort
-httpx
-mutagen
-notch
-psycopg2-binary
-waitress
-whitenoise
-xlsxwriter
