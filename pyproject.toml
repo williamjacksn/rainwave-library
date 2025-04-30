@@ -1,0 +1,17 @@
+[project]
+name = "rainwave-library"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "flask>=3.1.0",
+    "fort>=2024.2",
+    "httpx>=0.28.1",
+    "mutagen>=1.47.0",
+    "notch>=2025.2",
+    "psycopg2-binary>=2.9.10",
+    "waitress>=3.0.2",
+    "whitenoise>=6.9.0",
+    "xlsxwriter>=3.2.3",
+]
