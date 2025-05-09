@@ -95,7 +95,7 @@ def get_listener(db: fort.PostgresDatabase, listener_id: int) -> dict:
 def get_listeners(
     db: fort.PostgresDatabase, query: str = None, page: int = 1, ranks: list[int] = None
 ) -> list[dict]:
-    where_clause = "user_type <> 2 and user_id > 1"
+    where_clause = "u.user_type <> 2 and u.user_id > 1"
     if query:
         where_clause = f"""
             {where_clause}
@@ -110,9 +110,15 @@ def get_listeners(
             and u.user_rank = any(%(ranks)s)
         """
     sql = f"""
+        with c as (
+            select user_id, count(*) rating_count
+            from r4_song_ratings
+            where song_rating_user is not null
+            group by user_id
+        )
         select
-            discord_user_id,
-            case group_id
+            u.discord_user_id,
+            case u.group_id
                 when 1 then 'Anonymous'
                 when 2 then 'Legacy Listeners'
                 when 3 then 'Discord Listeners'
@@ -122,17 +128,19 @@ def get_listeners(
                 when 18 then 'Managers'
                 else concat('Unknown (', group_id::text, ')')
             end as group_name,
-            case when discord_user_id is null then false else true end as is_discord_user,
-            case when radio_last_active > 0 then to_timestamp(radio_last_active) end as radio_last_active,
+            case when u.discord_user_id is null then false else true end as is_discord_user,
+            case when u.radio_last_active > 0 then to_timestamp(u.radio_last_active) end as radio_last_active,
             r.rank_title,
-            user_avatar,
-            user_id,
-            coalesce(radio_username, username) as user_name,
+            coalesce(c.rating_count, 0) as rating_count,
+            u.user_avatar,
+            u.user_id,
+            coalesce(u.radio_username, u.username) as user_name,
             u.user_rank
         from phpbb_users u
         left join phpbb_ranks r on r.rank_id = u.user_rank
+        left join c on c.user_id = u.user_id
         where {where_clause}
-        order by user_id
+        order by u.user_id
         limit 101 offset %(offset)s
     """
     params = {
@@ -286,7 +294,7 @@ def get_songs(
 
 
 def set_discord_user_id(
-    db: fort.PostgresDatabase, user_id: int, discord_user_id: int
+    db: fort.PostgresDatabase, user_id: int, discord_user_id: str
 ) -> None:
     params = {
         "discord_user_id": discord_user_id,
@@ -295,7 +303,7 @@ def set_discord_user_id(
     if discord_user_id:
         sql = """
             update phpbb_users
-            set discord_user_id = None
+            set discord_user_id = null
             where discord_user_id = %(discord_user_id)s
         """
         db.u(sql, params)

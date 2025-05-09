@@ -65,13 +65,14 @@
                     <th>User name</th>
                     <th>Group</th>
                     <th>Rank</th>
+                    <th>Ratings</th>
                     <th>Discord</th>
                     <th>Last active</th>
                 </tr>
                 </thead>
                 <tbody hx-post="{{ url_for('listeners_rows') }}" hx-trigger="load">
                 <tr>
-                    <td class="py-3 text-center" colspan="6">
+                    <td class="py-3 text-center" colspan="8">
                         <span class="htmx-indicator spinner-border spinner-border-sm"></span>
                     </td>
                 </tr>

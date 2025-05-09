@@ -292,9 +292,7 @@ def listeners_edit(listener_id: int):
         return flask.render_template("listeners/edit.html")
 
     discord_user_id = flask.request.values.get("discord_user_id")
-    try:
-        discord_user_id = int(discord_user_id)
-    except (TypeError, ValueError):
+    if not discord_user_id:
         discord_user_id = None
     rainwave_library.models.rainwave.set_discord_user_id(
         flask.g.db, listener_id, discord_user_id

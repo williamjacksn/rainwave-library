@@ -2,14 +2,20 @@
     {% if loop.index < 101 %}
     <tr>
         <td class="text-center text-nowrap">
-            <a class="text-decoration-none" href="{{ url_for('listeners_detail', listener_id=l.user_id) }}">
+            <a class="text-decoration-none" href="{{ url_for('listeners_detail', listener_id=l.user_id) }}"
+               title="Listener detail page">
                 <i class="bi-info-circle"></i>
+            </a>
+            <a class="text-decoration-none" href="https://rainwave.cc/all/#!/listener/{{ l.user_id }}" rel="noopener"
+               target="_blank" title="Listener profile on rainwave.cc">
+                <i class="bi-person-badge"></i>
             </a>
         </td>
         <td class="text-end"><code>{{ l.user_id }}</code></td>
         <td class="user-select-all">{{ l.user_name }}</td>
         <td>{{ l.group_name }}</td>
         <td class="user-select-all">{{ l.rank_title or '' }}</td>
+        <td>{{ l.rating_count }}</td>
         <td class="text-center">
         {% if l.is_discord_user %}
             <i class="bi-check-lg" title="{{ l.discord_user_id }}"></i>
@@ -28,6 +34,6 @@
     {% endif %}
 {% else %}
 <tr class="text-center">
-    <td colspan="6">No listeners matched your criteria.</td>
+    <td colspan="8">No listeners matched your criteria.</td>
 </tr>
 {% endfor %}
