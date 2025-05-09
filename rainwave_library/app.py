@@ -172,8 +172,8 @@ def bluesky():
 @app.route("/get-ocremix", methods=["GET"])
 @secure
 def get_ocremix():
-    flask.g.max_ocr_num = rainwave_library.models.rainwave.get_max_ocr_num(flask.g.db)
-    return flask.render_template("get-ocremix/start.html")
+    max_ocr_num = rainwave_library.models.rainwave.get_max_ocr_num(flask.g.db)
+    return rainwave_library.components.get_ocremix_start(max_ocr_num)
 
 
 @app.route("/get-ocremix/download", methods=["POST"])
