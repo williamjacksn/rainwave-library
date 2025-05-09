@@ -213,7 +213,7 @@ wheels = [
 
 [[package]]
 name = "rainwave-library"
-version = "0.1.0"
+version = "2025.0"
 source = { virtual = "." }
 dependencies = [
     { name = "flask" },
