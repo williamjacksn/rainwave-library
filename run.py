@@ -4,7 +4,7 @@ import signal
 import sys
 import rainwave_library.app
 
-log = notch.make_log("rainwave-library-entrypoint")
+notch.configure()
 
 
 def handle_sigterm(_signal, _frame):
