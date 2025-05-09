@@ -7,6 +7,7 @@ import json
 import mutagen.id3
 import os
 import pathlib
+import rainwave_library.components
 import rainwave_library.filters
 import rainwave_library.models
 import secrets
@@ -74,7 +75,7 @@ def before_request():
 @app.route("/", methods=["GET"])
 def index():
     if "role" not in flask.session:
-        return flask.render_template("sign-in.html")
+        return rainwave_library.components.sign_in()
     if flask.session.get("role") == "member":
         return flask.render_template("not-authorized.html")
     return flask.redirect(flask.url_for("songs"))
