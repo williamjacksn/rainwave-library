@@ -89,6 +89,18 @@ wheels = [
 ]
 
 [[package]]
+name = "htpy"
+version = "25.4.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markupsafe" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e8/e8/8369433cf68d80b89a17a6b21275729ccdbfb490109943eb8a978a170ae3/htpy-25.4.2.tar.gz", hash = "sha256:8ac695dcbcc228823ec05362907f938accffadda6047965738c447fcc337977a", size = 284303, upload-time = "2025-04-16T17:46:22.666Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e9/da/8fc8ec004d9e0906757b15684409782a67af748ce7b23f0a877e5c645260/htpy-25.4.2-py3-none-any.whl", hash = "sha256:219e38c50a60874fcb81f7fb47647aaf4a99d93ff45c0a6aa110e6bf7c10c3b4", size = 13482, upload-time = "2025-04-16T17:46:20.906Z" },
+]
+
+[[package]]
 name = "httpcore"
 version = "1.0.9"
 source = { registry = "https://pypi.org/simple" }
@@ -218,6 +230,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "flask" },
     { name = "fort" },
+    { name = "htpy" },
     { name = "httpx" },
     { name = "mutagen" },
     { name = "notch" },
@@ -231,6 +244,7 @@ dependencies = [
 requires-dist = [
     { name = "flask", specifier = ">=3.1.0" },
     { name = "fort", specifier = ">=2024.2" },
+    { name = "htpy", specifier = ">=25.4.2" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "mutagen", specifier = ">=1.47.0" },
     { name = "notch", specifier = ">=2025.2" },
