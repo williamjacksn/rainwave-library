@@ -1,0 +1,11 @@
+{
+  "name": "rainwave-library",
+  "version": "1.0.0",
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "bootstrap": "5.3.3",
+    "bootstrap-icons": "1.11.3",
+    "htmx.org": "2.0.0"
+  }
+}
