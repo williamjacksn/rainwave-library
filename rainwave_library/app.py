@@ -77,7 +77,7 @@ def index():
     if "role" not in flask.session:
         return rainwave_library.components.sign_in()
     if flask.session.get("role") == "member":
-        return flask.render_template("not-authorized.html")
+        return rainwave_library.components.not_authorized()
     return flask.redirect(flask.url_for("songs"))
 
 

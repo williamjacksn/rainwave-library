@@ -87,6 +87,13 @@ def _base(content: htpy.Node) -> htpy.Element:
     ]
 
 
+def not_authorized() -> str:
+    content = htpy.div(".align-items-center.d-flex.g-1.pt-3.row")[
+        htpy.div(".col-auto.me-auto")[htpy.h1["Not authorized"]], sign_out_button(False)
+    ]
+    return str(_base(content))
+
+
 def sign_in() -> str:
     content = htpy.div(".pt-3.row")[
         htpy.div(".col")[
@@ -94,3 +101,50 @@ def sign_in() -> str:
         ]
     ]
     return str(_base(content))
+
+
+def sign_out_button(show_bsky: bool = False) -> htpy.Node:
+    return [
+        show_bsky
+        and htpy.div(".col-auto")[
+            htpy.button(
+                ".btn.btn-outline-primary",
+                data_bs_target="#bsky-modal",
+                data_bs_toggle="modal",
+            )[htpy.i(".bi-pencil-square"), " Post"]
+        ],
+        htpy.div(".col-auto")[
+            htpy.a(".btn.btn-outline-danger", href=flask.url_for("sign_out"))[
+                "Sign out"
+            ]
+        ],
+        show_bsky
+        and htpy.div("#bsky-modal.modal")[
+            htpy.div(".modal-dialog.modal-dialog-centered")[
+                htpy.div(".modal-content")[
+                    htpy.div(".modal-body")[
+                        htpy.form(
+                            ".mb-0", action=flask.url_for("bluesky"), method="post"
+                        )[
+                            htpy.h5(".mb-3")[
+                                htpy.label(for_="body")["Post to Bluesky"]
+                            ],
+                            htpy.textarea(
+                                "#body.form-control.mb-3",
+                                name="body",
+                                required=True,
+                                rows=10,
+                            ),
+                            htpy.div(".row")[
+                                htpy.div(".col-auto.ms-auto")[
+                                    htpy.button(
+                                        ".btn.btn-outline-primary", type="submit"
+                                    )["Post"]
+                                ]
+                            ],
+                        ]
+                    ]
+                ]
+            ]
+        ],
+    ]
