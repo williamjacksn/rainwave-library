@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block container_content %}
+    <div class="pt-3 row">
+        <div class="col-auto">
+            <a class="btn btn-outline-primary" href="{{ url_for('listeners_detail', listener_id=g.listener.user_id) }}">
+                <i class="bi-caret-left-fill"></i>
+                Listener details
+            </a>
+        </div>
+        {% include 'sign-out-button.html' %}
+    </div>
+
+    <div class="pt-3 row">
+        <div class="col">
+            <h1>Edit listener</h1>
+        </div>
+    </div>
+
+    <div class="pt-3 row">
+        <div class="col">
+            <form method="post">
+                <table class="align-middle d-block table">
+                    <tbody>
+                    <tr>
+                        <th>ID</th>
+                        <td><code>{{ g.listener.user_id }}</code></td>
+                    </tr>
+                    <tr>
+                        <th>User name</th>
+                        <td>{{ g.listener.user_name }}</td>
+                    </tr>
+                    <tr>
+                        <th><label for="discord_user_id">Discord user ID</label></th>
+                        <td>
+                            <input class="form-control" id="discord_user_id" name="discord_user_id" type="text"
+                                   value="{{ g.listener.discord_user_id or '' }}">
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+                <button class="btn btn-outline-success" type="submit">
+                    <i class="bi-file-earmark-play"></i>
+                    Save
+                </button>
+            </form>
+        </div>
+    </div>
+{% endblock %}

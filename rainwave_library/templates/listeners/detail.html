@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block container_content %}
+    <div class="pt-3 row">
+        <div class="col-auto">
+            <a class="btn btn-outline-primary" href="{{ url_for('listeners') }}">
+                <i class="bi-caret-left-fill"></i>
+                Listeners
+            </a>
+        </div>
+        {% include 'sign-out-button.html' %}
+    </div>
+
+    <div class="pt-3 row">
+        <div class="col">
+            <h1>Listener details</h1>
+        </div>
+    </div>
+
+    <div class="pt-3 row">
+        <div class="col">
+            <table class="align-middle d-block table">
+                <tbody>
+                    <tr>
+                        <th>ID</th>
+                        <td class="user-select-all"><code>{{ g.listener.user_id }}</code></td>
+                    </tr>
+                    <tr>
+                        <th>User name</th>
+                        <td class="user-select-all">{{ g.listener.user_name }}</td>
+                    </tr>
+                    <tr>
+                        <th>Rank</th>
+                        <td class="user-select-all">{{ g.listener.rank_title or '' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Discord user ID</th>
+                        <td class="user-select-all">{{ g.listener.discord_user_id or '' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Last active</th>
+                        <td>{% if g.listener.radio_last_active %}{{ g.listener.radio_last_active.date() }}{% endif %}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="pt-3 row">
+        <div class="col">
+            <a class="btn btn-outline-success" href="{{ url_for('listeners_edit', listener_id=g.listener.user_id) }}">
+                <i class="bi-pencil"></i>
+                Edit listener
+            </a>
+        </div>
+    </div>
+{% endblock %}

@@ -76,6 +76,22 @@ def get_elections(
     return db.q(sql, params)
 
 
+def get_listener(db: fort.PostgresDatabase, listener_id: int) -> dict:
+    sql = """
+        select
+            u.user_id,
+            coalesce(u.radio_username, u.username) as user_name,
+            u.discord_user_id,
+            case when radio_last_active > 0 then to_timestamp(radio_last_active) end as radio_last_active,
+            r.rank_title
+        from phpbb_users u
+        left join phpbb_ranks r on r.rank_id = u.user_rank
+        where u.user_id = %(user_id)s
+    """
+    params = {"user_id": listener_id}
+    return db.q_one(sql, params)
+
+
 def get_listeners(
     db: fort.PostgresDatabase, query: str = None, page: int = 1, ranks: list[int] = None
 ) -> list[dict]:
@@ -267,3 +283,25 @@ def get_songs(
         "query": query,
     }
     return db.q(sql, params)
+
+
+def set_discord_user_id(
+    db: fort.PostgresDatabase, user_id: int, discord_user_id: int
+) -> None:
+    params = {
+        "discord_user_id": discord_user_id,
+        "user_id": user_id,
+    }
+    if discord_user_id:
+        sql = """
+            update phpbb_users
+            set discord_user_id = None
+            where discord_user_id = %(discord_user_id)s
+        """
+        db.u(sql, params)
+    sql = """
+        update phpbb_users
+        set discord_user_id = %(discord_user_id)s
+        where user_id = %(user_id)s
+    """
+    db.u(sql, params)

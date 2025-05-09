@@ -2,6 +2,9 @@
     {% if loop.index < 101 %}
     <tr>
         <td class="text-center text-nowrap">
+            <a class="text-decoration-none" href="{{ url_for('listeners_detail', listener_id=l.user_id) }}">
+                <i class="bi-info-circle"></i>
+            </a>
         </td>
         <td class="text-end"><code>{{ l.user_id }}</code></td>
         <td class="user-select-all">{{ l.user_name }}</td>

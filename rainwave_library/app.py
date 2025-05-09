@@ -273,6 +273,35 @@ def listeners():
     return flask.render_template("listeners/index.html")
 
 
+@app.route("/listeners/<int:listener_id>", methods=["GET"])
+@secure
+def listeners_detail(listener_id: int):
+    flask.g.listener = rainwave_library.models.rainwave.get_listener(
+        flask.g.db, listener_id
+    )
+    return flask.render_template("listeners/detail.html")
+
+
+@app.route("/listeners/<int:listener_id>/edit", methods=["GET", "POST"])
+@secure
+def listeners_edit(listener_id: int):
+    flask.g.listener = rainwave_library.models.rainwave.get_listener(
+        flask.g.db, listener_id
+    )
+    if flask.request.method == "GET":
+        return flask.render_template("listeners/edit.html")
+
+    discord_user_id = flask.request.values.get("discord_user_id")
+    try:
+        discord_user_id = int(discord_user_id)
+    except (TypeError, ValueError):
+        discord_user_id = None
+    rainwave_library.models.rainwave.set_discord_user_id(
+        flask.g.db, listener_id, discord_user_id
+    )
+    return flask.redirect(flask.url_for("listeners_detail", listener_id=listener_id))
+
+
 @app.route("/listeners/rows", methods=["POST"])
 @secure
 def listeners_rows():
@@ -364,9 +393,8 @@ def songs_edit(song_id: int):
     else:
         flask.g.edit_result = "Song tags updated"
         flask.g.alert_class = "alert-success"
-    time.sleep(
-        1
-    )  # give the scanner some time to catch the file changes and update the database
+    # give the scanner some time to catch the file changes and update the database
+    time.sleep(1)
     return flask.render_template("songs/edit-result.html")
 
 
