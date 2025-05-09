@@ -150,6 +150,148 @@ def _sign_out_button(show_bsky: bool = False) -> htpy.Node:
     ]
 
 
+def get_ocremix_download() -> str:
+    content = htpy.tr[
+        htpy.th["File saved"],
+        htpy.td[
+            htpy.a(".btn.btn-outline-success", href=flask.url_for("get_ocremix"))[
+                htpy.i(".bi-arrow-counterclockwise"), " Get another"
+            ]
+        ],
+    ]
+    return str(content)
+
+
+def get_ocremix_fetch(ocr_info: dict, categories: list[str]) -> str:
+    content = [
+        htpy.tr[
+            htpy.th["Download from"],
+            htpy.td[
+                htpy.input(
+                    name="download-from",
+                    type="hidden",
+                    value=ocr_info.get("download_url"),
+                ),
+                htpy.code[ocr_info.get("download_url")],
+            ],
+        ],
+        htpy.tr[
+            htpy.th[htpy.label(for_="album")["Album"]],
+            htpy.td[
+                htpy.input(
+                    "#album.form-control",
+                    hx_include="form",
+                    hx_indicator="#target-file-indicator",
+                    hx_post=flask.url_for("get_ocremix_target_file"),
+                    hx_target="#target-file",
+                    hx_trigger="keyup changed delay:300ms",
+                    name="album",
+                    required=True,
+                    type="text",
+                    value=ocr_info.get("primary_game"),
+                )
+            ],
+        ],
+        htpy.tr[
+            htpy.th[htpy.label(for_="title")["Title"]],
+            htpy.td[
+                htpy.input(
+                    "#title.form-control",
+                    hx_include="form",
+                    hx_indicator="#target-file-indicator",
+                    hx_post=flask.url_for("get_ocremix_target_file"),
+                    hx_target="#target-file",
+                    hx_trigger="keyup changed delay:300ms",
+                    name="title",
+                    required=True,
+                    type="text",
+                    value=ocr_info.get("title"),
+                )
+            ],
+        ],
+        htpy.tr[
+            htpy.th[htpy.label(for_="artist")["Artist"]],
+            htpy.td[
+                htpy.input(
+                    "#artist.form-control",
+                    name="artist",
+                    required=True,
+                    type="text",
+                    value=", ".join(a.get("name") for a in ocr_info.get("artists")),
+                )
+            ],
+        ],
+        htpy.tr[
+            htpy.th[htpy.label(for_="url")["URL"]],
+            htpy.td[
+                htpy.input(
+                    "#url.form-control",
+                    name="url",
+                    type="text",
+                    value=ocr_info.get("url"),
+                )
+            ],
+        ],
+        htpy.tr[
+            htpy.th[htpy.label(for_="link-text")["Link text"]],
+            htpy.td[
+                htpy.input(
+                    "#link-text.form-control",
+                    name="link-text",
+                    type="text",
+                    value="Get @ OCR",
+                )
+            ],
+        ],
+        htpy.tr[
+            htpy.th[htpy.label(for_="categories")["Categories"]],
+            htpy.td[
+                htpy.input(
+                    "#categories.form-control",
+                    name="categories",
+                    required=True,
+                    type="text",
+                    value=", ".join(categories),
+                )
+            ],
+        ],
+        htpy.tr[
+            htpy.th["Target file"],
+            htpy.td[
+                htpy.code(
+                    "#target-file",
+                    hx_include="form",
+                    hx_indicator="closest td",
+                    hx_post=flask.url_for("get_ocremix_target_file"),
+                    hx_trigger="load",
+                ),
+                htpy.span(
+                    "#target-file-indicator.htmx-indicator.spinner-border.spinner-border-sm"
+                ),
+            ],
+        ],
+        htpy.tr[
+            htpy.td,
+            htpy.td[
+                htpy.a(
+                    ".btn.btn-outline-success.me-1", href=flask.url_for("get_ocremix")
+                )[htpy.i(".bi-arrow-counterclockwise"), " Start over"],
+                htpy.button(
+                    ".btn.btn-success.me-2",
+                    hx_include="form",
+                    hx_indicator="closest td",
+                    hx_post=flask.url_for("get_ocremix_download"),
+                    hx_swap="outerHTML",
+                    hx_target="closest tr",
+                    type="button",
+                )[htpy.i(".bi-download"), " Download"],
+                htpy.span(".htmx-indicator.spinner-border.spinner-border-sm"),
+            ],
+        ],
+    ]
+    return str(htpy.fragment[content])
+
+
 def get_ocremix_start(max_ocr_num: int) -> str:
     tr_ocr_id = htpy.tr[
         htpy.th[htpy.label(for_="ocr-id")["OCR ID"]],

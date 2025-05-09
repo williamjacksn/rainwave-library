@@ -221,7 +221,7 @@ def get_ocremix_download():
     target_file.parent.mkdir(parents=True, exist_ok=True)
     app.logger.debug(f"Saving file to {target_file}")
     target_file.write_bytes(mp3_data.getvalue())
-    return flask.render_template("get-ocremix/download.html")
+    return rainwave_library.components.get_ocremix_download()
 
 
 @app.route("/get-ocremix/fetch", methods=["POST"])
@@ -230,21 +230,21 @@ def get_ocremix_fetch():
     ocr_id = int(flask.request.values.get("ocr-id"))
     url = f"https://williamjacksn.github.io/ocremix-data/remix/OCR{ocr_id:05}.json"
     try:
-        flask.g.ocr_info = httpx.get(url).json()
-        app.logger.debug(flask.g.ocr_info)
+        ocr_info = httpx.get(url).json()
+        app.logger.debug(ocr_info)
     except json.decoder.JSONDecodeError:
         return "", 204
-    album_name = flask.g.ocr_info.get("primary_game")
+    album_name = ocr_info.get("primary_game")
     default_category = rainwave_library.models.rainwave.get_category_for_album(
         flask.g.db, album_name
     )
     if default_category:
-        flask.g.categories = [default_category]
+        categories = [default_category]
     else:
-        flask.g.categories = [album_name]
-    if flask.g.ocr_info.get("has_lyrics"):
-        flask.g.categories.append("Vocal")
-    return flask.render_template("get-ocremix/fetch.html")
+        categories = [album_name]
+    if ocr_info.get("has_lyrics"):
+        categories.append("Vocal")
+    return rainwave_library.components.get_ocremix_fetch(ocr_info, categories)
 
 
 @app.route("/get-ocremix/target-file", methods=["POST"])
