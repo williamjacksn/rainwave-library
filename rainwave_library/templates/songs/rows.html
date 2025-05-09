@@ -2,16 +2,18 @@
     {% if loop.index < 101 %}
     <tr class="d-table-row d-md-none">
         <td class="p-2">
-            <a class="btn btn-outline-primary mb-1" href="{{ url_for('songs_detail', song_id=s.song_id) }}">
+            <a class="btn btn-outline-primary mb-1" href="{{ url_for('songs_detail', song_id=s.song_id) }}"
+               title="Song details">
                 <i class="bi-info-circle"></i>
             </a>
             <br>
-            <a class="btn btn-outline-primary mb-1" href="{{ url_for('songs_download', song_id=s.song_id) }}">
+            <a class="btn btn-outline-primary mb-1" href="{{ url_for('songs_download', song_id=s.song_id) }}"
+               title="Download this song">
                 <i class="bi-download"></i>
             </a>
             <br>
             <a class="btn btn-outline-primary" href="#" hx-get="{{ url_for('songs_play', song_id=s.song_id) }}"
-               hx-target="#audio">
+               hx-target="#audio" title="Play this song">
                 <i class="bi-play"></i>
             </a>
         </td>
