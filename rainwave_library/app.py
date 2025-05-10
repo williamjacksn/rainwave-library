@@ -270,17 +270,15 @@ def get_ocremix_target_file():
 @app.route("/listeners", methods=["GET"])
 @secure
 def listeners():
-    flask.g.ranks = rainwave_library.models.rainwave.get_ranks(flask.g.db)
-    return flask.render_template("listeners/index.html")
+    ranks = rainwave_library.models.rainwave.get_ranks(flask.g.db)
+    return rainwave_library.components.listeners_index(ranks)
 
 
 @app.route("/listeners/<int:listener_id>", methods=["GET"])
 @secure
 def listeners_detail(listener_id: int):
-    flask.g.listener = rainwave_library.models.rainwave.get_listener(
-        flask.g.db, listener_id
-    )
-    return flask.render_template("listeners/detail.html")
+    listener = rainwave_library.models.rainwave.get_listener(flask.g.db, listener_id)
+    return rainwave_library.components.listeners_detail(listener)
 
 
 @app.route("/listeners/<int:listener_id>/edit", methods=["GET", "POST"])
@@ -305,12 +303,12 @@ def listeners_edit(listener_id: int):
 @secure
 def listeners_rows():
     q = flask.request.values.get("q")
-    flask.g.page = int(flask.request.values.get("page", 1))
+    page = int(flask.request.values.get("page", 1))
     ranks = list(map(int, flask.request.values.getlist("ranks")))
-    flask.g.listeners = rainwave_library.models.rainwave.get_listeners(
-        flask.g.db, q, flask.g.page, ranks
+    listeners_ = rainwave_library.models.rainwave.get_listeners(
+        flask.g.db, q, page, ranks
     )
-    return flask.render_template("listeners/rows.html")
+    return rainwave_library.components.listeners_rows(listeners_, page)
 
 
 @app.route("/nothing", methods=["GET"])

@@ -336,6 +336,239 @@ def get_ocremix_start(max_ocr_num: int) -> str:
     return str(_base(content))
 
 
+_listeners_table_cols = 8
+
+
+def listeners_detail(listener: dict) -> str:
+    content = [
+        htpy.div(".pt-3.row")[
+            htpy.div(".col-auto")[
+                htpy.a(".btn.btn-outline-primary", href=flask.url_for("listeners"))[
+                    htpy.i(".bi-caret-left-fill"), " Listeners"
+                ]
+            ],
+            _sign_out_button(True),
+        ],
+        htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Listener details"]]],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.table(".align-middle.d-block.table")[
+                    htpy.tbody[
+                        htpy.tr[
+                            htpy.th["ID"],
+                            htpy.td(".user-select-all")[
+                                htpy.code[listener.get("user_id")]
+                            ],
+                        ],
+                        htpy.tr[
+                            htpy.th["User name"],
+                            htpy.td(".user-select-all")[listener.get("user_name")],
+                        ],
+                        htpy.tr[
+                            htpy.th["Rank"],
+                            htpy.td(".user-select-all")[listener.get("rank_title")],
+                        ],
+                        htpy.tr[
+                            htpy.th["Discord user ID"],
+                            htpy.td(".user-select-all")[
+                                listener.get("discord_user_id")
+                            ],
+                        ],
+                        htpy.tr[
+                            htpy.th["Last active"],
+                            htpy.td[
+                                listener.get("radio_last_active")
+                                and listener.get("radio_last_active").date().isoformat()
+                            ],
+                        ],
+                    ]
+                ]
+            ]
+        ],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.a(
+                    ".btn.btn-outline-success",
+                    href=flask.url_for(
+                        "listeners_edit", listener_id=listener.get("user_id")
+                    ),
+                )[htpy.i(".bi-pencil"), " Edit listener"]
+            ]
+        ],
+    ]
+    return str(_base(content))
+
+
+def listeners_index(ranks: list[dict]) -> str:
+    content = [
+        _nav_header("Listeners"),
+        htpy.form(hx_target="tbody")[
+            htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
+                htpy.div(".col-12.col-sm-auto")[
+                    htpy.input(
+                        ".form-control",
+                        aria_label="Search listeners",
+                        hx_indicator="#filters-indicator",
+                        hx_post=flask.url_for("listeners_rows"),
+                        hx_trigger="search, keyup changed delay:300ms",
+                        name="q",
+                        placeholder="Search listeners...",
+                        title="Case-insensitive search for username or Discord ID",
+                        type="search",
+                    )
+                ],
+                htpy.div(".col-auto")[
+                    htpy.div(".dropdown")[
+                        htpy.button(
+                            ".btn.btn-outline-primary.dropdown-toggle",
+                            data_bs_toggle="dropdown",
+                            title="Rank selection",
+                            type="button",
+                        )[htpy.i(".bi-person-badge")],
+                        htpy.div(".dropdown-menu")[
+                            htpy.div(".px-2")[
+                                htpy.h6(".dropdown-header")["RANK SELECTION"],
+                                htpy.div(".form-check")[
+                                    htpy.input(
+                                        "#rank-none.form-check-input",
+                                        checked=True,
+                                        hx_indicator="#filters-indicator",
+                                        hx_post=flask.url_for("listeners_rows"),
+                                        name="ranks",
+                                        type="checkbox",
+                                        value=0,
+                                    ),
+                                    htpy.label(".form-check-label", for_="rank-none")[
+                                        "(no rank)"
+                                    ],
+                                ],
+                                [
+                                    htpy.div(".form-check")[
+                                        htpy.input(
+                                            f"#rank-{r.get('rank_id')}.form-check-input",
+                                            checked=True,
+                                            hx_indicator="#filters-indicator",
+                                            hx_post=flask.url_for("listeners_rows"),
+                                            name="ranks",
+                                            type="checkbox",
+                                            value=r.get("rank_id"),
+                                        ),
+                                        htpy.label(
+                                            ".form-check-label.text-nowrap",
+                                            for_=f"rank-{r.get('rank_id')}",
+                                        )[r.get("rank_title")],
+                                    ]
+                                    for r in ranks
+                                ],
+                            ]
+                        ],
+                    ]
+                ],
+                htpy.div(".col-auto")[
+                    htpy.span(
+                        "#filters-indicator.htmx-indicator.spinner-border.spinner-border-sm"
+                    )
+                ],
+            ]
+        ],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.table(
+                    ".align-middle.d-block.table.table-bordered.table-sm.table-striped"
+                )[
+                    htpy.thead[
+                        htpy.tr(".text-center")[
+                            htpy.th,
+                            htpy.th["ID"],
+                            htpy.th["User name"],
+                            htpy.th["Group"],
+                            htpy.th["Rank"],
+                            htpy.th["Ratings"],
+                            htpy.th["Discord"],
+                            htpy.th["Last active"],
+                        ]
+                    ],
+                    htpy.tbody(
+                        hx_post=flask.url_for("listeners_rows"), hx_trigger="load"
+                    )[
+                        htpy.tr[
+                            htpy.td(".py-3.text-center", colspan=_listeners_table_cols)[
+                                htpy.span(
+                                    ".htmx-indicator.spinner-border.spinner-border-sm"
+                                )
+                            ]
+                        ]
+                    ],
+                ]
+            ]
+        ],
+    ]
+    return str(_base(content))
+
+
+def listeners_rows(listeners: list[dict], page: int) -> str:
+    trs = []
+    for i, l in enumerate(listeners):
+        if i < 100:
+            trs.append(
+                htpy.tr[
+                    htpy.td(".text-center.text-nowrap")[
+                        htpy.a(
+                            ".text-decoration-none",
+                            href=flask.url_for(
+                                "listeners_detail", listener_id=l.get("user_id")
+                            ),
+                            title="Listener detail page",
+                        )[htpy.i(".bi-info-circle.me-1")],
+                        htpy.a(
+                            ".text-decoration-none",
+                            href=f"https://rainwave.cc/all/#!/listener/{l.get('user_id')}",
+                            rel="noopener",
+                            target="_blank",
+                            title="Listener profile on rainwave.cc",
+                        )[htpy.i(".bi-person-badge")],
+                    ],
+                    htpy.td(".text-end")[htpy.code[l.get("user_id")]],
+                    htpy.td(".user-select-all")[l.get("user_name")],
+                    htpy.td[l.get("group_name")],
+                    htpy.td(".user-select-all")[l.get("rank_title")],
+                    htpy.td[l.get("rating_count")],
+                    htpy.td(".text-center")[
+                        l.get("is_discord_user")
+                        and htpy.i(".bi-check-lg", title=l.get("discord_user_id"))
+                    ],
+                    htpy.td[
+                        l.get("radio_last_active")
+                        and l.get("radio_last_active").date().isoformat()
+                    ],
+                ]
+            )
+        else:
+            trs.append(
+                htpy.tr[
+                    htpy.td(
+                        ".py-3.text-center",
+                        colspan=_listeners_table_cols,
+                        hx_include="form",
+                        hx_post=flask.url_for("listeners_rows", page=page + 1),
+                        hx_swap="outerHTML",
+                        hx_target="closest tr",
+                        hx_trigger="revealed",
+                    )[htpy.span(".htmx-indicator.spinner-border.spinner-border-sm")]
+                ]
+            )
+    if not trs:
+        trs.append(
+            htpy.tr(".text-center")[
+                htpy.td(colspan=_listeners_table_cols)[
+                    "No listeners matched your criteria."
+                ]
+            ]
+        )
+    content = htpy.fragment[trs]
+    return str(content)
+
+
 def not_authorized() -> str:
     content = htpy.div(".align-items-center.d-flex.g-1.pt-3.row")[
         htpy.div(".col-auto.me-auto")[htpy.h1["Not authorized"]],
