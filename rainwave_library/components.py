@@ -340,6 +340,31 @@ _listeners_table_cols = 8
 
 
 def listeners_detail(listener: dict) -> str:
+    trs = [
+        htpy.tr[
+            htpy.th["ID"],
+            htpy.td(".user-select-all")[htpy.code[listener.get("user_id")]],
+        ],
+        htpy.tr[
+            htpy.th["User name"],
+            htpy.td(".user-select-all")[listener.get("user_name")],
+        ],
+        htpy.tr[
+            htpy.th["Rank"],
+            htpy.td(".user-select-all")[listener.get("rank_title")],
+        ],
+        htpy.tr[
+            htpy.th["Discord user ID"],
+            htpy.td(".user-select-all")[listener.get("discord_user_id")],
+        ],
+        htpy.tr[
+            htpy.th["Last active"],
+            htpy.td[
+                listener.get("radio_last_active")
+                and listener.get("radio_last_active").date().isoformat()
+            ],
+        ],
+    ]
     content = [
         htpy.div(".pt-3.row")[
             htpy.div(".col-auto")[
@@ -351,39 +376,7 @@ def listeners_detail(listener: dict) -> str:
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Listener details"]]],
         htpy.div(".pt-3.row")[
-            htpy.div(".col")[
-                htpy.table(".align-middle.d-block.table")[
-                    htpy.tbody[
-                        htpy.tr[
-                            htpy.th["ID"],
-                            htpy.td(".user-select-all")[
-                                htpy.code[listener.get("user_id")]
-                            ],
-                        ],
-                        htpy.tr[
-                            htpy.th["User name"],
-                            htpy.td(".user-select-all")[listener.get("user_name")],
-                        ],
-                        htpy.tr[
-                            htpy.th["Rank"],
-                            htpy.td(".user-select-all")[listener.get("rank_title")],
-                        ],
-                        htpy.tr[
-                            htpy.th["Discord user ID"],
-                            htpy.td(".user-select-all")[
-                                listener.get("discord_user_id")
-                            ],
-                        ],
-                        htpy.tr[
-                            htpy.th["Last active"],
-                            htpy.td[
-                                listener.get("radio_last_active")
-                                and listener.get("radio_last_active").date().isoformat()
-                            ],
-                        ],
-                    ]
-                ]
-            ]
+            htpy.div(".col")[htpy.table(".align-middle.d-block.table")[htpy.tbody[trs]]]
         ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
