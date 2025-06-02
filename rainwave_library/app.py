@@ -7,6 +7,7 @@ import json
 import mutagen.id3
 import os
 import pathlib
+import rainwave_library.channels
 import rainwave_library.components
 import rainwave_library.filters
 import rainwave_library.models
@@ -63,13 +64,7 @@ def before_request():
     flask.g.discord_id = flask.session.get("discord_id")
     flask.g.discord_username = flask.session.get("discord_username")
     flask.g.db = rainwave_library.models.rainwave.cnx
-    flask.g.channels = {
-        1: "Game",
-        2: "OC ReMix",
-        3: "Covers",
-        4: "Chiptune",
-        5: "All",
-    }
+    flask.g.channels = rainwave_library.channels.channels
 
 
 @app.route("/", methods=["GET"])
@@ -344,7 +339,7 @@ def sign_out():
 @app.route("/songs", methods=["GET"])
 @secure
 def songs():
-    return flask.render_template("songs/index.html")
+    return rainwave_library.components.songs_index()
 
 
 @app.route("/songs/<int:song_id>", methods=["GET"])

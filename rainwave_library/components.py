@@ -1,5 +1,7 @@
 import flask
 import htpy
+import markupsafe
+import rainwave_library.channels
 import rainwave_library.versions as v
 
 
@@ -628,5 +630,205 @@ def sign_in() -> str:
         htpy.div(".col")[
             htpy.a(".btn.btn-outline-primary", href=flask.url_for("sign_in"))["Sign in"]
         ]
+    ]
+    return str(_base(content))
+
+
+def songs_index() -> str:
+    content = [
+        _nav_header("Songs"),
+        htpy.form(action=flask.url_for("songs_xlsx"), hx_target="tbody", method="post")[
+            htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
+                htpy.div(".col-12.col-sm-auto")[
+                    htpy.input(
+                        ".form-control",
+                        aria_label="Search songs",
+                        hx_indicator="#filters-indicator",
+                        hx_post=flask.url_for("songs_rows"),
+                        hx_trigger="search, keyup changed delay:300ms",
+                        name="q",
+                        placeholder="Search songs...",
+                        title="Case-insensitive search for album, title, artist, filename, or URL",
+                        type="search",
+                    )
+                ],
+                htpy.div(".col-auto")[
+                    htpy.div(".dropdown")[
+                        htpy.button(
+                            ".btn.btn-outline-primary.dropdown-toggle",
+                            data_bs_toggle="dropdown",
+                            title="Sort options",
+                            type="button",
+                        )[htpy.i(".bi-sort-alpha-down")],
+                        htpy.div(".dropdown-menu")[
+                            htpy.div(".px-2")[
+                                htpy.h6(".dropdown-header")["SORT OPTIONS"],
+                                [
+                                    htpy.div(".form-check")[
+                                        htpy.input(
+                                            f"#sort-dir-{k}.form-check-input",
+                                            checked=(k == "asc"),
+                                            hx_indicator="#filters-indicator",
+                                            hx_post=flask.url_for("songs_rows"),
+                                            name="sort-dir",
+                                            type="radio",
+                                            value=k,
+                                        ),
+                                        htpy.label(
+                                            ".form-check-label", for_=f"sort-dir-{k}"
+                                        )[l],
+                                    ]
+                                    for k, l in [
+                                        ("asc", "Ascending"),
+                                        ("desc", "Descending"),
+                                    ]
+                                ],
+                                htpy.hr,
+                                [
+                                    htpy.div(".form-check")[
+                                        htpy.input(
+                                            f"#sort-col-{i}.form-check-input",
+                                            hx_indicator="#filters-indicator",
+                                            hx_post=flask.url_for("songs_rows"),
+                                            name="sort-col",
+                                            type="radio",
+                                            value=c,
+                                        ),
+                                        htpy.label(
+                                            ".form-check-label", for_=f"sort-col-{i}"
+                                        )[l],
+                                    ]
+                                    for i, c, l in [
+                                        ("id", "song_id", "ID"),
+                                        ("album", "album_name", "Album"),
+                                        ("title", "song_title", "Title"),
+                                        ("rating", "song_rating", "Rating"),
+                                        ("length", "song_length", "Length"),
+                                        ("url", "song_url", "URL"),
+                                        ("filename", "song_filename", "Filename"),
+                                    ]
+                                ],
+                            ]
+                        ],
+                    ]
+                ],
+                htpy.div(".col-auto")[
+                    htpy.div(".dropdown")[
+                        htpy.button(
+                            ".btn.btn-outline-primary.dropdown-toggle",
+                            data_bs_toggle="dropdown",
+                            title="Channel selection",
+                            type="button",
+                        )[htpy.i(".bi-broadcast-pin")],
+                        htpy.div(".dropdown-menu")[
+                            htpy.div(".px-2")[
+                                htpy.h6(".dropdown-header")["CHANNEL SELECTION"],
+                                [
+                                    htpy.div(".form-check")[
+                                        htpy.input(
+                                            f"#channels-{i}.form-check-input",
+                                            checked=True,
+                                            hx_indicator="#filters-indicator",
+                                            hx_post=flask.url_for("songs_rows"),
+                                            name="channels",
+                                            type="checkbox",
+                                            value=i,
+                                        ),
+                                        htpy.label(
+                                            ".form-check-label", for_=f"channels-{i}"
+                                        )[l],
+                                    ]
+                                    for i, l in rainwave_library.channels.channels.items()
+                                ],
+                            ]
+                        ],
+                    ]
+                ],
+                htpy.div(".col-auto")[
+                    htpy.div(".dropdown")[
+                        htpy.button(
+                            ".btn.btn-outline-primary.dropdown-toggle",
+                            data_bs_toggle="dropdown",
+                            title="Filter options",
+                            type="button",
+                        )[htpy.i(".bi-list-check")],
+                        htpy.div(".dropdown-menu")[
+                            htpy.div(".px-2")[
+                                htpy.h6(".dropdown-header")["FILTER OPTIONS"],
+                                htpy.div(".form-check")[
+                                    htpy.input(
+                                        "#include-unrated.form-check-input",
+                                        checked=True,
+                                        hx_indicator="#filters-indicator",
+                                        hx_post=flask.url_for("songs_rows"),
+                                        name="include-unrated",
+                                        type="checkbox",
+                                    ),
+                                    htpy.label(
+                                        ".form-check-label", for_="include-unrated"
+                                    )["Include unrated"],
+                                ],
+                            ],
+                        ],
+                    ]
+                ],
+                htpy.div(".col-auto")[
+                    htpy.button(
+                        ".btn.btn-outline-primary",
+                        href="#",
+                        name="page",
+                        title="Download XLSX",
+                        type="submit",
+                        value=0,
+                    )[
+                        htpy.i(".bi-file-earmark-spreadsheet"),
+                        markupsafe.Markup(" &darr;"),
+                    ]
+                ],
+                htpy.div(".col-auto")[
+                    htpy.span(
+                        "#filters-indicator.htmx-indicator.spinner-border.spinner-border-sm.text-primary"
+                    )
+                ],
+            ]
+        ],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.table(".align-middle.table.table-bordered.table-sm")[
+                    htpy.thead[
+                        htpy.tr(".d-table-row.d-md-none.text-center")[
+                            htpy.th, htpy.th["Info"]
+                        ],
+                        htpy.tr(".d-none.d-md-table-row.text-center")[
+                            [
+                                htpy.th[l]
+                                for l in (
+                                    "",
+                                    "ID",
+                                    "Album",
+                                    "Title",
+                                    "Artist",
+                                    "Rating",
+                                    "Ratings",
+                                    "Length",
+                                    "URL",
+                                    "Filename",
+                                )
+                            ]
+                        ],
+                    ],
+                    htpy.tbody(hx_post=flask.url_for("songs_rows"), hx_trigger="load")[
+                        htpy.tr[
+                            htpy.td(".py-3.text-center", colspan=10)[
+                                htpy.span(
+                                    ".htmx-indicator.spinner-border.spinner-border-sm"
+                                )
+                            ]
+                        ]
+                    ],
+                ]
+            ]
+        ],
+        htpy.div("#audio"),
     ]
     return str(_base(content))
