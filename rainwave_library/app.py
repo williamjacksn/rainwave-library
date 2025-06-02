@@ -284,11 +284,9 @@ def listeners_detail(listener_id: int):
 @app.route("/listeners/<int:listener_id>/edit", methods=["GET", "POST"])
 @secure
 def listeners_edit(listener_id: int):
-    flask.g.listener = rainwave_library.models.rainwave.get_listener(
-        flask.g.db, listener_id
-    )
+    listener = rainwave_library.models.rainwave.get_listener(flask.g.db, listener_id)
     if flask.request.method == "GET":
-        return flask.render_template("listeners/edit.html")
+        return rainwave_library.components.listeners_edit(listener)
 
     discord_user_id = flask.request.values.get("discord_user_id")
     if not discord_user_id:

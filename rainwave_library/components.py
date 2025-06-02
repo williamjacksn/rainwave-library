@@ -366,8 +366,8 @@ def listeners_detail(listener: dict) -> str:
         ],
     ]
     content = [
-        htpy.div(".pt-3.row")[
-            htpy.div(".col-auto")[
+        htpy.div(".g-1.pt-3.row")[
+            htpy.div(".col-auto.me-auto")[
                 htpy.a(".btn.btn-outline-primary", href=flask.url_for("listeners"))[
                     htpy.i(".bi-caret-left-fill"), " Listeners"
                 ]
@@ -386,6 +386,59 @@ def listeners_detail(listener: dict) -> str:
                         "listeners_edit", listener_id=listener.get("user_id")
                     ),
                 )[htpy.i(".bi-pencil"), " Edit listener"]
+            ]
+        ],
+    ]
+    return str(_base(content))
+
+
+def listeners_edit(listener: dict) -> str:
+    content = [
+        htpy.div(".g-1.pt-3.row")[
+            htpy.div(".col-auto.me-auto")[
+                htpy.a(
+                    ".btn.btn-outline-primary",
+                    href=flask.url_for(
+                        "listeners_detail", listener_id=listener.get("user_id")
+                    ),
+                )[htpy.i(".bi-caret-left-fill"), " Listener details"]
+            ],
+            _sign_out_button(True),
+        ],
+        htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Edit listener"]]],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.form(method="post")[
+                    htpy.table(".align-middle.d-block.table")[
+                        htpy.tbody[
+                            htpy.tr[
+                                htpy.th["ID"],
+                                htpy.td[htpy.code[listener.get("user_id")]],
+                            ],
+                            htpy.tr[
+                                htpy.th["User name"], htpy.td[listener.get("user_name")]
+                            ],
+                            htpy.tr[
+                                htpy.th[
+                                    htpy.label(for_="discord_user_id")[
+                                        "Discord user ID"
+                                    ]
+                                ],
+                                htpy.td[
+                                    htpy.input(
+                                        "#discord_user_id.form-control",
+                                        name="discord_user_id",
+                                        type="text",
+                                        value=listener.get("discord_user_id") or "",
+                                    )
+                                ],
+                            ],
+                        ]
+                    ],
+                    htpy.button(".btn.btn-outline-success", type="submit")[
+                        htpy.i(".bi-file-earmark-play"), " Save"
+                    ],
+                ]
             ]
         ],
     ]
