@@ -715,6 +715,7 @@ def songs_index() -> str:
                                     htpy.div(".form-check")[
                                         htpy.input(
                                             f"#sort-col-{i}.form-check-input",
+                                            checked=(i == "id"),
                                             hx_indicator="#filters-indicator",
                                             hx_post=flask.url_for("songs_rows"),
                                             name="sort-col",
