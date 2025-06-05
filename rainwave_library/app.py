@@ -164,6 +164,13 @@ def bluesky():
     return flask.redirect(flask.url_for("index"))
 
 
+@app.route("/favicon.svg")
+def favicon():
+    return flask.Response(
+        rainwave_library.components.favicon(), mimetype="image/svg+xml"
+    )
+
+
 @app.route("/get-ocremix", methods=["GET"])
 @secure
 def get_ocremix():
