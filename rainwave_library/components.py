@@ -583,7 +583,7 @@ def listeners_index(ranks: list[dict]) -> str:
 
 def listeners_rows(listeners: list[dict], page: int) -> str:
     trs = []
-    for i, l in enumerate(listeners):
+    for i, listener in enumerate(listeners):
         if i < 100:
             trs.append(
                 htpy.tr[
@@ -591,30 +591,32 @@ def listeners_rows(listeners: list[dict], page: int) -> str:
                         htpy.a(
                             ".text-decoration-none",
                             href=flask.url_for(
-                                "listeners_detail", listener_id=l.get("user_id")
+                                "listeners_detail", listener_id=listener.get("user_id")
                             ),
                             title="Listener detail page",
                         )[htpy.i(".bi-info-circle.me-1")],
                         htpy.a(
                             ".text-decoration-none",
-                            href=f"https://rainwave.cc/all/#!/listener/{l.get('user_id')}",
+                            href=f"https://rainwave.cc/all/#!/listener/{listener.get('user_id')}",
                             rel="noopener",
                             target="_blank",
                             title="Listener profile on rainwave.cc",
                         )[htpy.i(".bi-person-badge")],
                     ],
-                    htpy.td(".text-end")[htpy.code[l.get("user_id")]],
-                    htpy.td(".user-select-all")[l.get("user_name")],
-                    htpy.td[l.get("group_name")],
-                    htpy.td(".user-select-all")[l.get("rank_title")],
-                    htpy.td[l.get("rating_count")],
+                    htpy.td(".text-end")[htpy.code[listener.get("user_id")]],
+                    htpy.td(".user-select-all")[listener.get("user_name")],
+                    htpy.td[listener.get("group_name")],
+                    htpy.td(".user-select-all")[listener.get("rank_title")],
+                    htpy.td[listener.get("rating_count")],
                     htpy.td(".text-center")[
-                        l.get("is_discord_user")
-                        and htpy.i(".bi-check-lg", title=l.get("discord_user_id"))
+                        listener.get("is_discord_user")
+                        and htpy.i(
+                            ".bi-check-lg", title=listener.get("discord_user_id")
+                        )
                     ],
                     htpy.td[
-                        l.get("radio_last_active")
-                        and l.get("radio_last_active").date().isoformat()
+                        listener.get("radio_last_active")
+                        and listener.get("radio_last_active").date().isoformat()
                     ],
                 ]
             )
@@ -703,9 +705,9 @@ def songs_index() -> str:
                                         ),
                                         htpy.label(
                                             ".form-check-label", for_=f"sort-dir-{k}"
-                                        )[l],
+                                        )[label],
                                     ]
-                                    for k, l in [
+                                    for k, label in [
                                         ("asc", "Ascending"),
                                         ("desc", "Descending"),
                                     ]
@@ -724,9 +726,9 @@ def songs_index() -> str:
                                         ),
                                         htpy.label(
                                             ".form-check-label", for_=f"sort-col-{i}"
-                                        )[l],
+                                        )[label],
                                     ]
-                                    for i, c, l in [
+                                    for i, c, label in [
                                         ("id", "song_id", "ID"),
                                         ("album", "album_name", "Album"),
                                         ("title", "song_title", "Title"),
@@ -764,9 +766,9 @@ def songs_index() -> str:
                                         ),
                                         htpy.label(
                                             ".form-check-label", for_=f"channels-{i}"
-                                        )[l],
+                                        )[label],
                                     ]
-                                    for i, l in rainwave_library.channels.channels.items()
+                                    for i, label in rainwave_library.channels.channels.items()
                                 ],
                             ]
                         ],
@@ -829,8 +831,8 @@ def songs_index() -> str:
                         ],
                         htpy.tr(".d-none.d-md-table-row.text-center")[
                             [
-                                htpy.th[l]
-                                for l in (
+                                htpy.th[label]
+                                for label in (
                                     "",
                                     "ID",
                                     "Album",
