@@ -7,9 +7,7 @@ import json
 import mutagen.id3
 import os
 import pathlib
-import rainwave_library.channels
 import rainwave_library.components
-import rainwave_library.filters
 import rainwave_library.models
 import secrets
 import string
@@ -27,7 +25,6 @@ app.wsgi_app = werkzeug.middleware.proxy_fix.ProxyFix(
 
 app.secret_key = os.getenv("SECRET_KEY")
 app.config["PREFERRED_URL_SCHEME"] = os.getenv("SCHEME", "https")
-app.add_template_filter(rainwave_library.filters.length_display)
 
 
 def external_url_for(endpoint, *args, **kwargs):
@@ -59,7 +56,6 @@ def before_request():
     flask.g.discord_id = flask.session.get("discord_id")
     flask.g.discord_username = flask.session.get("discord_username")
     flask.g.db = rainwave_library.models.rainwave.cnx
-    flask.g.channels = rainwave_library.channels.channels
 
 
 @app.route("/", methods=["GET"])
@@ -491,7 +487,9 @@ def songs_xlsx():
     for i, row in enumerate(data, start=1):
         for j, col_name in enumerate(headers):
             if col_name == "channels":
-                col_data = ", ".join([flask.g.channels[c] for c in row.get(col_name)])
+                col_data = ", ".join(
+                    [rainwave_library.components.channels[c] for c in row.get(col_name)]
+                )
                 col_widths[j] = max(col_widths[j], len(col_data))
                 worksheet.write(i, j, col_data)
             elif col_name == "song_groups":
@@ -503,7 +501,7 @@ def songs_xlsx():
                 col_widths[j] = max(10, col_widths[j], len(col_data))
                 worksheet.write(i, j, col_data)
             elif col_name == "song_length":
-                col_data = rainwave_library.filters.length_display(row.get(col_name))
+                col_data = rainwave_library.components.length_display(row.get(col_name))
                 col_widths[j] = max(14, col_widths[j], len(col_data))
                 worksheet.write(i, j, col_data)
             elif col_name == "song_rating":

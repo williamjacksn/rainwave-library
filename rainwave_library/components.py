@@ -2,8 +2,6 @@ import datetime
 import flask
 import htpy
 import markupsafe
-import rainwave_library.channels
-import rainwave_library.filters
 import rainwave_library.versions as v
 
 
@@ -166,6 +164,15 @@ def _sign_out_button(show_bsky: bool = False) -> htpy.Node:
             ]
         ],
     ]
+
+
+channels = {
+    1: "Game",
+    2: "OC ReMix",
+    3: "Covers",
+    4: "Chiptune",
+    5: "All",
+}
 
 
 def favicon() -> str:
@@ -378,6 +385,12 @@ def get_ocremix_start(max_ocr_num: int) -> str:
 
 _listeners_table_cols = 8
 _songs_table_cols = 10
+
+
+def length_display(length: int):
+    """Convert number of seconds to mm:ss format"""
+    minutes, seconds = divmod(length, 60)
+    return f"{minutes}:{seconds:02d}"
 
 
 def listeners_detail(listener: dict) -> str:
@@ -712,11 +725,7 @@ def songs_detail(song: dict) -> str:
                         ],
                         htpy.tr[
                             htpy.th["Length"],
-                            htpy.td[
-                                rainwave_library.filters.length_display(
-                                    song.get("song_length")
-                                )
-                            ],
+                            htpy.td[length_display(song.get("song_length"))],
                         ],
                         htpy.tr[
                             htpy.th["Added on"],
@@ -1010,7 +1019,7 @@ def songs_index() -> str:
                                             ".form-check-label", for_=f"channels-{i}"
                                         )[label],
                                     ]
-                                    for i, label in rainwave_library.channels.channels.items()
+                                    for i, label in channels.items()
                                 ],
                             ]
                         ],
@@ -1240,9 +1249,7 @@ def songs_rows(songs: list[dict], page: int) -> str:
                         htpy.br,
                         htpy.i(".bi-clock-history"),
                         " ",
-                        rainwave_library.filters.length_display(
-                            song.get("song_length")
-                        ),
+                        length_display(song.get("song_length")),
                         htpy.br,
                         htpy.i(".bi-award"),
                         f" {song.get('song_rating'):.2f} ({song.get('song_rating_count')})",
@@ -1321,9 +1328,7 @@ def songs_rows(songs: list[dict], page: int) -> str:
                             {"text-secondary": song.get("song_rating_count") == 0},
                         ]
                     )[song.get("song_rating_count")],
-                    htpy.td(".text-end")[
-                        rainwave_library.filters.length_display(song.get("song_length"))
-                    ],
+                    htpy.td(".text-end")[length_display(song.get("song_length"))],
                     htpy.td[
                         song.get("song_url")
                         and htpy.a(
