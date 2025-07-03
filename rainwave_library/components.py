@@ -44,15 +44,16 @@ def _bi_stylesheet():
 
 
 def _bs_script():
-    return htpy.script(
-        src=flask.url_for("static", filename=f"bootstrap-{v.bs}.bundle.js")
-    )
+    return htpy.script(src=f"{_cdn}/bootstrap@{v.bs}/dist/js/bootstrap.bundle.min.js")
 
 
 def _bs_stylesheet():
     return htpy.link(
-        href=flask.url_for("static", filename=f"bootstrap-{v.bs}.css"), rel="stylesheet"
+        href=f"{_cdn}/bootstrap@{v.bs}/dist/css/bootstrap.min.css", rel="stylesheet"
     )
+
+
+_cdn = "https://cdn.jsdelivr.net/npm"
 
 
 def _favicon() -> htpy.Element:
