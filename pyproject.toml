@@ -13,6 +13,5 @@ dependencies = [
     "notch>=2025.2",
     "psycopg2-binary>=2.9.10",
     "waitress>=3.0.2",
-    "whitenoise>=6.9.0",
     "xlsxwriter>=3.2.3",
 ]

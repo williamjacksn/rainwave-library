@@ -38,7 +38,7 @@ def _base(content: htpy.Node) -> htpy.Element:
 
 def _bi_stylesheet():
     return htpy.link(
-        href=flask.url_for("static", filename=f"bootstrap-icons-{v.bi}.css"),
+        href=f"{_cdn}/bootstrap-icons@{v.bi}/font/bootstrap-icons.min.css",
         rel="stylesheet",
     )
 
@@ -61,7 +61,7 @@ def _favicon() -> htpy.Element:
 
 
 def _hx_script():
-    return htpy.script(src=flask.url_for("static", filename=f"htmx-{v.hx}.js"))
+    return htpy.script(src=f"{_cdn}/htmx.org@{v.hx}/dist/htmx.js")
 
 
 def _nav_header(text: str) -> htpy.Element:
