@@ -7,7 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "flask>=3.1.0",
     "fort>=2024.2",
-    "htpy>=25.4.2",
+    "htpy>=25.7.0",
     "httpx>=0.28.1",
     "mutagen>=1.47.0",
     "notch>=2025.2",
