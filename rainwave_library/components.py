@@ -840,6 +840,7 @@ def songs_edit(song: dict) -> str:
                                 htpy.td[
                                     htpy.input(
                                         "#artist.form-control",
+                                        name="artist",
                                         required=True,
                                         type="text",
                                         value=song.get("song_artist_tag"),
