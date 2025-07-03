@@ -793,7 +793,7 @@ def songs_detail(song: dict) -> str:
 
 def songs_edit(song: dict) -> str:
     content = [
-        htpy.div("g-1.pt-3.row")[
+        htpy.div(".g-1.pt-3.row")[
             htpy.div(".col-auto.me-auto")[
                 htpy.a(
                     ".btn.btn-outline-primary",
