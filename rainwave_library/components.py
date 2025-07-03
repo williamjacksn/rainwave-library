@@ -791,6 +791,124 @@ def songs_detail(song: dict) -> str:
     return str(_base(content))
 
 
+def songs_edit(song: dict) -> str:
+    content = [
+        htpy.div("g-1.pt-3.row")[
+            htpy.div(".col-auto.me-auto")[
+                htpy.a(
+                    ".btn.btn-outline-primary",
+                    href=flask.url_for("songs_detail", song_id=song.get("song_id")),
+                )[htpy.i(".bi-caret-left-fill"), " Song details"]
+            ],
+            _sign_out_button(True),
+        ],
+        htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Edit tags"]]],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.form(
+                    hx_disabled_elt="button",
+                    hx_post=flask.url_for("songs_edit", song_id=song.get("song_id")),
+                    hx_swap="outerHTML",
+                )[
+                    htpy.table(".align-middle.d-block.table")[
+                        htpy.tbody[
+                            htpy.tr[
+                                htpy.th["Filename"],
+                                htpy.td[htpy.code[song.get("song_filename")]],
+                            ],
+                            htpy.tr[
+                                htpy.th[htpy.label(for_="album")["Album"]],
+                                htpy.td[
+                                    htpy.input(
+                                        "#album.form-control",
+                                        name="album",
+                                        required=True,
+                                        type="text",
+                                        value=song.get("album_name"),
+                                    )
+                                ],
+                            ],
+                            htpy.tr[
+                                htpy.th[htpy.label(for_="title")["Title"]],
+                                htpy.td[
+                                    htpy.input(
+                                        "#title.form-control",
+                                        name="title",
+                                        required=True,
+                                        type="text",
+                                        value=song.get("song_title"),
+                                    )
+                                ],
+                            ],
+                            htpy.tr[
+                                htpy.th[htpy.label(for_="artist")["Artist"]],
+                                htpy.td[
+                                    htpy.input(
+                                        "#artist.form-control",
+                                        required=True,
+                                        type="text",
+                                        value=song.get("song_artist_tag"),
+                                    )
+                                ],
+                            ],
+                            htpy.tr[
+                                htpy.th[htpy.label(for_="categories")["Categories"]],
+                                htpy.td[
+                                    htpy.input(
+                                        "#categories.form-control",
+                                        name="categories",
+                                        type="text",
+                                        value=", ".join(song.get("song_groups")),
+                                    )
+                                ],
+                            ],
+                            htpy.tr[
+                                htpy.th[htpy.label(for_="url")["URL"]],
+                                htpy.td[
+                                    htpy.input(
+                                        "#url.form-control",
+                                        name="url",
+                                        type="url",
+                                        value=song.get("song_url"),
+                                    )
+                                ],
+                            ],
+                            htpy.tr[
+                                htpy.th[htpy.label(for_="link-text")["Link text"]],
+                                htpy.td[
+                                    htpy.input(
+                                        "#link-text.form-control",
+                                        name="link-text",
+                                        type="text",
+                                        value=song.get("song_link_text"),
+                                    )
+                                ],
+                            ],
+                        ]
+                    ],
+                    htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
+                        htpy.div(".col-auto")[
+                            htpy.button(".btn.btn-outline-success", type="submit")[
+                                htpy.i(".bi-file-earmark-play"), " Save"
+                            ]
+                        ],
+                        htpy.div(".col-auto")[
+                            htpy.span(
+                                ".htmx-indicator.spinner-border.spinner-border-sm"
+                            )
+                        ],
+                    ],
+                ]
+            ]
+        ],
+    ]
+    return str(_base(content))
+
+
+def songs_edit_result(alert_class: str, edit_result: str) -> str:
+    return str(htpy.p(f".alert.{alert_class}")[edit_result])
+
+
 def songs_index() -> str:
     content = [
         _nav_header("Songs"),

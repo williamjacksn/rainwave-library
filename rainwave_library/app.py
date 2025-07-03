@@ -366,9 +366,9 @@ def songs_download(song_id: int):
 @app.route("/songs/<int:song_id>/edit", methods=["GET", "POST"])
 @secure
 def songs_edit(song_id: int):
-    flask.g.song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
     if flask.request.method == "GET":
-        return flask.render_template("songs/edit.html")
+        return rainwave_library.components.songs_edit(song)
 
     kwargs = {
         "album": flask.request.values.get("album"),
@@ -378,18 +378,16 @@ def songs_edit(song_id: int):
         "title": flask.request.values.get("title"),
         "url": flask.request.values.get("url"),
     }
-    result = rainwave_library.models.mp3.set_tags(
-        flask.g.song.get("song_filename"), **kwargs
-    )
+    result = rainwave_library.models.mp3.set_tags(song.get("song_filename"), **kwargs)
     if result:
-        flask.g.edit_result = result
-        flask.g.alert_class = "alert-danger"
+        edit_result = result
+        alert_class = "alert-danger"
     else:
-        flask.g.edit_result = "Song tags updated"
-        flask.g.alert_class = "alert-success"
+        edit_result = "Song tags updated"
+        alert_class = "alert-success"
     # give the scanner some time to catch the file changes and update the database
     time.sleep(1)
-    return flask.render_template("songs/edit-result.html")
+    return rainwave_library.components.songs_edit_result(alert_class, edit_result)
 
 
 @app.route("/songs/<int:song_id>/play", methods=["GET"])
