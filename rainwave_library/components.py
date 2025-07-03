@@ -1108,3 +1108,38 @@ def songs_index() -> str:
         htpy.div("#audio"),
     ]
     return str(_base(content))
+
+
+def songs_play(song: dict) -> str:
+    content = htpy.div(
+        ".bottom-0.fade.m-1.position-fixed.show.start-50.toast.translate-middle-x"
+    )[
+        htpy.div(".toast-header")[
+            htpy.div(".me-auto")["Music player"],
+            htpy.button(
+                ".btn-close",
+                data_bs_dismiss="toast",
+                hx_get=flask.url_for("nothing"),
+                hx_target="#audio",
+                type="button",
+            ),
+        ],
+        htpy.div(".toast-body")[
+            htpy.div("#audio-metadata.pb-1")[
+                htpy.strong[htpy.i(".bi-disc"), " ", song.get("album_name")],
+                htpy.br,
+                htpy.strong[
+                    htpy.i(".bi-music-not-beamed"), " ", song.get("song_title")
+                ],
+                htpy.br,
+                htpy.strong[htpy.i(".bi-person"), " ", song.get("song_artist_tag")],
+            ],
+            htpy.audio(
+                autoplay=True,
+                controls=True,
+                preload="metadata",
+                src=flask.url_for("stream_song", song_id=song.get("song_id")),
+            ),
+        ],
+    ]
+    return str(content)

@@ -393,8 +393,8 @@ def songs_edit(song_id: int):
 @app.route("/songs/<int:song_id>/play", methods=["GET"])
 @secure
 def songs_play(song_id: int):
-    flask.g.song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
-    return flask.render_template("songs/play.html")
+    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    return rainwave_library.components.songs_play(song)
 
 
 @app.route("/songs/<int:song_id>/remove", methods=["GET", "POST"])
