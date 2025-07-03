@@ -405,9 +405,7 @@ def songs_remove(song_id: int):
     new_loc = rainwave_library.models.rainwave.calculate_removed_location(song_filename)
 
     if flask.request.method == "GET":
-        flask.g.song = song
-        flask.g.new_loc = new_loc
-        return flask.render_template("songs/remove.html")
+        return rainwave_library.components.songs_remove(song, str(new_loc))
 
     reason = flask.request.values.get("reason")
     if new_loc.exists():
@@ -438,8 +436,8 @@ def stream_song(song_id: int):
 @app.route("/songs/rows", methods=["POST"])
 @secure
 def songs_rows():
-    flask.g.q = flask.request.values.get("q")
-    flask.g.page = int(flask.request.values.get("page", 1))
+    q = flask.request.values.get("q")
+    page = int(flask.request.values.get("page", 1))
     sort_col = flask.request.values.get("sort-col", "song_id")
     sort_dir = flask.request.values.get("sort-dir", "asc")
     input_channels = flask.request.values.getlist("channels")
@@ -448,16 +446,10 @@ def songs_rows():
     if not valid_channels:
         valid_channels = None
     include_unrated = "include-unrated" in flask.request.values
-    flask.g.songs = rainwave_library.models.rainwave.get_songs(
-        flask.g.db,
-        flask.g.q,
-        flask.g.page,
-        sort_col,
-        sort_dir,
-        valid_channels,
-        include_unrated,
+    songs_ = rainwave_library.models.rainwave.get_songs(
+        flask.g.db, q, page, sort_col, sort_dir, valid_channels, include_unrated
     )
-    return flask.render_template("songs/rows.html")
+    return rainwave_library.components.songs_rows(songs_, page)
 
 
 @app.route("/songs.xlsx", methods=["POST"])
