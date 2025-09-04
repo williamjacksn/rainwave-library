@@ -27,7 +27,6 @@ def _base(content: htpy.Node) -> htpy.Element:
                 content,
                 htpy.div(".pt-3.row")[htpy.div(".col")[htpy.hr]],
             ],
-            _nav_modal(),
             _bs_script(),
             _hx_script(),
         ],
@@ -62,60 +61,31 @@ def _hx_script():
     return htpy.script(src=f"{_cdn}/htmx.org@{v.hx}/dist/htmx.js")
 
 
-def _nav_header(text: str) -> htpy.Element:
-    return htpy.div(".align-items-center.d-flex.g-1.pt-3.row")[
-        htpy.div(".col-auto.me-auto")[
-            htpy.h1[
-                htpy.a(
-                    ".link-body-emphasis.text-decoration-none",
-                    data_bs_target="#nav-modal",
-                    data_bs_toggle="modal",
-                    href="#",
-                )[text, " ", htpy.i(".bi-caret-down-fill.small")]
+def _nav_tabs(active: str = "songs") -> htpy.Node:
+    return htpy.div(".g-1.pt-3.row")[
+        htpy.div(".col.me-auto")[
+            htpy.ul(".nav.nav-tabs")[
+                htpy.li(".nav-item")[
+                    htpy.a(
+                        class_=["nav-link", {"active": active == "songs"}],
+                        href=flask.url_for("songs"),
+                    )["Songs"]
+                ],
+                htpy.li(".nav-item")[
+                    htpy.a(
+                        class_=["nav-link", {"active": active == "listeners"}],
+                        href=flask.url_for("listeners"),
+                    )["Listeners"]
+                ],
+                htpy.li(".nav-item")[
+                    htpy.a(
+                        class_=["nav-link", {"active": active == "ocremix"}],
+                        href=flask.url_for("get_ocremix"),
+                    )["OCR"]
+                ],
             ]
         ],
         _sign_out_button(True),
-    ]
-
-
-def _nav_modal():
-    return htpy.div("#nav-modal.modal")[
-        htpy.div(".modal-dialog.modal-dialog-centered")[
-            htpy.div(".modal-content")[
-                htpy.div(".modal-body")[
-                    htpy.div(".card.mb-3.text-center")[
-                        htpy.div(".card-body")[
-                            htpy.h2[
-                                htpy.a(
-                                    ".link-body-emphasis.stretched-link.text-decoration-none",
-                                    href=flask.url_for("songs"),
-                                )["Songs"]
-                            ]
-                        ]
-                    ],
-                    htpy.div(".card.mb-3.text-center")[
-                        htpy.div(".card-body")[
-                            htpy.h2[
-                                htpy.a(
-                                    ".link-body-emphasis.stretched-link.text-decoration-none",
-                                    href=flask.url_for("listeners"),
-                                )["Listeners"]
-                            ]
-                        ]
-                    ],
-                    htpy.div(".card.text-center")[
-                        htpy.div(".card-body")[
-                            htpy.h2[
-                                htpy.a(
-                                    ".link-body-emphasis.stretched-link.text-decoration-none",
-                                    href=flask.url_for("get_ocremix"),
-                                )["Get an OC ReMix"]
-                            ]
-                        ]
-                    ],
-                ]
-            ]
-        ]
     ]
 
 
@@ -127,11 +97,11 @@ def _sign_out_button(show_bsky: bool = False) -> htpy.Node:
                 ".btn.btn-outline-primary",
                 data_bs_target="#bsky-modal",
                 data_bs_toggle="modal",
-            )[htpy.i(".bi-pencil-square"), " Post"]
+            )[htpy.i(".bi-pencil-square"), htpy.span(".d-none.d-sm-inline")[" Post"]]
         ],
         htpy.div(".col-auto")[
             htpy.a(".btn.btn-outline-danger", href=flask.url_for("sign_out"))[
-                "Sign out"
+                htpy.i(".bi-door-open"), htpy.span(".d-none.d-sm-inline")[" Sign out"]
             ]
         ],
         show_bsky
@@ -369,7 +339,7 @@ def get_ocremix_start(max_ocr_num: int) -> str:
         ],
     ]
     content = [
-        _nav_header("Get an OC ReMix"),
+        _nav_tabs(active="ocremix"),
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
                 htpy.form[
@@ -493,7 +463,7 @@ def listeners_edit(listener: dict) -> str:
 
 def listeners_index(ranks: list[dict]) -> str:
     content = [
-        _nav_header("Listeners"),
+        _nav_tabs(active="listeners"),
         htpy.form(hx_target="tbody")[
             htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
                 htpy.div(".col-12.col-sm-auto")[
@@ -916,7 +886,7 @@ def songs_edit_result(alert_class: str, edit_result: str) -> str:
 
 def songs_index() -> str:
     content = [
-        _nav_header("Songs"),
+        _nav_tabs(active="songs"),
         htpy.form(action=flask.url_for("songs_xlsx"), hx_target="tbody", method="post")[
             htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
                 htpy.div(".col-12.col-sm-auto")[
