@@ -285,9 +285,9 @@ wheels = [
 
 [[package]]
 name = "xlsxwriter"
-version = "3.2.5"
+version = "3.2.6"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a7/47/7704bac42ac6fe1710ae099b70e6a1e68ed173ef14792b647808c357da43/xlsxwriter-3.2.5.tar.gz", hash = "sha256:7e88469d607cdc920151c0ab3ce9cf1a83992d4b7bc730c5ffdd1a12115a7dbe", size = 213306, upload-time = "2025-06-17T08:59:14.619Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5c/95/fc3f7321591f02547defe4307f885b6fc36ac9f31e1cbba7c536bf396657/xlsxwriter-3.2.6.tar.gz", hash = "sha256:0686a0293a38ef949136b908d1a3048a40f438be58aabf701c0724e0b41de75e", size = 215972, upload-time = "2025-09-12T19:25:05.117Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fa/34/a22e6664211f0c8879521328000bdcae9bf6dbafa94a923e531f6d5b3f73/xlsxwriter-3.2.5-py3-none-any.whl", hash = "sha256:4f4824234e1eaf9d95df9a8fe974585ff91d0f5e3d3f12ace5b71e443c1c6abd", size = 172347, upload-time = "2025-06-17T08:59:13.453Z" },
+    { url = "https://files.pythonhosted.org/packages/c9/26/3388f77ede6823c26b47d3e22f723a9c2ffb189b99b70d4445a2eaf83b8f/xlsxwriter-3.2.6-py3-none-any.whl", hash = "sha256:e793acff58c5026f24d7b83cbefbaf3a7da275b0273772f8f17b227a06d9bd95", size = 175435, upload-time = "2025-09-12T19:25:03.804Z" },
 ]
