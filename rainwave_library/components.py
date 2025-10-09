@@ -220,6 +220,7 @@ def albums_index() -> str:
                                     for i, c, label in [
                                         ("id", "album_id", "ID"),
                                         ("album", "album_name", "Album name"),
+                                        ("songs", "song_count", "Songs"),
                                     ]
                                 ],
                             ]
@@ -238,11 +239,7 @@ def albums_index() -> str:
                 htpy.table(
                     ".align-middle.d-block.table.table-bordered.table-sm.table-striped"
                 )[
-                    htpy.thead[
-                        htpy.tr(".text-center")[
-                            htpy.th, htpy.th["ID"], htpy.th["Album name"]
-                        ]
-                    ],
+                    Album.thead,
                     htpy.tbody(hx_post=flask.url_for("albums_rows"), hx_trigger="load")[
                         htpy.tr[
                             htpy.td(".py-3.text-center", colspan=Album.colspan)[

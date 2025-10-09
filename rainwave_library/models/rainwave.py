@@ -11,7 +11,12 @@ cnx = fort.PostgresDatabase(cnx_str, maxconn=5)
 
 
 class Album:
-    colspan: int = 3
+    colspan: int = 4
+    thead: htpy.Element = htpy.thead[
+        htpy.tr(".text-center")[
+            htpy.th, htpy.th["ID"], htpy.th["Album name"], htpy.th["Songs"]
+        ]
+    ]
 
     def __init__(self, album_data: dict) -> None:
         self.data = album_data
@@ -25,11 +30,16 @@ class Album:
         return self.data.get("album_name")
 
     @property
+    def song_count(self) -> int:
+        return self.data.get("song_count")
+
+    @property
     def tr(self) -> htpy.Element:
         return htpy.tr[
             htpy.td,
             htpy.td(".text-end")[htpy.code[self.id]],
             htpy.td[self.name],
+            htpy.td(".text-end")[self.song_count],
         ]
 
 
@@ -212,7 +222,7 @@ def get_albums(
 
     if sort_dir not in ("asc", "desc"):
         sort_dir = "asc"
-    if sort_col not in ("album_id", "album_name"):
+    if sort_col not in ("album_id", "album_name", "song_count"):
         sort_col = "album_id"
     if sort_col in ("album_name",):
         sort_clause = f'{sort_col} collate "C" {sort_dir}'
@@ -226,10 +236,11 @@ def get_albums(
         limit_clause = "limit 101 offset %(offset)s"
 
     sql = f"""
-        select distinct a.album_id, a.album_name collate "C"
+        select a.album_id, a.album_name collate "C", count(*) song_count
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id
         where {where_clause}
+        group by a.album_id, a.album_name
         order by {sort_clause}
         {limit_clause}
     """  # noqa: S608
