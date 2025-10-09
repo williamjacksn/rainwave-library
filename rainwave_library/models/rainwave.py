@@ -4,12 +4,105 @@ import pathlib
 
 import flask
 import fort
+import htpy
 
 cnx_str = os.getenv("RW_CNX")
 cnx = fort.PostgresDatabase(cnx_str, maxconn=5)
 
 
+class Album:
+    colspan: int = 3
+
+    def __init__(self, album_data: dict) -> None:
+        self.data = album_data
+
+    @property
+    def id(self) -> int:
+        return self.data.get("album_id")
+
+    @property
+    def name(self) -> str:
+        return self.data.get("album_name")
+
+    @property
+    def tr(self) -> htpy.Element:
+        return htpy.tr[
+            htpy.td,
+            htpy.td(".text-end")[htpy.code[self.id]],
+            htpy.td[self.name],
+        ]
+
+
+class Listener:
+    colspan: int = 8
+
+    def __init__(self, listener_data: dict) -> None:
+        self.data = listener_data
+
+    @property
+    def discord_id(self) -> int:
+        return self.data.get("discord_user_id")
+
+    @property
+    def group(self) -> str:
+        return self.data.get("group_name")
+
+    @property
+    def id(self) -> int:
+        return self.data.get("user_id")
+
+    @property
+    def is_discord_user(self) -> bool:
+        return self.data.get("is_discord_user")
+
+    @property
+    def last_active(self) -> datetime.datetime | None:
+        return self.data.get("radio_last_active")
+
+    @property
+    def name(self) -> str:
+        return self.data.get("user_name")
+
+    @property
+    def rank(self) -> str:
+        return self.data.get("rank_title")
+
+    @property
+    def rating_count(self) -> int:
+        return self.data.get("rating_count")
+
+    @property
+    def tr(self) -> htpy.Element:
+        return htpy.tr[
+            htpy.td(".text-center.text-nowrap")[
+                htpy.a(
+                    ".text-decoration-none",
+                    href=flask.url_for("listeners_detail", listener_id=self.id),
+                    title="Listener detail page",
+                )[htpy.i(".bi-info-circle.me-1")],
+                htpy.a(
+                    ".text-decoration-none",
+                    href=f"https://rainwave.cc/all/#!/listener/{self.id}",
+                    rel="noopener",
+                    target="_blank",
+                    title="Listener profile on rainwave.cc",
+                )[htpy.i(".bi-person-badge")],
+            ],
+            htpy.td(".text-end")[htpy.code[self.id]],
+            htpy.td(".user-select-all")[self.name],
+            htpy.td[self.group],
+            htpy.td(".user-select-all")[self.rank],
+            htpy.td[self.rating_count],
+            htpy.td(".text-center")[
+                self.is_discord_user and htpy.i(".bi-check-lg", title=self.discord_id)
+            ],
+            htpy.td[self.last_active and self.last_active.date().isoformat()],
+        ]
+
+
 class Song:
+    colspan: int = 10
+
     def __init__(self, song_data: dict) -> None:
         self.data = song_data
 
@@ -103,7 +196,7 @@ def get_albums(
     page: int = 1,
     sort_col: str = "album_id",
     sort_dir: str = "asc",
-) -> list:
+) -> list[Album]:
     where_clause = "s.song_verified is true"
     if query:
         where_clause = f"""
@@ -144,10 +237,10 @@ def get_albums(
         "offset": 100 * (page - 1),
         "query": query,
     }
-    return db.q(sql, params)
+    return [Album(r) for r in db.q(sql, params)]
 
 
-def get_category_for_album(db: fort.PostgresDatabase, album_name: str) -> str:
+def get_category_for_album(db: fort.PostgresDatabase, album_name: str) -> str | None:
     sql = """
         select g.group_name, count(*) song_count
         from r4_albums a
@@ -164,6 +257,7 @@ def get_category_for_album(db: fort.PostgresDatabase, album_name: str) -> str:
     }
     for row in db.q(sql, params):
         return row.get("group_name")
+    return None
 
 
 def get_elections(
@@ -211,7 +305,7 @@ def get_elections(
     return db.q(sql, params)
 
 
-def get_listener(db: fort.PostgresDatabase, listener_id: int) -> dict:
+def get_listener(db: fort.PostgresDatabase, listener_id: int) -> Listener:
     sql = """
         select
             u.user_id,
@@ -226,7 +320,7 @@ def get_listener(db: fort.PostgresDatabase, listener_id: int) -> dict:
         where u.user_id = %(user_id)s
     """
     params = {"user_id": listener_id}
-    return db.q_one(sql, params)
+    return Listener(db.q_one(sql, params))
 
 
 def get_listeners(
@@ -234,7 +328,7 @@ def get_listeners(
     query: str | None = None,
     page: int = 1,
     ranks: list[int] | None = None,
-) -> list[dict]:
+) -> list[Listener]:
     where_clause = "u.user_type <> 2 and u.user_id > 1"
     if query:
         where_clause = f"""
@@ -293,7 +387,7 @@ def get_listeners(
         "query": query,
         "ranks": ranks,
     }
-    return db.q(sql, params)
+    return [Listener(r) for r in db.q(sql, params)]
 
 
 def get_max_ocr_num(db: fort.PostgresDatabase) -> int:

@@ -2,12 +2,8 @@ import flask
 import htpy
 import markupsafe
 
-import rainwave_library.models as m
 import rainwave_library.versions as v
-
-_listeners_table_cols = 8
-_songs_table_cols = 10
-_albums_table_cols = 3
+from rainwave_library.models.rainwave import Album, Listener, Song
 
 
 def _back_button(href: str, label: str) -> htpy.Element:
@@ -249,7 +245,7 @@ def albums_index() -> str:
                     ],
                     htpy.tbody(hx_post=flask.url_for("albums_rows"), hx_trigger="load")[
                         htpy.tr[
-                            htpy.td(".py-3.text-center", colspan=_albums_table_cols)[
+                            htpy.td(".py-3.text-center", colspan=Album.colspan)[
                                 htpy.span(
                                     ".htmx-indicator.spinner-border.spinner-border-sm"
                                 )
@@ -263,23 +259,17 @@ def albums_index() -> str:
     return str(_base(content))
 
 
-def albums_rows(albums: list[dict], page: int) -> str:
+def albums_rows(albums: list[Album], page: int) -> str:
     trs = []
     for i, album in enumerate(albums):
         if i < 100:
-            trs.append(
-                htpy.tr[
-                    htpy.td,
-                    htpy.td(".text-end")[htpy.code[album.get("album_id")]],
-                    htpy.td[album.get("album_name")],
-                ]
-            )
+            trs.append(album.tr)
         else:
             trs.append(
                 htpy.tr[
                     htpy.td(
                         ".py-3.text-center",
-                        colspan=_albums_table_cols,
+                        colspan=Album.colspan,
                         hx_include="form",
                         hx_post=flask.url_for("albums_rows", page=page + 1),
                         hx_swap="outerHTML",
@@ -291,7 +281,7 @@ def albums_rows(albums: list[dict], page: int) -> str:
     if not trs:
         trs.append(
             htpy.tr(".text-center")[
-                htpy.td(colspan=_albums_table_cols)["No albums matched your criteria."]
+                htpy.td(colspan=Album.colspan)["No albums matched your criteria."]
             ]
         )
     content = htpy.fragment[trs]
@@ -513,30 +503,17 @@ def length_display(length: int) -> str:
     return f"{minutes}:{seconds:02d}"
 
 
-def listeners_detail(listener: dict) -> str:
+def listeners_detail(listener: Listener) -> str:
     trs = [
+        htpy.tr[htpy.th["ID"], htpy.td(".user-select-all")[htpy.code[listener.id]]],
+        htpy.tr[htpy.th["User name"], htpy.td(".user-select-all")[listener.name]],
+        htpy.tr[htpy.th["Rank"], htpy.td(".user-select-all")[listener.rank]],
         htpy.tr[
-            htpy.th["ID"],
-            htpy.td(".user-select-all")[htpy.code[listener.get("user_id")]],
-        ],
-        htpy.tr[
-            htpy.th["User name"],
-            htpy.td(".user-select-all")[listener.get("user_name")],
-        ],
-        htpy.tr[
-            htpy.th["Rank"],
-            htpy.td(".user-select-all")[listener.get("rank_title")],
-        ],
-        htpy.tr[
-            htpy.th["Discord user ID"],
-            htpy.td(".user-select-all")[listener.get("discord_user_id")],
+            htpy.th["Discord user ID"], htpy.td(".user-select-all")[listener.discord_id]
         ],
         htpy.tr[
             htpy.th["Last active"],
-            htpy.td[
-                listener.get("radio_last_active")
-                and listener.get("radio_last_active").date().isoformat()
-            ],
+            htpy.td[listener.last_active and listener.last_active.date().isoformat()],
         ],
     ]
     content = [
@@ -552,9 +529,7 @@ def listeners_detail(listener: dict) -> str:
             htpy.div(".col")[
                 htpy.a(
                     ".btn.btn-outline-success",
-                    href=flask.url_for(
-                        "listeners_edit", listener_id=listener.get("user_id")
-                    ),
+                    href=flask.url_for("listeners_edit", listener_id=listener.id),
                 )[htpy.i(".bi-pencil"), " Edit listener"]
             ]
         ],
@@ -562,11 +537,11 @@ def listeners_detail(listener: dict) -> str:
     return str(_base(content))
 
 
-def listeners_edit(listener: dict) -> str:
+def listeners_edit(listener: Listener) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
             _back_button(
-                flask.url_for("listeners_detail", listener_id=listener.get("user_id")),
+                flask.url_for("listeners_detail", listener_id=listener.id),
                 "Listener details",
             ),
             _sign_out_button(True),
@@ -577,13 +552,8 @@ def listeners_edit(listener: dict) -> str:
                 htpy.form(method="post")[
                     htpy.table(".align-middle.d-block.table")[
                         htpy.tbody[
-                            htpy.tr[
-                                htpy.th["ID"],
-                                htpy.td[htpy.code[listener.get("user_id")]],
-                            ],
-                            htpy.tr[
-                                htpy.th["User name"], htpy.td[listener.get("user_name")]
-                            ],
+                            htpy.tr[htpy.th["ID"], htpy.td[htpy.code[listener.id]]],
+                            htpy.tr[htpy.th["User name"], htpy.td[listener.name]],
                             htpy.tr[
                                 htpy.th[
                                     htpy.label(for_="discord_user_id")[
@@ -595,7 +565,7 @@ def listeners_edit(listener: dict) -> str:
                                         "#discord_user_id.form-control",
                                         name="discord_user_id",
                                         type="text",
-                                        value=listener.get("discord_user_id") or "",
+                                        value=listener.discord_id or "",
                                     )
                                 ],
                             ],
@@ -704,7 +674,7 @@ def listeners_index(ranks: list[dict]) -> str:
                         hx_post=flask.url_for("listeners_rows"), hx_trigger="load"
                     )[
                         htpy.tr[
-                            htpy.td(".py-3.text-center", colspan=_listeners_table_cols)[
+                            htpy.td(".py-3.text-center", colspan=Listener.colspan)[
                                 htpy.span(
                                     ".htmx-indicator.spinner-border.spinner-border-sm"
                                 )
@@ -718,51 +688,17 @@ def listeners_index(ranks: list[dict]) -> str:
     return str(_base(content))
 
 
-def listeners_rows(listeners: list[dict], page: int) -> str:
+def listeners_rows(listeners: list[Listener], page: int) -> str:
     trs = []
     for i, listener in enumerate(listeners):
         if i < 100:
-            trs.append(
-                htpy.tr[
-                    htpy.td(".text-center.text-nowrap")[
-                        htpy.a(
-                            ".text-decoration-none",
-                            href=flask.url_for(
-                                "listeners_detail", listener_id=listener.get("user_id")
-                            ),
-                            title="Listener detail page",
-                        )[htpy.i(".bi-info-circle.me-1")],
-                        htpy.a(
-                            ".text-decoration-none",
-                            href=f"https://rainwave.cc/all/#!/listener/{listener.get('user_id')}",
-                            rel="noopener",
-                            target="_blank",
-                            title="Listener profile on rainwave.cc",
-                        )[htpy.i(".bi-person-badge")],
-                    ],
-                    htpy.td(".text-end")[htpy.code[listener.get("user_id")]],
-                    htpy.td(".user-select-all")[listener.get("user_name")],
-                    htpy.td[listener.get("group_name")],
-                    htpy.td(".user-select-all")[listener.get("rank_title")],
-                    htpy.td[listener.get("rating_count")],
-                    htpy.td(".text-center")[
-                        listener.get("is_discord_user")
-                        and htpy.i(
-                            ".bi-check-lg", title=listener.get("discord_user_id")
-                        )
-                    ],
-                    htpy.td[
-                        listener.get("radio_last_active")
-                        and listener.get("radio_last_active").date().isoformat()
-                    ],
-                ]
-            )
+            trs.append(listener.tr)
         else:
             trs.append(
                 htpy.tr[
                     htpy.td(
                         ".py-3.text-center",
-                        colspan=_listeners_table_cols,
+                        colspan=Listener.colspan,
                         hx_include="form",
                         hx_post=flask.url_for("listeners_rows", page=page + 1),
                         hx_swap="outerHTML",
@@ -774,9 +710,7 @@ def listeners_rows(listeners: list[dict], page: int) -> str:
     if not trs:
         trs.append(
             htpy.tr(".text-center")[
-                htpy.td(colspan=_listeners_table_cols)[
-                    "No listeners matched your criteria."
-                ]
+                htpy.td(colspan=Listener.colspan)["No listeners matched your criteria."]
             ]
         )
     content = htpy.fragment[trs]
@@ -800,7 +734,7 @@ def sign_in() -> str:
     return str(_base(content))
 
 
-def songs_detail(song: m.rainwave.Song) -> str:
+def songs_detail(song: Song) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
             _back_button(flask.url_for("songs"), "Songs"), _sign_out_button(True)
@@ -894,7 +828,7 @@ def songs_detail(song: m.rainwave.Song) -> str:
     return str(_base(content))
 
 
-def songs_edit(song: m.rainwave.Song) -> str:
+def songs_edit(song: Song) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
             _back_button(
@@ -1196,7 +1130,7 @@ def songs_index() -> str:
                     ],
                     htpy.tbody(hx_post=flask.url_for("songs_rows"), hx_trigger="load")[
                         htpy.tr[
-                            htpy.td(".py-3.text-center", colspan=10)[
+                            htpy.td(".py-3.text-center", colspan=Song.colspan)[
                                 htpy.span(
                                     ".htmx-indicator.spinner-border.spinner-border-sm"
                                 )
@@ -1211,7 +1145,7 @@ def songs_index() -> str:
     return str(_base(content))
 
 
-def songs_play(song: m.rainwave.Song) -> str:
+def songs_play(song: Song) -> str:
     content = htpy.div(
         ".bottom-0.fade.m-1.position-fixed.show.start-50.toast.translate-middle-x"
     )[
@@ -1244,7 +1178,7 @@ def songs_play(song: m.rainwave.Song) -> str:
     return str(content)
 
 
-def songs_remove(song: m.rainwave.Song, new_loc: str) -> str:
+def songs_remove(song: Song, new_loc: str) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
             _back_button(
@@ -1300,7 +1234,7 @@ def songs_remove(song: m.rainwave.Song, new_loc: str) -> str:
     return str(_base(content))
 
 
-def songs_rows(songs: list[m.rainwave.Song], page: int) -> str:
+def songs_rows(songs: list[Song], page: int) -> str:
     trs = []
     for i, song in enumerate(songs):
         if i < 100:
@@ -1436,7 +1370,7 @@ def songs_rows(songs: list[m.rainwave.Song], page: int) -> str:
                 htpy.tr[
                     htpy.td(
                         ".py-3.text-center",
-                        colspan=_songs_table_cols,
+                        colspan=Song.colspan,
                         hx_include="form",
                         hx_post=flask.url_for("songs_rows", page=page + 1),
                         hx_target="closest tr",
@@ -1448,7 +1382,7 @@ def songs_rows(songs: list[m.rainwave.Song], page: int) -> str:
     if not trs:
         trs.append(
             htpy.tr(".text-center")[
-                htpy.td(colspan=_songs_table_cols)["No songs matched your criteria."]
+                htpy.td(colspan=Song.colspan)["No songs matched your criteria."]
             ]
         )
     return str(htpy.fragment[trs])
