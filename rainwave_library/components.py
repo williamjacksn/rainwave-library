@@ -161,7 +161,7 @@ def albums_detail(album: Album, songs: list[Song]) -> str:
         htpy.div(".pt-3.row")[htpy.div(".col")[album.detail_table]],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
-                htpy.table(".align-middle.table.table-bordered.table-sm")[
+                htpy.table(".align-middle.table.table-bordered.table-sm.table-striped")[
                     Song.thead, htpy.tbody[(s.tr for s in songs)]
                 ]
             ]
@@ -1053,29 +1053,8 @@ def songs_index() -> str:
         ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
-                htpy.table(".align-middle.table.table-bordered.table-sm")[
-                    htpy.thead[
-                        htpy.tr(".d-table-row.d-md-none.text-center")[
-                            htpy.th, htpy.th["Info"]
-                        ],
-                        htpy.tr(".d-none.d-md-table-row.text-center")[
-                            [
-                                htpy.th[label]
-                                for label in (
-                                    "",
-                                    "ID",
-                                    "Album",
-                                    "Title",
-                                    "Artist",
-                                    "Rating",
-                                    "Ratings",
-                                    "Length",
-                                    "URL",
-                                    "Filename",
-                                )
-                            ]
-                        ],
-                    ],
+                htpy.table(".align-middle.table.table-bordered.table-sm.table-striped")[
+                    Song.thead,
                     htpy.tbody(hx_post=flask.url_for("songs_rows"), hx_trigger="load")[
                         htpy.tr[
                             htpy.td(".py-3.text-center", colspan=Song.colspan)[

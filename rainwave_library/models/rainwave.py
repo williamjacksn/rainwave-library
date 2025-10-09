@@ -196,10 +196,11 @@ class Listener:
 class Song:
     colspan: int = 10
     thead: htpy.Element = htpy.thead[
-        htpy.tr(".d-table-row.d-md-none.text-center")[htpy.th, htpy.th["Info"]],
-        htpy.tr(".d-none.d-md-table-row.text-center")[
+        htpy.tr[
+            htpy.th(".d-table-cell.d-md-none"),
+            htpy.th(".d-table-cell.d-md-none.text-center")["Info"],
             [
-                htpy.th[label]
+                htpy.th(".d-none.d-md-table-cell.text-center")[label]
                 for label in (
                     "",
                     "ID",
@@ -212,7 +213,7 @@ class Song:
                     "URL",
                     "Filename",
                 )
-            ]
+            ],
         ],
     ]
 
@@ -295,8 +296,8 @@ class Song:
     @property
     def tr(self) -> htpy.Fragment:
         return htpy.fragment[
-            htpy.tr(".d-table-row.d-md-none")[
-                htpy.td(".p-2")[
+            htpy.tr[
+                htpy.td(".p-2.d-table-cell.d-md-none")[
                     htpy.a(
                         ".btn.btn-outline-primary.mb-1",
                         href=flask.url_for("songs_detail", song_id=self.id),
@@ -317,7 +318,7 @@ class Song:
                         title="Play this song",
                     )[htpy.i(".bi-play")],
                 ],
-                htpy.td(".p-2")[
+                htpy.td(".p-2.d-table-cell.d-md-none")[
                     htpy.i(".bi-disc"),
                     " ",
                     self.album_name,
@@ -349,9 +350,7 @@ class Song:
                         htpy.br,
                     ],
                 ],
-            ],
-            htpy.tr(".d-none.d-md-table-row")[
-                htpy.td(".text-center.text-nowrap")[
+                htpy.td(".d-none.d-md-table-cell.text-center.text-nowrap")[
                     htpy.a(
                         ".me-1.text-decoration-none",
                         href=flask.url_for("songs_detail", song_id=self.id),
@@ -370,12 +369,14 @@ class Song:
                         title=self.stream_hint,
                     )[htpy.i(".bi-play")],
                 ],
-                htpy.td(".text-end")[htpy.code[self.id]],
-                htpy.td(".user-select-all")[self.album_name],
-                htpy.td(".user-select-all")[self.title],
-                htpy.td[self.artist_tag],
+                htpy.td(".d-none.d-md-table-cell.text-end")[htpy.code[self.id]],
+                htpy.td(".d-none.d-md-table-cell.user-select-all")[self.album_name],
+                htpy.td(".d-none.d-md-table-cell.user-select-all")[self.title],
+                htpy.td(".d-none.d-md-table-cell")[self.artist_tag],
                 htpy.td(
                     class_=[
+                        "d-none",
+                        "d-md-table-cell",
                         "text-end",
                         "text-nowrap",
                         {"text-secondary": self.rating == 0},
@@ -400,12 +401,14 @@ class Song:
                 ],
                 htpy.td(
                     class_=[
+                        "d-none",
+                        "d-md-table-cell",
                         "text-end",
                         {"text-secondary": self.rating_count == 0},
                     ]
                 )[self.rating_count],
-                htpy.td(".text-end")[length_display(len(self))],
-                htpy.td[
+                htpy.td(".d-none.d-md-table-cell.text-end")[length_display(len(self))],
+                htpy.td(".d-none.d-md-table-cell")[
                     self.url
                     and htpy.a(
                         ".text-decoration-none",
@@ -414,7 +417,9 @@ class Song:
                         title=self.link_text,
                     )[self.url]
                 ],
-                htpy.td(".user-select-all")[htpy.code[self.filename]],
+                htpy.td(".d-none.d-md-table-cell.user-select-all")[
+                    htpy.code[self.filename]
+                ],
             ],
         ]
 
