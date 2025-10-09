@@ -501,35 +501,14 @@ def length_display(length: int) -> str:
 
 
 def listeners_detail(listener: Listener) -> str:
-    trs = [
-        htpy.tr[htpy.th["ID"], htpy.td(".user-select-all")[htpy.code[listener.id]]],
-        htpy.tr[htpy.th["User name"], htpy.td(".user-select-all")[listener.name]],
-        htpy.tr[htpy.th["Rank"], htpy.td(".user-select-all")[listener.rank]],
-        htpy.tr[
-            htpy.th["Discord user ID"], htpy.td(".user-select-all")[listener.discord_id]
-        ],
-        htpy.tr[
-            htpy.th["Last active"],
-            htpy.td[listener.last_active and listener.last_active.date().isoformat()],
-        ],
-    ]
     content = [
         htpy.div(".g-1.pt-3.row")[
             _back_button(flask.url_for("listeners"), "Listeners"),
             _sign_out_button(True),
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Listener details"]]],
-        htpy.div(".pt-3.row")[
-            htpy.div(".col")[htpy.table(".align-middle.d-block.table")[htpy.tbody[trs]]]
-        ],
-        htpy.div(".pt-3.row")[
-            htpy.div(".col")[
-                htpy.a(
-                    ".btn.btn-outline-success",
-                    href=flask.url_for("listeners_edit", listener_id=listener.id),
-                )[htpy.i(".bi-pencil"), " Edit listener"]
-            ]
-        ],
+        htpy.div(".pt-3.row")[htpy.div(".col")[listener.detail_table]],
+        htpy.div(".pt-3.row")[htpy.div(".col")[listener.edit_btn]],
     ]
     return str(_base(content))
 
@@ -544,36 +523,7 @@ def listeners_edit(listener: Listener) -> str:
             _sign_out_button(True),
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Edit listener"]]],
-        htpy.div(".pt-3.row")[
-            htpy.div(".col")[
-                htpy.form(method="post")[
-                    htpy.table(".align-middle.d-block.table")[
-                        htpy.tbody[
-                            htpy.tr[htpy.th["ID"], htpy.td[htpy.code[listener.id]]],
-                            htpy.tr[htpy.th["User name"], htpy.td[listener.name]],
-                            htpy.tr[
-                                htpy.th[
-                                    htpy.label(for_="discord_user_id")[
-                                        "Discord user ID"
-                                    ]
-                                ],
-                                htpy.td[
-                                    htpy.input(
-                                        "#discord_user_id.form-control",
-                                        name="discord_user_id",
-                                        type="text",
-                                        value=listener.discord_id or "",
-                                    )
-                                ],
-                            ],
-                        ]
-                    ],
-                    htpy.button(".btn.btn-outline-success", type="submit")[
-                        htpy.i(".bi-file-earmark-play"), " Save"
-                    ],
-                ]
-            ]
-        ],
+        htpy.div(".pt-3.row")[htpy.div(".col")[listener.edit_form]],
     ]
     return str(_base(content))
 
@@ -655,18 +605,7 @@ def listeners_index(ranks: list[dict]) -> str:
                 htpy.table(
                     ".align-middle.d-block.table.table-bordered.table-sm.table-striped"
                 )[
-                    htpy.thead[
-                        htpy.tr(".text-center")[
-                            htpy.th,
-                            htpy.th["ID"],
-                            htpy.th["User name"],
-                            htpy.th["Group"],
-                            htpy.th["Rank"],
-                            htpy.th["Ratings"],
-                            htpy.th["Discord"],
-                            htpy.th["Last active"],
-                        ]
-                    ],
+                    Listener.thead,
                     htpy.tbody(
                         hx_post=flask.url_for("listeners_rows"), hx_trigger="load"
                     )[

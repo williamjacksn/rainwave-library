@@ -45,13 +45,75 @@ class Album:
 
 class Listener:
     colspan: int = 8
+    thead: htpy.Element = htpy.thead[
+        htpy.tr(".text-center")[
+            htpy.th,
+            htpy.th["ID"],
+            htpy.th["User name"],
+            htpy.th["Group"],
+            htpy.th["Rank"],
+            htpy.th["Ratings"],
+            htpy.th["Discord"],
+            htpy.th["Last active"],
+        ]
+    ]
 
     def __init__(self, listener_data: dict) -> None:
         self.data = listener_data
 
     @property
+    def detail_table(self) -> htpy.Element:
+        return htpy.table(".align-middle.d-block.table")[
+            htpy.tbody[
+                htpy.tr[htpy.th["ID"], htpy.td(".user-select-all")[htpy.code[self.id]]],
+                htpy.tr[htpy.th["User name"], htpy.td(".user-select-all")[self.name]],
+                htpy.tr[htpy.th["Rank"], htpy.td(".user-select-all")[self.rank]],
+                htpy.tr[
+                    htpy.th["Discord user ID"],
+                    htpy.td(".user-select-all")[self.discord_id],
+                ],
+                htpy.tr[
+                    htpy.th["Last active"],
+                    htpy.td[self.last_active and self.last_active.date().isoformat()],
+                ],
+            ]
+        ]
+
+    @property
     def discord_id(self) -> int:
         return self.data.get("discord_user_id")
+
+    @property
+    def edit_btn(self) -> htpy.Element:
+        return htpy.a(
+            ".btn.btn-outline-success",
+            href=flask.url_for("listeners_edit", listener_id=self.id),
+        )[htpy.i(".bi-pencil"), " Edit listener"]
+
+    @property
+    def edit_form(self) -> htpy.Element:
+        return htpy.form(method="post")[
+            htpy.table(".align-middle.d-block.table")[
+                htpy.tbody[
+                    htpy.tr[htpy.th["ID"], htpy.td[htpy.code[self.id]]],
+                    htpy.tr[htpy.th["User name"], htpy.td[self.name]],
+                    htpy.tr[
+                        htpy.th[htpy.label(for_="discord_user_id")["Discord user ID"]],
+                        htpy.td[
+                            htpy.input(
+                                "#discord_user_id.form-control",
+                                name="discord_user_id",
+                                type="text",
+                                value=self.discord_id or "",
+                            )
+                        ],
+                    ],
+                ]
+            ],
+            htpy.button(".btn.btn-outline-success", type="submit")[
+                htpy.i(".bi-file-earmark-play"), " Save"
+            ],
+        ]
 
     @property
     def group(self) -> str:
