@@ -14,6 +14,56 @@ def calculate_removed_location(filename: os.PathLike) -> pathlib.Path:
     return library_root / "removed" / relative
 
 
+def get_albums(
+    db: fort.PostgresDatabase,
+    query: str | None = None,
+    page: int = 1,
+    sort_col: str = "album_id",
+    sort_dir: str = "asc",
+) -> list:
+    where_clause = "s.song_verified is true"
+    if query:
+        where_clause = f"""
+            {where_clause}
+            and position(
+                lower(%(query)s) in concat_ws(
+                    ' ',
+                    lower(a.album_name),
+                    lower(a.album_name_searchable)
+                )
+            ) > 0
+        """
+
+    if sort_dir not in ("asc", "desc"):
+        sort_dir = "asc"
+    if sort_col not in ("album_id", "album_name"):
+        sort_col = "album_id"
+    if sort_col in ("album_name",):
+        sort_clause = f'{sort_col} collate "C" {sort_dir}'
+    else:
+        sort_clause = f"{sort_col} {sort_dir}"
+    if sort_col != "album_id":
+        sort_clause = f"{sort_clause}, album_id asc"
+
+    limit_clause = ""
+    if page > 0:
+        limit_clause = "limit 101 offset %(offset)s"
+
+    sql = f"""
+        select distinct a.album_id, a.album_name collate "C"
+        from r4_songs s
+        join r4_albums a on a.album_id = s.album_id
+        where {where_clause}
+        order by {sort_clause}
+        {limit_clause}
+    """
+    params = {
+        "offset": 100 * (page - 1),
+        "query": query,
+    }
+    return db.q(sql, params)
+
+
 def get_category_for_album(db: fort.PostgresDatabase, album_name: str) -> str:
     sql = """
         select g.group_name, count(*) song_count

@@ -67,6 +67,25 @@ def index():
     return flask.redirect(flask.url_for("songs"))
 
 
+@app.route("/albums", methods=["GET"])
+@secure
+def albums():
+    return rainwave_library.components.albums_index()
+
+
+@app.route("/albums/rows", methods=["POST"])
+@secure
+def albums_rows():
+    q = flask.request.values.get("q")
+    page = int(flask.request.values.get("page", 1))
+    sort_col = flask.request.values.get("sort-col", "album_id")
+    sort_dir = flask.request.values.get("sort-dir", "asc")
+    albums_ = rainwave_library.models.rainwave.get_albums(
+        flask.g.db, q, page, sort_col, sort_dir
+    )
+    return rainwave_library.components.albums_rows(albums_, page)
+
+
 @app.route("/api/elections")
 def api_elections():
     sid = int(flask.request.values.get("sid", 1))
