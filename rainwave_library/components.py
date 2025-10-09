@@ -1,7 +1,8 @@
-import datetime
 import flask
 import htpy
 import markupsafe
+
+import rainwave_library.models as m
 import rainwave_library.versions as v
 
 _listeners_table_cols = 8
@@ -37,18 +38,18 @@ def _base(content: htpy.Node) -> htpy.Element:
     ]
 
 
-def _bi_stylesheet():
+def _bi_stylesheet() -> htpy.Element:
     return htpy.link(
         href=f"{_cdn}/bootstrap-icons@{v.bi}/font/bootstrap-icons.min.css",
         rel="stylesheet",
     )
 
 
-def _bs_script():
+def _bs_script() -> htpy.Element:
     return htpy.script(src=f"{_cdn}/bootstrap@{v.bs}/dist/js/bootstrap.bundle.min.js")
 
 
-def _bs_stylesheet():
+def _bs_stylesheet() -> htpy.Element:
     return htpy.link(
         href=f"{_cdn}/bootstrap@{v.bs}/dist/css/bootstrap.min.css", rel="stylesheet"
     )
@@ -61,7 +62,7 @@ def _favicon() -> htpy.Element:
     return htpy.link(href=flask.url_for("favicon"), rel="icon")
 
 
-def _hx_script():
+def _hx_script() -> htpy.Element:
     return htpy.script(src=f"{_cdn}/htmx.org@{v.hx}/dist/htmx.js")
 
 
@@ -300,13 +301,14 @@ def albums_rows(albums: list[dict], page: int) -> str:
 def favicon() -> str:
     # https://icons.getbootstrap.com/icons/boombox-fill/
     paths = [
-        "M14 0a.5.5 0 0 1 .5.5V2h.5a1 1 0 0 1 1 1v2H0V3a1 1 0 0 1 1-1h12.5V.5A.5.5 0 0 1 14 0M2 3.5a.5.5 0 1 0 1 0 "
-        ".5.5 0 0 0-1 0m2 0a.5.5 0 1 0 1 0 .5.5 0 0 0-1 0m7.5.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1m1.5-.5a.5.5 0 1 0 1 0 "
-        ".5.5 0 0 0-1 0M9.5 3h-3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1M6 10.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 "
-        "0m-1.5.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1m7 1a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3m.5-1.5a.5.5 0 1 1-1 0 .5.5 0 0 "
-        "1 1 0",
-        "M0 6h16v8a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1zm2 4.5a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0m7 0a2.5 2.5 0 1 0 5 0 2.5 "
-        "2.5 0 0 0-5 0",
+        "M14 0a.5.5 0 0 1 .5.5V2h.5a1 1 0 0 1 1 1v2H0V3a1 1 0 0 1 1-1h12.5V.5A.5.5 0 0 "
+        "1 14 0M2 3.5a.5.5 0 1 0 1 0 .5.5 0 0 0-1 0m2 0a.5.5 0 1 0 1 0 .5.5 0 0 0-1 0m7"
+        ".5.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1m1.5-.5a.5.5 0 1 0 1 0 .5.5 0 0 0-1 0M9.5 3h"
+        "-3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1M6 10.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m"
+        "-1.5.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1m7 1a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3m."
+        "5-1.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0",
+        "M0 6h16v8a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1zm2 4.5a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0"
+        "-5 0m7 0a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0",
     ]
     content = htpy.svg(
         ".bi.bi-boombox-fill",
@@ -505,7 +507,7 @@ def get_ocremix_start(max_ocr_num: int) -> str:
     return str(_base(content))
 
 
-def length_display(length: int):
+def length_display(length: int) -> str:
     """Convert number of seconds to mm:ss format"""
     minutes, seconds = divmod(length, 60)
     return f"{minutes}:{seconds:02d}"
@@ -798,7 +800,7 @@ def sign_in() -> str:
     return str(_base(content))
 
 
-def songs_detail(song: dict) -> str:
+def songs_detail(song: m.rainwave.Song) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
             _back_button(flask.url_for("songs"), "Songs"), _sign_out_button(True)
@@ -809,7 +811,7 @@ def songs_detail(song: dict) -> str:
                 htpy.audio(
                     controls=True,
                     preload="metadata",
-                    src=flask.url_for("stream_song", song_id=song.get("song_id")),
+                    src=flask.url_for("stream_song", song_id=song.id),
                 )
             ]
         ],
@@ -819,80 +821,57 @@ def songs_detail(song: dict) -> str:
                     htpy.tbody[
                         htpy.tr[
                             htpy.th["ID"],
-                            htpy.td(".user-select-all")[htpy.code[song.get("song_id")]],
+                            htpy.td(".user-select-all")[htpy.code[song.id]],
                         ],
                         htpy.tr[
                             htpy.th["Album"],
-                            htpy.td(".user-select-all")[song.get("album_name")],
+                            htpy.td(".user-select-all")[song.album_name],
                         ],
                         htpy.tr[
-                            htpy.th["Title"],
-                            htpy.td(".user-select-all")[song.get("song_title")],
+                            htpy.th["Title"], htpy.td(".user-select-all")[song.title]
                         ],
-                        htpy.tr[
-                            htpy.th["Artist"], htpy.td[song.get("song_artist_tag")]
-                        ],
+                        htpy.tr[htpy.th["Artist"], htpy.td[song.artist_tag]],
                         htpy.tr[
                             htpy.th["Categories"],
                             htpy.td[
                                 (
                                     htpy.span(".badge.me-1.text-bg-secondary")[cat]
-                                    for cat in song.get("song_groups")
+                                    for cat in song.groups
                                 )
                             ],
                         ],
                         htpy.tr[
                             htpy.th["Length"],
-                            htpy.td[length_display(song.get("song_length"))],
+                            htpy.td[length_display(len(song))],
                         ],
                         htpy.tr[
                             htpy.th["Added on"],
-                            htpy.td[
-                                str(
-                                    datetime.datetime.fromtimestamp(
-                                        song.get("song_added_on"), tz=datetime.UTC
-                                    )
-                                )
-                            ],
+                            htpy.td[str(song.added_on)],
                         ],
-                        htpy.tr[
-                            htpy.th["Rating"], htpy.td[str(song.get("song_rating"))]
-                        ],
-                        htpy.tr[
-                            htpy.th["Rating count"],
-                            htpy.td[song.get("song_rating_count")],
-                        ],
-                        htpy.tr[
-                            htpy.th["Fave count"], htpy.td[song.get("song_fave_count")]
-                        ],
-                        htpy.tr[
-                            htpy.th["Request count"],
-                            htpy.td[song.get("song_request_count")],
-                        ],
+                        htpy.tr[htpy.th["Rating"], htpy.td[str(song.rating)]],
+                        htpy.tr[htpy.th["Rating count"], htpy.td[song.rating_count]],
+                        htpy.tr[htpy.th["Fave count"], htpy.td[song.fave_count]],
+                        htpy.tr[htpy.th["Request count"], htpy.td[song.request_count]],
                         htpy.tr[
                             htpy.th["URL"],
                             htpy.td[
-                                song.get("song_url")
+                                song.url
                                 and htpy.a(
                                     ".text-decoration-none",
-                                    href=song.get("song_url"),
+                                    href=song.url,
                                     target="_blank",
-                                )[song.get("song_url")]
+                                )[song.url]
                             ],
                         ],
-                        htpy.tr[
-                            htpy.th["Link text"], htpy.td[song.get("song_link_text")]
-                        ],
+                        htpy.tr[htpy.th["Link text"], htpy.td[song.link_text]],
                         htpy.tr[
                             htpy.th["Filename"],
                             htpy.td(".user-select-all")[
                                 htpy.a(
                                     ".text-decoration-none",
-                                    href=flask.url_for(
-                                        "songs_download", song_id=song.get("song_id")
-                                    ),
-                                    title=f"Download: {song.get('album_name')} / {song.get('song_title')}",
-                                )[htpy.code[song.get("song_filename")]]
+                                    href=song.download_url,
+                                    title=song.download_hint,
+                                )[htpy.code[song.filename]]
                             ],
                         ],
                     ],
@@ -903,11 +882,11 @@ def songs_detail(song: dict) -> str:
             htpy.div(".col")[
                 htpy.a(
                     ".btn.btn-outline-success.me-1",
-                    href=flask.url_for("songs_edit", song_id=song.get("song_id")),
+                    href=flask.url_for("songs_edit", song_id=song.id),
                 )[htpy.i(".bi-pencil"), " Edit tags"],
                 htpy.a(
                     ".btn.btn-outline-danger",
-                    href=flask.url_for("songs_remove", song_id=song.get("song_id")),
+                    href=flask.url_for("songs_remove", song_id=song.id),
                 )[htpy.i(".bi-file-earmark-break"), " Remove file"],
             ]
         ],
@@ -915,11 +894,11 @@ def songs_detail(song: dict) -> str:
     return str(_base(content))
 
 
-def songs_edit(song: dict) -> str:
+def songs_edit(song: m.rainwave.Song) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
             _back_button(
-                flask.url_for("songs_detail", song_id=song.get("song_id")),
+                flask.url_for("songs_detail", song_id=song.id),
                 "Song details",
             ),
             _sign_out_button(True),
@@ -929,14 +908,14 @@ def songs_edit(song: dict) -> str:
             htpy.div(".col")[
                 htpy.form(
                     hx_disabled_elt="button",
-                    hx_post=flask.url_for("songs_edit", song_id=song.get("song_id")),
+                    hx_post=flask.url_for("songs_edit", song_id=song.id),
                     hx_swap="outerHTML",
                 )[
                     htpy.table(".align-middle.d-block.table")[
                         htpy.tbody[
                             htpy.tr[
                                 htpy.th["Filename"],
-                                htpy.td[htpy.code[song.get("song_filename")]],
+                                htpy.td[htpy.code[song.filename]],
                             ],
                             htpy.tr[
                                 htpy.th[htpy.label(for_="album")["Album"]],
@@ -946,7 +925,7 @@ def songs_edit(song: dict) -> str:
                                         name="album",
                                         required=True,
                                         type="text",
-                                        value=song.get("album_name"),
+                                        value=song.album_name,
                                     )
                                 ],
                             ],
@@ -958,7 +937,7 @@ def songs_edit(song: dict) -> str:
                                         name="title",
                                         required=True,
                                         type="text",
-                                        value=song.get("song_title"),
+                                        value=song.title,
                                     )
                                 ],
                             ],
@@ -970,7 +949,7 @@ def songs_edit(song: dict) -> str:
                                         name="artist",
                                         required=True,
                                         type="text",
-                                        value=song.get("song_artist_tag"),
+                                        value=song.artist_tag,
                                     )
                                 ],
                             ],
@@ -981,7 +960,7 @@ def songs_edit(song: dict) -> str:
                                         "#categories.form-control",
                                         name="categories",
                                         type="text",
-                                        value=", ".join(song.get("song_groups")),
+                                        value=", ".join(song.groups),
                                     )
                                 ],
                             ],
@@ -992,7 +971,7 @@ def songs_edit(song: dict) -> str:
                                         "#url.form-control",
                                         name="url",
                                         type="url",
-                                        value=song.get("song_url"),
+                                        value=song.url,
                                     )
                                 ],
                             ],
@@ -1003,7 +982,7 @@ def songs_edit(song: dict) -> str:
                                         "#link-text.form-control",
                                         name="link-text",
                                         type="text",
-                                        value=song.get("song_link_text"),
+                                        value=song.link_text,
                                     )
                                 ],
                             ],
@@ -1033,23 +1012,22 @@ def songs_edit_result(alert_class: str, edit_result: str) -> str:
 
 
 def songs_index() -> str:
+    search_input = htpy.input(
+        ".form-control",
+        aria_label="Search songs",
+        hx_indicator="#filters-indicator",
+        hx_post=flask.url_for("songs_rows"),
+        hx_trigger="search, keyup changed delay:300ms",
+        name="q",
+        placeholder="Search songs...",
+        title="Case-insensitive search for album, title, artist, filename, or URL",
+        type="search",
+    )
     content = [
         _nav_tabs(active="songs"),
         htpy.form(action=flask.url_for("songs_xlsx"), hx_target="tbody", method="post")[
             htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
-                htpy.div(".col-12.col-sm-auto")[
-                    htpy.input(
-                        ".form-control",
-                        aria_label="Search songs",
-                        hx_indicator="#filters-indicator",
-                        hx_post=flask.url_for("songs_rows"),
-                        hx_trigger="search, keyup changed delay:300ms",
-                        name="q",
-                        placeholder="Search songs...",
-                        title="Case-insensitive search for album, title, artist, filename, or URL",
-                        type="search",
-                    )
-                ],
+                htpy.div(".col-12.col-sm-auto")[search_input],
                 htpy.div(".col-auto")[
                     htpy.div(".dropdown")[
                         htpy.button(
@@ -1233,7 +1211,7 @@ def songs_index() -> str:
     return str(_base(content))
 
 
-def songs_play(song: dict) -> str:
+def songs_play(song: m.rainwave.Song) -> str:
     content = htpy.div(
         ".bottom-0.fade.m-1.position-fixed.show.start-50.toast.translate-middle-x"
     )[
@@ -1249,30 +1227,28 @@ def songs_play(song: dict) -> str:
         ],
         htpy.div(".toast-body")[
             htpy.div("#audio-metadata.pb-1")[
-                htpy.strong[htpy.i(".bi-disc"), " ", song.get("album_name")],
+                htpy.strong[htpy.i(".bi-disc"), " ", song.album_name],
                 htpy.br,
-                htpy.strong[
-                    htpy.i(".bi-music-not-beamed"), " ", song.get("song_title")
-                ],
+                htpy.strong[htpy.i(".bi-music-not-beamed"), " ", song.title],
                 htpy.br,
-                htpy.strong[htpy.i(".bi-person"), " ", song.get("song_artist_tag")],
+                htpy.strong[htpy.i(".bi-person"), " ", song.artist_tag],
             ],
             htpy.audio(
                 autoplay=True,
                 controls=True,
                 preload="metadata",
-                src=flask.url_for("stream_song", song_id=song.get("song_id")),
+                src=flask.url_for("stream_song", song_id=song.id),
             ),
         ],
     ]
     return str(content)
 
 
-def songs_remove(song: dict, new_loc: str) -> str:
+def songs_remove(song: m.rainwave.Song, new_loc: str) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
             _back_button(
-                flask.url_for("songs_detail", song_id=song.get("song_id")),
+                flask.url_for("songs_detail", song_id=song.id),
                 "Song details",
             ),
             _sign_out_button(True),
@@ -1296,7 +1272,7 @@ def songs_remove(song: dict, new_loc: str) -> str:
                         htpy.tbody[
                             htpy.tr[
                                 htpy.th["Current location"],
-                                htpy.td[htpy.code[song.get("song_filename")]],
+                                htpy.td[htpy.code[song.filename]],
                             ],
                             htpy.tr[
                                 htpy.th["New location"], htpy.td[htpy.code[new_loc]]
@@ -1324,30 +1300,29 @@ def songs_remove(song: dict, new_loc: str) -> str:
     return str(_base(content))
 
 
-def songs_rows(songs: list[dict], page: int) -> str:
+def songs_rows(songs: list[m.rainwave.Song], page: int) -> str:
     trs = []
     for i, song in enumerate(songs):
         if i < 100:
-            song_id = song.get("song_id")
             trs.append(
                 htpy.tr(".d-table-row.d-md-none")[
                     htpy.td(".p-2")[
                         htpy.a(
                             ".btn.btn-outline-primary.mb-1",
-                            href=flask.url_for("songs_detail", song_id=song_id),
+                            href=flask.url_for("songs_detail", song_id=song.id),
                             title="Song details",
                         )[htpy.i(".bi-info-circle")],
                         htpy.br,
                         htpy.a(
                             ".btn.btn-outline-primary.mb-1",
-                            href=flask.url_for("songs_download", song_id=song_id),
+                            href=song.download_url,
                             title="Download this song",
                         )[htpy.i(".bi-download")],
                         htpy.br,
                         htpy.a(
                             ".btn.btn-outline-primary",
                             href="#",
-                            hx_get=flask.url_for("songs_play", song_id=song_id),
+                            hx_get=flask.url_for("songs_play", song_id=song.id),
                             hx_target="#audio",
                             title="Play this song",
                         )[htpy.i(".bi-play")],
@@ -1355,32 +1330,32 @@ def songs_rows(songs: list[dict], page: int) -> str:
                     htpy.td(".p-2")[
                         htpy.i(".bi-disc"),
                         " ",
-                        song.get("album_name"),
+                        song.album_name,
                         htpy.br,
                         htpy.i(".bi-music-note-beamed"),
                         " ",
-                        song.get("song_title"),
+                        song.title,
                         htpy.br,
                         htpy.i(".bi-person"),
                         "  ",
-                        song.get("song_artist_tag"),
+                        song.artist_tag,
                         htpy.br,
                         htpy.i(".bi-clock-history"),
                         " ",
-                        length_display(song.get("song_length")),
+                        length_display(len(song)),
                         htpy.br,
                         htpy.i(".bi-award"),
-                        f" {song.get('song_rating'):.2f} ({song.get('song_rating_count')})",
+                        f" {song.rating:.2f} ({song.rating_count})",
                         htpy.br,
-                        song.get("song_url")
+                        song.url
                         and [
                             htpy.i(".bi-link-45deg"),
                             " ",
                             htpy.a(
                                 ".text-decoration-none",
-                                href=song.get("song_url"),
+                                href=song.url,
                                 target="_blank",
-                            )[song.get("song_link_text")],
+                            )[song.link_text],
                             htpy.br,
                         ],
                     ],
@@ -1391,38 +1366,38 @@ def songs_rows(songs: list[dict], page: int) -> str:
                     htpy.td(".text-center.text-nowrap")[
                         htpy.a(
                             ".me-1.text-decoration-none",
-                            href=flask.url_for("songs_detail", song_id=song_id),
-                            title=f"Details: {song.get('album_name')} / {song.get('song_title')}",
+                            href=flask.url_for("songs_detail", song_id=song.id),
+                            title=song.details_hint,
                         )[htpy.i(".bi-info-circle")],
                         htpy.a(
                             ".me-1.text-decoration-none",
-                            href=flask.url_for("songs_download", song_id=song_id),
-                            title=f"Download: {song.get('album_name')} / {song.get('song_title')}",
+                            href=song.download_url,
+                            title=song.download_hint,
                         )[htpy.i(".bi-download")],
                         htpy.a(
                             ".text-decoration-none",
                             href="#",
-                            hx_get=flask.url_for("songs_play", song_id=song_id),
+                            hx_get=flask.url_for("songs_play", song_id=song.id),
                             hx_target="#audio",
-                            title=f"Stream: {song.get('album_name')} / {song.get('song_title')}",
+                            title=song.stream_hint,
                         )[htpy.i(".bi-play")],
                     ],
-                    htpy.td(".text-end")[htpy.code[song_id]],
-                    htpy.td(".user-select-all")[song.get("album_name")],
-                    htpy.td(".user-select-all")[song.get("song_title")],
-                    htpy.td[song.get("song_artist_tag")],
+                    htpy.td(".text-end")[htpy.code[song.id]],
+                    htpy.td(".user-select-all")[song.album_name],
+                    htpy.td(".user-select-all")[song.title],
+                    htpy.td[song.artist_tag],
                     htpy.td(
                         class_=[
                             "text-end",
                             "text-nowrap",
-                            {"text-secondary": song.get("song_rating") == 0},
+                            {"text-secondary": song.rating == 0},
                         ],
-                        title=str(song.get("song_rating")),
+                        title=str(song.rating),
                     )[
                         htpy.form(
                             ".d-inline",
                             hx_confirm="Remove this song for low ratings?",
-                            hx_post=flask.url_for("songs_remove", song_id=song_id),
+                            hx_post=flask.url_for("songs_remove", song_id=song.id),
                             hx_swap="delete",
                             hx_target="closest tr",
                         )[
@@ -1432,31 +1407,28 @@ def songs_rows(songs: list[dict], page: int) -> str:
                             htpy.button(
                                 ".btn.btn-link.pe-0.text-danger.text-decoration-none",
                                 type="submit",
-                            )[
-                                htpy.i(".bi-exclamation-circle"),
-                                f" {song.get('song_rating'):.2f}",
-                            ],
+                            )[htpy.i(".bi-exclamation-circle"), f" {song.rating:.2f}"],
                         ]
-                        if 0 < song.get("song_rating") < 3
-                        else f"{song.get('song_rating'):.2f}"
+                        if 0 < song.rating < 3
+                        else f"{song.rating:.2f}"
                     ],
                     htpy.td(
                         class_=[
                             "text-end",
-                            {"text-secondary": song.get("song_rating_count") == 0},
+                            {"text-secondary": song.rating_count == 0},
                         ]
-                    )[song.get("song_rating_count")],
-                    htpy.td(".text-end")[length_display(song.get("song_length"))],
+                    )[song.rating_count],
+                    htpy.td(".text-end")[length_display(len(song))],
                     htpy.td[
-                        song.get("song_url")
+                        song.url
                         and htpy.a(
                             ".text-decoration-none",
-                            href=song.get("song_url"),
+                            href=song.url,
                             target="_blank",
-                            title=song.get("song_link_text"),
-                        )[song.get("song_url")]
+                            title=song.link_text,
+                        )[song.url]
                     ],
-                    htpy.td(".user-select-all")[htpy.code[song.get("song_filename")]],
+                    htpy.td(".user-select-all")[htpy.code[song.filename]],
                 ]
             )
         else:

@@ -1,22 +1,25 @@
 import datetime
-import flask
 import functools
-import httpx
 import io
 import json
-import mutagen.id3
 import os
 import pathlib
-import rainwave_library.components
-import rainwave_library.models
 import secrets
 import string
 import textwrap
 import time
+import typing
 import urllib.parse
+
+import flask
+import httpx
+import mutagen.id3
 import waitress
 import werkzeug.middleware.proxy_fix
 import xlsxwriter
+
+import rainwave_library.components
+import rainwave_library.models
 
 app = flask.Flask(__name__)
 app.wsgi_app = werkzeug.middleware.proxy_fix.ProxyFix(
@@ -27,7 +30,7 @@ app.secret_key = os.getenv("SECRET_KEY")
 app.config["PREFERRED_URL_SCHEME"] = os.getenv("SCHEME", "https")
 
 
-def external_url_for(endpoint, *args, **kwargs):
+def external_url_for(endpoint: str, *args, **kwargs) -> str:  # noqa: ANN002, ANN003
     return flask.url_for(
         endpoint,
         _scheme=app.config["PREFERRED_URL_SCHEME"],
@@ -37,9 +40,9 @@ def external_url_for(endpoint, *args, **kwargs):
     )
 
 
-def secure(f):
+def secure(f: typing.Callable) -> typing.Callable:
     @functools.wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(*args, **kwargs) -> flask.Response:  # noqa: ANN002, ANN003
         if "role" not in flask.session or flask.session.get("role") == "member":
             return flask.redirect(flask.url_for("index"))
         return f(*args, **kwargs)
@@ -48,7 +51,7 @@ def secure(f):
 
 
 @app.before_request
-def before_request():
+def before_request() -> None:
     app.logger.debug(f"{flask.request.method} {flask.request.path}")
     for k, v in flask.request.values.lists():
         app.logger.debug(f"{k}: {v}")
@@ -59,7 +62,7 @@ def before_request():
 
 
 @app.route("/", methods=["GET"])
-def index():
+def index() -> flask.Response | str:
     if "role" not in flask.session:
         return rainwave_library.components.sign_in()
     if flask.session.get("role") == "member":
@@ -69,13 +72,13 @@ def index():
 
 @app.route("/albums", methods=["GET"])
 @secure
-def albums():
+def albums() -> str:
     return rainwave_library.components.albums_index()
 
 
 @app.route("/albums/rows", methods=["POST"])
 @secure
-def albums_rows():
+def albums_rows() -> str:
     q = flask.request.values.get("q")
     page = int(flask.request.values.get("page", 1))
     sort_col = flask.request.values.get("sort-col", "album_id")
@@ -87,7 +90,7 @@ def albums_rows():
 
 
 @app.route("/api/elections")
-def api_elections():
+def api_elections() -> flask.Response:
     sid = int(flask.request.values.get("sid", 1))
     day = datetime.date.fromisoformat(flask.request.values.get("day", "2024-01-01"))
     return flask.jsonify(
@@ -110,20 +113,16 @@ def api_elections():
 
 @app.route("/assume-member", methods=["GET"])
 @secure
-def assume_member():
-    flask.session.update(
-        {
-            "role": "member",
-        }
-    )
+def assume_member() -> flask.Response:
+    flask.session.update({"role": "member"})
     return flask.redirect(flask.url_for("index"))
 
 
 @app.route("/authorize", methods=["GET"])
-def authorize():
+def authorize() -> flask.Response:
     if flask.session.get("state") != flask.request.values.get("state"):
-        return "State mismatch", 401
-    token_endpoint = "https://discord.com/api/v10/oauth2/token"
+        return flask.Response("State mismatch", 401)
+    token_endpoint = "https://discord.com/api/v10/oauth2/token"  # noqa: S105
     data = {
         "client_id": os.getenv("OPENID_CLIENT_ID"),
         "client_secret": os.getenv("OPENID_CLIENT_SECRET"),
@@ -168,14 +167,14 @@ def authorize():
 
 @app.route("/bluesky", methods=["POST"])
 @secure
-def bluesky():
+def bluesky() -> flask.Response:
     b = rainwave_library.models.bsky.get_client_from_env()
     b.post(flask.request.values.get("body"))
     return flask.redirect(flask.url_for("index"))
 
 
 @app.route("/favicon.svg")
-def favicon():
+def favicon() -> flask.Response:
     return flask.Response(
         rainwave_library.components.favicon(), mimetype="image/svg+xml"
     )
@@ -183,14 +182,14 @@ def favicon():
 
 @app.route("/get-ocremix", methods=["GET"])
 @secure
-def get_ocremix():
+def get_ocremix() -> str:
     max_ocr_num = rainwave_library.models.rainwave.get_max_ocr_num(flask.g.db)
     return rainwave_library.components.get_ocremix_start(max_ocr_num)
 
 
 @app.route("/get-ocremix/download", methods=["POST"])
 @secure
-def get_ocremix_download():
+def get_ocremix_download() -> str:
     r = httpx.get(flask.request.values.get("download-from"))
     mp3_data = io.BytesIO(r.content)
     tags = mutagen.id3.ID3(mp3_data)
@@ -238,14 +237,14 @@ def get_ocremix_download():
 
 @app.route("/get-ocremix/fetch", methods=["POST"])
 @secure
-def get_ocremix_fetch():
+def get_ocremix_fetch() -> flask.Response | str:
     ocr_id = int(flask.request.values.get("ocr-id"))
     url = f"https://williamjacksn.github.io/ocremix-data/remix/OCR{ocr_id:05}.json"
     try:
         ocr_info = httpx.get(url).json()
         app.logger.debug(ocr_info)
     except json.decoder.JSONDecodeError:
-        return "", 204
+        return flask.make_response("", 204)
     album_name = ocr_info.get("primary_game")
     default_category = rainwave_library.models.rainwave.get_category_for_album(
         flask.g.db, album_name
@@ -261,7 +260,7 @@ def get_ocremix_fetch():
 
 @app.route("/get-ocremix/target-file", methods=["POST"])
 @secure
-def get_ocremix_target_file():
+def get_ocremix_target_file() -> str:
     album = rainwave_library.models.mp3.make_safe(flask.request.values.get("album"))
     album_bad_chars = set(album) - (set(string.ascii_letters) | set(string.digits))
     if album_bad_chars:
@@ -281,21 +280,21 @@ def get_ocremix_target_file():
 
 @app.route("/listeners", methods=["GET"])
 @secure
-def listeners():
+def listeners() -> str:
     ranks = rainwave_library.models.rainwave.get_ranks(flask.g.db)
     return rainwave_library.components.listeners_index(ranks)
 
 
 @app.route("/listeners/<int:listener_id>", methods=["GET"])
 @secure
-def listeners_detail(listener_id: int):
+def listeners_detail(listener_id: int) -> str:
     listener = rainwave_library.models.rainwave.get_listener(flask.g.db, listener_id)
     return rainwave_library.components.listeners_detail(listener)
 
 
 @app.route("/listeners/<int:listener_id>/edit", methods=["GET", "POST"])
 @secure
-def listeners_edit(listener_id: int):
+def listeners_edit(listener_id: int) -> flask.Response | str:
     listener = rainwave_library.models.rainwave.get_listener(flask.g.db, listener_id)
     if flask.request.method == "GET":
         return rainwave_library.components.listeners_edit(listener)
@@ -311,7 +310,7 @@ def listeners_edit(listener_id: int):
 
 @app.route("/listeners/rows", methods=["POST"])
 @secure
-def listeners_rows():
+def listeners_rows() -> str:
     q = flask.request.values.get("q")
     page = int(flask.request.values.get("page", 1))
     ranks = list(map(int, flask.request.values.getlist("ranks")))
@@ -323,12 +322,12 @@ def listeners_rows():
 
 @app.route("/nothing", methods=["GET"])
 @secure
-def nothing():
+def nothing() -> str:
     return ""
 
 
 @app.route("/sign-in", methods=["GET"])
-def sign_in():
+def sign_in() -> flask.Response:
     state = secrets.token_urlsafe()
     flask.session.update({"state": state})
     redirect_uri = external_url_for("authorize")
@@ -346,7 +345,7 @@ def sign_in():
 
 
 @app.route("/sign-out", methods=["GET"])
-def sign_out():
+def sign_out() -> flask.Response:
     flask.session.pop("discord_id")
     flask.session.pop("discord_username")
     flask.session.pop("role")
@@ -355,27 +354,27 @@ def sign_out():
 
 @app.route("/songs", methods=["GET"])
 @secure
-def songs():
+def songs() -> str:
     return rainwave_library.components.songs_index()
 
 
 @app.route("/songs/<int:song_id>", methods=["GET"])
 @secure
-def songs_detail(song_id: int):
+def songs_detail(song_id: int) -> str:
     song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
     return rainwave_library.components.songs_detail(song)
 
 
 @app.route("/songs/<int:song_id>/download", methods=["GET"])
 @secure
-def songs_download(song_id: int):
+def songs_download(song_id: int) -> flask.Response:
     song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
-    return flask.send_file(song.get("song_filename"), as_attachment=True)
+    return flask.send_file(song.filename, as_attachment=True)
 
 
 @app.route("/songs/<int:song_id>/edit", methods=["GET", "POST"])
 @secure
-def songs_edit(song_id: int):
+def songs_edit(song_id: int) -> str:
     song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
     if flask.request.method == "GET":
         return rainwave_library.components.songs_edit(song)
@@ -388,7 +387,7 @@ def songs_edit(song_id: int):
         "title": flask.request.values.get("title"),
         "url": flask.request.values.get("url"),
     }
-    result = rainwave_library.models.mp3.set_tags(song.get("song_filename"), **kwargs)
+    result = rainwave_library.models.mp3.set_tags(song.filename, **kwargs)
     if result:
         edit_result = result
         alert_class = "alert-danger"
@@ -402,16 +401,16 @@ def songs_edit(song_id: int):
 
 @app.route("/songs/<int:song_id>/play", methods=["GET"])
 @secure
-def songs_play(song_id: int):
+def songs_play(song_id: int) -> str:
     song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
     return rainwave_library.components.songs_play(song)
 
 
 @app.route("/songs/<int:song_id>/remove", methods=["GET", "POST"])
 @secure
-def songs_remove(song_id: int):
+def songs_remove(song_id: int) -> flask.Response | str:
     song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
-    song_filename = pathlib.Path(song.get("song_filename"))
+    song_filename = pathlib.Path(song.filename)
     new_loc = rainwave_library.models.rainwave.calculate_removed_location(song_filename)
 
     if flask.request.method == "GET":
@@ -438,14 +437,14 @@ def songs_remove(song_id: int):
 
 @app.route("/songs/<int:song_id>/stream", methods=["GET"])
 @secure
-def stream_song(song_id: int):
+def stream_song(song_id: int) -> flask.Response:
     song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
-    return flask.send_file(song.get("song_filename"))
+    return flask.send_file(song.filename)
 
 
 @app.route("/songs/rows", methods=["POST"])
 @secure
-def songs_rows():
+def songs_rows() -> str:
     q = flask.request.values.get("q")
     page = int(flask.request.values.get("page", 1))
     sort_col = flask.request.values.get("sort-col", "song_id")
@@ -464,7 +463,7 @@ def songs_rows():
 
 @app.route("/songs.xlsx", methods=["POST"])
 @secure
-def songs_xlsx():
+def songs_xlsx() -> flask.Response:
     query = flask.request.values.get("q")
     page = 0
     sort_col = flask.request.values.get("sort-col")
@@ -507,28 +506,28 @@ def songs_xlsx():
         for j, col_name in enumerate(headers):
             if col_name == "channels":
                 col_data = ", ".join(
-                    [rainwave_library.components.channels[c] for c in row.get(col_name)]
+                    [rainwave_library.components.channels[c] for c in row.channel_ids]
                 )
                 col_widths[j] = max(col_widths[j], len(col_data))
                 worksheet.write(i, j, col_data)
             elif col_name == "song_groups":
-                col_data = ", ".join(row.get(col_name))
+                col_data = ", ".join(row.groups)
                 col_widths[j] = max(col_widths[j], len(col_data))
                 worksheet.write(i, j, col_data)
             elif col_name == "song_id":
-                col_data = str(row.get(col_name))
+                col_data = str(row.id)
                 col_widths[j] = max(10, col_widths[j], len(col_data))
                 worksheet.write(i, j, col_data)
             elif col_name == "song_length":
-                col_data = rainwave_library.components.length_display(row.get(col_name))
+                col_data = rainwave_library.components.length_display(len(row))
                 col_widths[j] = max(14, col_widths[j], len(col_data))
                 worksheet.write(i, j, col_data)
             elif col_name == "song_rating":
-                col_data = row.get(col_name)
+                col_data = row.rating
                 col_widths[j] = max(13, col_widths[j], len(str(col_data)))
                 worksheet.write(i, j, col_data, rating_format)
             else:
-                col_data = row.get(col_name)
+                col_data = row.data.get(col_name)
                 col_widths[j] = max(col_widths[j], len(str(col_data)))
                 worksheet.write(i, j, col_data)
     for i, width in enumerate(col_widths):
@@ -537,14 +536,11 @@ def songs_xlsx():
     worksheet.add_table(0, 0, len(data), len(headers) - 1, table_options)
     workbook.close()
     response = flask.make_response(output.getvalue())
-    response.headers.update(
-        {
-            "Content-Disposition": 'attachment; filename="rainwave-songs.xlsx"',
-            "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        }
-    )
+    cd = 'attachment; filename="rainwave-songs.xlsx"'
+    ct = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    response.headers.update({"Content-Disposition": cd, "Content-Type": ct})
     return response
 
 
-def main(port: int):
+def main(port: int) -> None:
     waitress.serve(app, port=port, ident=None)

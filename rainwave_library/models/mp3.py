@@ -1,6 +1,8 @@
 import logging
-import mutagen.id3
 import pathlib
+import typing
+
+import mutagen.id3
 
 log = logging.getLogger(__name__)
 
@@ -31,18 +33,18 @@ log = logging.getLogger(__name__)
 #  'ō': 333,
 #  'ş': 351,
 #  'ū': 363,
-#  'К': 1050,
-#  'С': 1057,
-#  'а': 1072,
+#  'К': 1050,  # noqa: RUF003
+#  'С': 1057,  # noqa: RUF003
+#  'а': 1072,  # noqa: RUF003
 #  'в': 1074,
-#  'е': 1077,
+#  'е': 1077,  # noqa: RUF003
 #  'и': 1080,
 #  'й': 1081,
 #  'к': 1082,
 #  'м': 1084,
 #  'н': 1085,
-#  'о': 1086,
-#  'с': 1089,
+#  'о': 1086,  # noqa: RUF003
+#  'с': 1089,  # noqa: RUF003
 #  'т': 1090,
 #  'ṃ': 7747,
 # }
@@ -52,7 +54,7 @@ def make_safe(s: str) -> str:
     """Converts a string to a safe string, with no spaces or special characters"""
     translate_table = {
         ord(char): None
-        for char in " !\"#%&'()*+,-./:;<=>?@[\\]^_`{|}~–—あいごま고말싶은하•"
+        for char in " !\"#%&'()*+,-./:;<=>?@[\\]^_`{|}~–—あいごま고말싶은하•"  # noqa: RUF001
     }
     special = dict(
         zip(
@@ -64,8 +66,9 @@ def make_safe(s: str) -> str:
     return s.translate(translate_table)
 
 
-def set_tags(filename: str, **kwargs) -> str:
-    """Takes a filename and the following possible kwargs: album, artist, categories, link_text, title, url"""
+def set_tags(filename: str, **kwargs: str) -> str:
+    """Takes a filename and the following possible kwargs:
+    album, artist, categories, link_text, title, url"""
     log.info(f"Attempting to update tags for {filename}")
     result = ""
     try:
@@ -107,7 +110,7 @@ def set_tags(filename: str, **kwargs) -> str:
         return result
 
 
-def yield_all(starting_dir: pathlib.Path):
+def yield_all(starting_dir: pathlib.Path) -> typing.Iterator[pathlib.Path]:
     for child in starting_dir.iterdir():
         if child.is_dir():
             yield from yield_all(child)

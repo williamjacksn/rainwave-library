@@ -1,5 +1,5 @@
-import pathlib
 import json
+import pathlib
 
 ACTIONS_CHECKOUT = {"name": "Check out repository", "uses": "actions/checkout@v5"}
 DEFAULT_BRANCH = "main"
@@ -113,7 +113,7 @@ def gen_workflow_ruff() -> None:
     gen(content, target)
 
 
-def main():
+def main() -> None:
     gen_dependabot()
     gen_package_json()
     gen_workflow_deploy()

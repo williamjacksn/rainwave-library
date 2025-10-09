@@ -2,10 +2,11 @@
 
 import dataclasses
 import datetime
-import httpx
 import logging
-import notch
 import os
+
+import httpx
+import notch
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ class BlueskyClient:
         response = httpx.post(url, headers=headers, json=record)
         return response.json()
 
-    def create_session(self):
+    def create_session(self) -> dict:
         url = f"{self.pds_host}/xrpc/com.atproto.server.createSession"
         j = {
             "identifier": self.handle,
@@ -58,7 +59,7 @@ def get_client_from_env() -> BlueskyClient:
     return BlueskyClient(os.getenv("BSKY_HANDLE"), os.getenv("BSKY_PASSWORD"))
 
 
-def main():
+def main() -> None:
     notch.make_log("bsky")
     b = get_client_from_env()
     print(b.post("Test post"))

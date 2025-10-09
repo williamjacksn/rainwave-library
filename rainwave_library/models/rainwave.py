@@ -1,11 +1,94 @@
 import datetime
-import fort
 import os
 import pathlib
 
+import flask
+import fort
 
 cnx_str = os.getenv("RW_CNX")
 cnx = fort.PostgresDatabase(cnx_str, maxconn=5)
+
+
+class Song:
+    def __init__(self, song_data: dict) -> None:
+        self.data = song_data
+
+    def __len__(self) -> int:
+        return self.data.get("song_length")
+
+    @property
+    def added_on(self) -> datetime.datetime:
+        return datetime.datetime.fromtimestamp(
+            self.data.get("song_added_on"), tz=datetime.UTC
+        )
+
+    @property
+    def album_name(self) -> str:
+        return self.data.get("album_name")
+
+    @property
+    def artist_tag(self) -> str:
+        return self.data.get("song_artist_tag")
+
+    @property
+    def channel_ids(self) -> list[int]:
+        return self.data.get("channels")
+
+    @property
+    def details_hint(self) -> str:
+        return f"Details: {self.album_name} / {self.title}"
+
+    @property
+    def download_hint(self) -> str:
+        return f"Download: {self.album_name} / {self.title}"
+
+    @property
+    def download_url(self) -> str:
+        return flask.url_for("songs_download", song_id=self.id)
+
+    @property
+    def fave_count(self) -> int:
+        return self.data.get("song_fave_count")
+
+    @property
+    def filename(self) -> str:
+        return self.data.get("song_filename")
+
+    @property
+    def groups(self) -> list[str]:
+        return self.data.get("song_groups")
+
+    @property
+    def id(self) -> int:
+        return self.data.get("song_id")
+
+    @property
+    def link_text(self) -> str:
+        return self.data.get("song_link_text")
+
+    @property
+    def rating(self) -> float:
+        return self.data.get("song_rating")
+
+    @property
+    def rating_count(self) -> int:
+        return self.data.get("song_rating_count")
+
+    @property
+    def request_count(self) -> int:
+        return self.data.get("song_request_count")
+
+    @property
+    def stream_hint(self) -> str:
+        return f"Stream: {self.album_name} / {self.title}"
+
+    @property
+    def title(self) -> str:
+        return self.data.get("song_title")
+
+    @property
+    def url(self) -> str:
+        return self.data.get("song_url")
 
 
 def calculate_removed_location(filename: os.PathLike) -> pathlib.Path:
@@ -56,7 +139,7 @@ def get_albums(
         where {where_clause}
         order by {sort_clause}
         {limit_clause}
-    """
+    """  # noqa: S608
     params = {
         "offset": 100 * (page - 1),
         "query": query,
@@ -92,7 +175,9 @@ def get_elections(
         sid = 1
 
     where_clause = f"""
-        {where_clause} and sid = %(sid)s and to_timestamp(elec_start_actual)::date = %(day)s
+        {where_clause}
+        and sid = %(sid)s
+        and to_timestamp(elec_start_actual)::date = %(day)s
     """
 
     sql = f"""
@@ -117,7 +202,7 @@ def get_elections(
         where {where_clause}
         group by e.elec_id, elec_start_actual
         order by elec_start_actual, e.elec_id
-    """
+    """  # noqa: S608
     params = {
         "sid": sid,
         "day": day,
@@ -132,7 +217,9 @@ def get_listener(db: fort.PostgresDatabase, listener_id: int) -> dict:
             u.user_id,
             coalesce(u.radio_username, u.username) as user_name,
             u.discord_user_id,
-            case when radio_last_active > 0 then to_timestamp(radio_last_active) end as radio_last_active,
+            case
+                when radio_last_active > 0 then to_timestamp(radio_last_active)
+            end as radio_last_active,
             r.rank_title
         from phpbb_users u
         left join phpbb_ranks r on r.rank_id = u.user_rank
@@ -143,7 +230,10 @@ def get_listener(db: fort.PostgresDatabase, listener_id: int) -> dict:
 
 
 def get_listeners(
-    db: fort.PostgresDatabase, query: str = None, page: int = 1, ranks: list[int] = None
+    db: fort.PostgresDatabase,
+    query: str | None = None,
+    page: int = 1,
+    ranks: list[int] | None = None,
 ) -> list[dict]:
     where_clause = "u.user_type <> 2 and u.user_id > 1"
     if query:
@@ -178,8 +268,13 @@ def get_listeners(
                 when 18 then 'Managers'
                 else concat('Unknown (', group_id::text, ')')
             end as group_name,
-            case when u.discord_user_id is null then false else true end as is_discord_user,
-            case when u.radio_last_active > 0 then to_timestamp(u.radio_last_active) end as radio_last_active,
+            case
+                when u.discord_user_id is null then false
+                else true
+            end as is_discord_user,
+            case
+                when u.radio_last_active > 0 then to_timestamp(u.radio_last_active)
+            end as radio_last_active,
             r.rank_title,
             coalesce(c.rating_count, 0) as rating_count,
             u.user_avatar,
@@ -192,7 +287,7 @@ def get_listeners(
         where {where_clause}
         order by u.user_id
         limit 101 offset %(offset)s
-    """
+    """  # noqa: S608
     params = {
         "offset": 100 * (page - 1),
         "query": query,
@@ -222,7 +317,7 @@ def get_ranks(db: fort.PostgresDatabase) -> list[dict]:
     return db.q(sql)
 
 
-def get_song(db: fort.PostgresDatabase, song_id: int) -> dict:
+def get_song(db: fort.PostgresDatabase, song_id: int) -> Song:
     sql = """
         with g as (
             select s.song_id, array_agg(g.group_name order by g.group_name) song_groups
@@ -231,9 +326,10 @@ def get_song(db: fort.PostgresDatabase, song_id: int) -> dict:
             group by s.song_id
         )
         select
-            s.song_added_on, a.album_name, s.song_artist_tag, s.song_fave_count, s.song_filename,
-            coalesce(g.song_groups, array[]::text[]) as song_groups, s.song_id, s.song_length, s.song_link_text,
-            s.song_rating, s.song_rating_count, s.song_request_count, s.song_title, s.song_url
+            s.song_added_on, a.album_name, s.song_artist_tag, s.song_fave_count,
+            s.song_filename, coalesce(g.song_groups, array[]::text[]) as song_groups,
+            s.song_id, s.song_length, s.song_link_text, s.song_rating,
+            s.song_rating_count, s.song_request_count, s.song_title, s.song_url
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id
         left join g on g.song_id = s.song_id
@@ -242,7 +338,7 @@ def get_song(db: fort.PostgresDatabase, song_id: int) -> dict:
     params = {
         "song_id": song_id,
     }
-    return db.q_one(sql, params)
+    return Song(db.q_one(sql, params))
 
 
 def get_song_filenames(db: fort.PostgresDatabase) -> dict:
@@ -256,13 +352,13 @@ def get_song_filenames(db: fort.PostgresDatabase) -> dict:
 
 def get_songs(
     db: fort.PostgresDatabase,
-    query: str = None,
+    query: str | None = None,
     page: int = 1,
     sort_col: str = "song_id",
     sort_dir: str = "asc",
-    channels: list[int] = None,
+    channels: list[int] | None = None,
     include_unrated: bool = True,
-) -> list[dict]:
+) -> list[Song]:
     where_clause = "s.song_verified is true"
 
     if query:
@@ -270,7 +366,14 @@ def get_songs(
             {where_clause}
             and position(
                 lower(%(query)s) in
-                lower(concat_ws(' ', a.album_name, s.song_title, s.song_artist_tag, s.song_filename, s.song_url))
+                lower(concat_ws(
+                    ' ',
+                    a.album_name,
+                    s.song_title,
+                    s.song_artist_tag,
+                    s.song_filename,
+                    s.song_url
+                ))
             ) > 0
         """
 
@@ -324,9 +427,11 @@ def get_songs(
             group by s.song_id
         )
         select
-            a.album_name, c.channels, to_timestamp(s.song_added_on) as song_added_on, s.song_artist_tag,
-            s.song_filename, coalesce(g.song_groups, array[]::text[]) as song_groups, s.song_id, s.song_length,
-            s.song_link_text, s.song_rating, s.song_rating_count, s.song_title, s.song_url
+            a.album_name, c.channels, to_timestamp(s.song_added_on) as song_added_on,
+            s.song_artist_tag, s.song_filename,
+            coalesce(g.song_groups, array[]::text[]) as song_groups, s.song_id,
+            s.song_length, s.song_link_text, s.song_rating, s.song_rating_count,
+            s.song_title, s.song_url
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id
         join c on c.song_id = s.song_id
@@ -334,13 +439,13 @@ def get_songs(
         where {where_clause}
         order by {sort_clause}
         {limit_clause}
-    """
+    """  # noqa: S608
     params = {
         "channels": channels,
         "offset": 100 * (page - 1),
         "query": query,
     }
-    return db.q(sql, params)
+    return [Song(r) for r in db.q(sql, params)]
 
 
 def set_discord_user_id(

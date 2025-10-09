@@ -1,1 +1,3 @@
-from . import bsky as bsky, mp3 as mp3, rainwave as rainwave
+from . import bsky as bsky
+from . import mp3 as mp3
+from . import rainwave as rainwave
