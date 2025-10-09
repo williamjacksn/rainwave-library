@@ -10,6 +10,12 @@ cnx_str = os.getenv("RW_CNX")
 cnx = fort.PostgresDatabase(cnx_str, maxconn=5)
 
 
+def length_display(length: int) -> str:
+    """Convert number of seconds to mm:ss format"""
+    minutes, seconds = divmod(length, 60)
+    return f"{minutes}:{seconds:02d}"
+
+
 class Album:
     colspan: int = 4
     thead: htpy.Element = htpy.thead[
@@ -20,6 +26,15 @@ class Album:
 
     def __init__(self, album_data: dict) -> None:
         self.data = album_data
+
+    @property
+    def detail_table(self) -> htpy.Element:
+        return htpy.table(".align-middle.d-block.table")[
+            htpy.tbody[
+                htpy.tr[htpy.th["ID"], htpy.td(".user-select-all")[htpy.code[self.id]]],
+                htpy.tr[htpy.th["Album name"], htpy.td(".user-select-all")[self.name]],
+            ]
+        ]
 
     @property
     def id(self) -> int:
@@ -36,7 +51,13 @@ class Album:
     @property
     def tr(self) -> htpy.Element:
         return htpy.tr[
-            htpy.td,
+            htpy.td(".text-center.text-nowrap")[
+                htpy.a(
+                    ".text-decoration-none",
+                    href=flask.url_for("albums_detail", album_id=self.id),
+                    title="Album detail page",
+                )[htpy.i(".bi-info-circle.me-1")]
+            ],
             htpy.td(".text-end")[htpy.code[self.id]],
             htpy.td[self.name],
             htpy.td(".text-end")[self.song_count],
@@ -174,6 +195,26 @@ class Listener:
 
 class Song:
     colspan: int = 10
+    thead: htpy.Element = htpy.thead[
+        htpy.tr(".d-table-row.d-md-none.text-center")[htpy.th, htpy.th["Info"]],
+        htpy.tr(".d-none.d-md-table-row.text-center")[
+            [
+                htpy.th[label]
+                for label in (
+                    "",
+                    "ID",
+                    "Album",
+                    "Title",
+                    "Artist",
+                    "Rating",
+                    "Ratings",
+                    "Length",
+                    "URL",
+                    "Filename",
+                )
+            ]
+        ],
+    ]
 
     def __init__(self, song_data: dict) -> None:
         self.data = song_data
@@ -252,6 +293,132 @@ class Song:
         return self.data.get("song_title")
 
     @property
+    def tr(self) -> htpy.Fragment:
+        return htpy.fragment[
+            htpy.tr(".d-table-row.d-md-none")[
+                htpy.td(".p-2")[
+                    htpy.a(
+                        ".btn.btn-outline-primary.mb-1",
+                        href=flask.url_for("songs_detail", song_id=self.id),
+                        title="Song details",
+                    )[htpy.i(".bi-info-circle")],
+                    htpy.br,
+                    htpy.a(
+                        ".btn.btn-outline-primary.mb-1",
+                        href=self.download_url,
+                        title="Download this song",
+                    )[htpy.i(".bi-download")],
+                    htpy.br,
+                    htpy.a(
+                        ".btn.btn-outline-primary",
+                        href="#",
+                        hx_get=flask.url_for("songs_play", song_id=self.id),
+                        hx_target="#audio",
+                        title="Play this song",
+                    )[htpy.i(".bi-play")],
+                ],
+                htpy.td(".p-2")[
+                    htpy.i(".bi-disc"),
+                    " ",
+                    self.album_name,
+                    htpy.br,
+                    htpy.i(".bi-music-note-beamed"),
+                    " ",
+                    self.title,
+                    htpy.br,
+                    htpy.i(".bi-person"),
+                    "  ",
+                    self.artist_tag,
+                    htpy.br,
+                    htpy.i(".bi-clock-history"),
+                    " ",
+                    length_display(len(self)),
+                    htpy.br,
+                    htpy.i(".bi-award"),
+                    f" {self.rating:.2f} ({self.rating_count})",
+                    htpy.br,
+                    self.url
+                    and [
+                        htpy.i(".bi-link-45deg"),
+                        " ",
+                        htpy.a(
+                            ".text-decoration-none",
+                            href=self.url,
+                            target="_blank",
+                        )[self.link_text],
+                        htpy.br,
+                    ],
+                ],
+            ],
+            htpy.tr(".d-none.d-md-table-row")[
+                htpy.td(".text-center.text-nowrap")[
+                    htpy.a(
+                        ".me-1.text-decoration-none",
+                        href=flask.url_for("songs_detail", song_id=self.id),
+                        title=self.details_hint,
+                    )[htpy.i(".bi-info-circle")],
+                    htpy.a(
+                        ".me-1.text-decoration-none",
+                        href=self.download_url,
+                        title=self.download_hint,
+                    )[htpy.i(".bi-download")],
+                    htpy.a(
+                        ".text-decoration-none",
+                        href="#",
+                        hx_get=flask.url_for("songs_play", song_id=self.id),
+                        hx_target="#audio",
+                        title=self.stream_hint,
+                    )[htpy.i(".bi-play")],
+                ],
+                htpy.td(".text-end")[htpy.code[self.id]],
+                htpy.td(".user-select-all")[self.album_name],
+                htpy.td(".user-select-all")[self.title],
+                htpy.td[self.artist_tag],
+                htpy.td(
+                    class_=[
+                        "text-end",
+                        "text-nowrap",
+                        {"text-secondary": self.rating == 0},
+                    ],
+                    title=str(self.rating),
+                )[
+                    htpy.form(
+                        ".d-inline",
+                        hx_confirm="Remove this song for low ratings?",
+                        hx_post=flask.url_for("songs_remove", song_id=self.id),
+                        hx_swap="delete",
+                        hx_target="closest tr",
+                    )[
+                        htpy.input(name="reason", type="hidden", value="Low ratings"),
+                        htpy.button(
+                            ".btn.btn-link.pe-0.text-danger.text-decoration-none",
+                            type="submit",
+                        )[htpy.i(".bi-exclamation-circle"), f" {self.rating:.2f}"],
+                    ]
+                    if 0 < self.rating < 3
+                    else f"{self.rating:.2f}"
+                ],
+                htpy.td(
+                    class_=[
+                        "text-end",
+                        {"text-secondary": self.rating_count == 0},
+                    ]
+                )[self.rating_count],
+                htpy.td(".text-end")[length_display(len(self))],
+                htpy.td[
+                    self.url
+                    and htpy.a(
+                        ".text-decoration-none",
+                        href=self.url,
+                        target="_blank",
+                        title=self.link_text,
+                    )[self.url]
+                ],
+                htpy.td(".user-select-all")[htpy.code[self.filename]],
+            ],
+        ]
+
+    @property
     def url(self) -> str:
         return self.data.get("song_url")
 
@@ -260,6 +427,31 @@ def calculate_removed_location(filename: os.PathLike) -> pathlib.Path:
     library_root = pathlib.Path(os.getenv("LIBRARY_ROOT"))
     relative = pathlib.Path(filename).relative_to(library_root)
     return library_root / "removed" / relative
+
+
+def get_album(db: fort.PostgresDatabase, album_id: int) -> Album:
+    sql = """
+        select album_id, album_name
+        from r4_albums
+        where album_id = %(album_id)s
+    """
+    params = {"album_id": album_id}
+    return Album(db.q_one(sql, params))
+
+
+def get_album_songs(db: fort.PostgresDatabase, album_id: int) -> list[Song]:
+    sql = """
+        select
+            s.song_id, a.album_name, s.song_title, s.song_artist_tag, s.song_rating,
+            s.song_rating_count, s.song_length,s.song_url, s.song_link_text,
+            s.song_filename
+        from r4_songs s
+        join r4_albums a on a.album_id = s.album_id and s.album_id = %(album_id)s
+        where song_verified is true
+        order by song_id asc
+    """
+    params = {"album_id": album_id}
+    return [Song(r) for r in db.q(sql, params)]
 
 
 def get_albums(

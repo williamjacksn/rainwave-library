@@ -76,6 +76,14 @@ def albums() -> str:
     return rainwave_library.components.albums_index()
 
 
+@app.route("/albums/<int:album_id>", methods=["GET"])
+@secure
+def albums_detail(album_id: int) -> str:
+    album = rainwave_library.models.rainwave.get_album(flask.g.db, album_id)
+    songs_ = rainwave_library.models.rainwave.get_album_songs(flask.g.db, album_id)
+    return rainwave_library.components.albums_detail(album, songs_)
+
+
 @app.route("/albums/rows", methods=["POST"])
 @secure
 def albums_rows() -> str:
