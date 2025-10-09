@@ -15,6 +15,23 @@ def gen(content: dict, target: str) -> None:
     )
 
 
+def gen_package_json() -> None:
+    target = "package.json"
+    content = {
+        "description": f"This file ({target}) was generated from {THIS_FILE}",
+        "name": "rainwave-library",
+        "version": "1.0.0",
+        "license": "UNLICENSED",
+        "private": True,
+        "dependencies": {
+            "bootstrap": "5.3.8",
+            "bootstrap-icons": "1.13.1",
+            "htmx.org": "2.0.7",
+        },
+    }
+    gen(content, target)
+
+
 def gen_workflow_deploy() -> None:
     target = ".github/workflows/deploy.yaml"
     content = {
@@ -80,6 +97,7 @@ def gen_workflow_ruff() -> None:
 
 
 def main():
+    gen_package_json()
     gen_workflow_deploy()
     gen_workflow_ruff()
 
