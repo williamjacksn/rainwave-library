@@ -9,6 +9,14 @@ import htpy
 cnx_str = os.getenv("RW_CNX")
 cnx = fort.PostgresDatabase(cnx_str, maxconn=5)
 
+channels = {
+    1: "Game",
+    2: "OC ReMix",
+    3: "Covers",
+    4: "Chiptune",
+    5: "All",
+}
+
 
 def length_display(length: int) -> str:
     """Convert number of seconds to mm:ss format"""
@@ -194,7 +202,7 @@ class Listener:
 
 
 class Song:
-    colspan: int = 10
+    colspan: int = 11
     thead: htpy.Element = htpy.thead[
         htpy.tr[
             htpy.th(".d-table-cell.d-md-none"),
@@ -204,6 +212,7 @@ class Song:
                 for label in (
                     "",
                     "ID",
+                    "Origin",
                     "Album",
                     "Title",
                     "Artist",
@@ -272,6 +281,10 @@ class Song:
     @property
     def link_text(self) -> str:
         return self.data.get("song_link_text")
+
+    @property
+    def origin_channel(self) -> str:
+        return channels.get(self.data.get("song_origin_sid"))
 
     @property
     def rating(self) -> float:
@@ -370,6 +383,7 @@ class Song:
                     )[htpy.i(".bi-play")],
                 ],
                 htpy.td(".d-none.d-md-table-cell.text-end")[htpy.code[self.id]],
+                htpy.td(".d-none.d-md-table-cell.text-nowrap")[self.origin_channel],
                 htpy.td(".d-none.d-md-table-cell.user-select-all")[self.album_name],
                 htpy.td(".d-none.d-md-table-cell.user-select-all")[self.title],
                 htpy.td(".d-none.d-md-table-cell")[self.artist_tag],
@@ -449,7 +463,7 @@ def get_album_songs(db: fort.PostgresDatabase, album_id: int) -> list[Song]:
         select
             s.song_id, a.album_name, s.song_title, s.song_artist_tag, s.song_rating,
             s.song_rating_count, s.song_length,s.song_url, s.song_link_text,
-            s.song_filename
+            s.song_filename, s.song_origin_sid
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id and s.album_id = %(album_id)s
         where song_verified is true
@@ -693,7 +707,8 @@ def get_song(db: fort.PostgresDatabase, song_id: int) -> Song:
             s.song_added_on, a.album_name, s.song_artist_tag, s.song_fave_count,
             s.song_filename, coalesce(g.song_groups, array[]::text[]) as song_groups,
             s.song_id, s.song_length, s.song_link_text, s.song_rating,
-            s.song_rating_count, s.song_request_count, s.song_title, s.song_url
+            s.song_rating_count, s.song_request_count, s.song_title, s.song_url,
+            s.song_origin_sid
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id
         left join g on g.song_id = s.song_id
@@ -795,7 +810,7 @@ def get_songs(
             s.song_artist_tag, s.song_filename,
             coalesce(g.song_groups, array[]::text[]) as song_groups, s.song_id,
             s.song_length, s.song_link_text, s.song_rating, s.song_rating_count,
-            s.song_title, s.song_url
+            s.song_title, s.song_url, s.song_origin_sid
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id
         join c on c.song_id = s.song_id

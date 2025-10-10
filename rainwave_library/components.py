@@ -3,7 +3,13 @@ import htpy
 import markupsafe
 
 import rainwave_library.versions as v
-from rainwave_library.models.rainwave import Album, Listener, Song, length_display
+from rainwave_library.models.rainwave import (
+    Album,
+    Listener,
+    Song,
+    channels,
+    length_display,
+)
 
 
 def _back_button(href: str, label: str) -> htpy.Element:
@@ -141,15 +147,6 @@ def _sign_out_button(show_bsky: bool = False) -> htpy.Node:
             ]
         ],
     ]
-
-
-channels = {
-    1: "Game",
-    2: "OC ReMix",
-    3: "Covers",
-    4: "Chiptune",
-    5: "All",
-}
 
 
 def albums_detail(album: Album, songs: list[Song]) -> str:
