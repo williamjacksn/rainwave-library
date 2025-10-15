@@ -68,37 +68,47 @@ def _hx_script() -> htpy.Element:
     return htpy.script(src=f"{_cdn}/htmx.org@{v.hx}/dist/htmx.js")
 
 
-def _nav_tabs(active: str = "songs") -> htpy.Node:
-    return htpy.div(".g-1.pt-3.row")[
-        htpy.div(".col.me-auto")[
-            htpy.ul(".nav.nav-tabs")[
-                htpy.li(".nav-item")[
-                    htpy.a(
-                        class_=["nav-link", {"active": active == "songs"}],
-                        href=flask.url_for("songs"),
-                    )["Songs"]
-                ],
-                htpy.li(".nav-item")[
-                    htpy.a(
-                        class_=["nav-link", {"active": active == "albums"}],
-                        href=flask.url_for("albums"),
-                    )["Albums"]
-                ],
-                htpy.li(".nav-item")[
-                    htpy.a(
-                        class_=["nav-link", {"active": active == "listeners"}],
-                        href=flask.url_for("listeners"),
-                    )["Listeners"]
-                ],
-                htpy.li(".nav-item")[
-                    htpy.a(
-                        class_=["nav-link", {"active": active == "ocremix"}],
-                        href=flask.url_for("get_ocremix"),
-                    )["OCR"]
-                ],
-            ]
-        ],
-        _sign_out_button(True),
+def _nav_bar(active: str = "songs") -> htpy.Element:
+    return htpy.nav(".bg-body-secondary.navbar.navbar-expand-sm")[
+        htpy.div(".container-fluid")[
+            htpy.a(".navbar-brand")[
+                htpy.i(".bi-boombox-fill", style="color: #f73"), " ", "Library"
+            ],
+            htpy.button(
+                ".navbar-toggler",
+                data_bs_target="#nav",
+                data_bs_toggle="collapse",
+                type="button",
+            )[htpy.span(".navbar-toggler-icon")],
+            htpy.div("#nav.collapse.navbar-collapse")[
+                htpy.ul(".navbar-nav")[
+                    htpy.li(".nav-item")[
+                        htpy.a(
+                            class_=["nav-link", {"active": active == "songs"}],
+                            href=flask.url_for("songs"),
+                        )["Songs"]
+                    ],
+                    htpy.li(".nav-item")[
+                        htpy.a(
+                            class_=["nav-link", {"active": active == "albums"}],
+                            href=flask.url_for("albums"),
+                        )["Albums"]
+                    ],
+                    htpy.li(".nav-item")[
+                        htpy.a(
+                            class_=["nav-link", {"active": active == "listeners"}],
+                            href=flask.url_for("listeners"),
+                        )["Listeners"]
+                    ],
+                    htpy.li(".nav-item")[
+                        htpy.a(
+                            class_=["nav-link", {"active": active == "ocremix"}],
+                            href=flask.url_for("get_ocremix"),
+                        )["OCR"]
+                    ],
+                ]
+            ],
+        ]
     ]
 
 
@@ -169,7 +179,7 @@ def albums_detail(album: Album, songs: list[Song]) -> str:
 
 def albums_index() -> str:
     content = [
-        _nav_tabs(active="albums"),
+        _nav_bar(active="albums"),
         htpy.form(hx_target="tbody")[
             htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
                 htpy.div(".col-12.col-sm-auto")[
@@ -314,7 +324,7 @@ def favicon() -> str:
     ]
     content = htpy.svg(
         ".bi.bi-boombox-fill",
-        fill="#f47d37",
+        fill="#ff7733",
         height="16",
         viewBox="0 0 16 16",
         width="16",
@@ -495,7 +505,7 @@ def get_ocremix_start(max_ocr_num: int) -> str:
         ],
     ]
     content = [
-        _nav_tabs(active="ocremix"),
+        _nav_bar(active="ocremix"),
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
                 htpy.form[
@@ -539,7 +549,7 @@ def listeners_edit(listener: Listener) -> str:
 
 def listeners_index(ranks: list[dict]) -> str:
     content = [
-        _nav_tabs(active="listeners"),
+        _nav_bar(active="listeners"),
         htpy.form(hx_target="tbody")[
             htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
                 htpy.div(".col-12.col-sm-auto")[
@@ -903,7 +913,7 @@ def songs_index() -> str:
         type="search",
     )
     content = [
-        _nav_tabs(active="songs"),
+        _nav_bar(active="songs"),
         htpy.form(action=flask.url_for("songs_xlsx"), hx_target="tbody", method="post")[
             htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
                 htpy.div(".col-12.col-sm-auto")[search_input],
