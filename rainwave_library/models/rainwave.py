@@ -17,6 +17,11 @@ channels: dict[int | str, str] = {
     3: "Covers",
     4: "Chiptune",
     5: "All",
+    "1": "Game",
+    "2": "OC ReMix",
+    "3": "Covers",
+    "4": "Chiptune",
+    "5": "All",
     "a": "Fallback",
 }
 
@@ -48,7 +53,9 @@ class Album:
         src_base = "https://rainwave.cc/album_art"
         files = self.art_files
         prefixes = sorted(set(f.name[0] for f in files))
-        return htpy.table(".align-middle.table.table-bordered.table-sm.text-center")[
+        return htpy.table(
+            ".align-middle.table.table-bordered.table-responsive.table-sm.text-center"
+        )[
             htpy.thead[htpy.tr[htpy.th, htpy.th[120], htpy.th[240], htpy.th[320]]],
             htpy.tbody[
                 (
