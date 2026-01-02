@@ -175,9 +175,10 @@ def albums_detail(album: Album, songs: list[Song]) -> str:
         ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
+                htpy.h4["Songs"],
                 htpy.table(".align-middle.table.table-bordered.table-sm.table-striped")[
                     Song.thead, htpy.tbody[(s.tr for s in songs)]
-                ]
+                ],
             ]
         ],
     ]
