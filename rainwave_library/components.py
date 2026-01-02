@@ -40,7 +40,7 @@ def _base(content: htpy.Node) -> htpy.Element:
     ]
 
 
-def _bi_stylesheet() -> htpy.Element:
+def _bi_stylesheet() -> htpy.Renderable:
     return htpy.link(
         href=f"{_cdn}/bootstrap-icons@{v.bi}/font/bootstrap-icons.min.css",
         rel="stylesheet",
@@ -51,7 +51,7 @@ def _bs_script() -> htpy.Element:
     return htpy.script(src=f"{_cdn}/bootstrap@{v.bs}/dist/js/bootstrap.bundle.min.js")
 
 
-def _bs_stylesheet() -> htpy.Element:
+def _bs_stylesheet() -> htpy.Renderable:
     return htpy.link(
         href=f"{_cdn}/bootstrap@{v.bs}/dist/css/bootstrap.min.css", rel="stylesheet"
     )
@@ -60,7 +60,7 @@ def _bs_stylesheet() -> htpy.Element:
 _cdn = "https://cdn.jsdelivr.net/npm"
 
 
-def _favicon() -> htpy.Element:
+def _favicon() -> htpy.Renderable:
     return htpy.link(href=flask.url_for("favicon"), rel="icon")
 
 
@@ -168,7 +168,9 @@ def albums_detail(album: Album, songs: list[Song]) -> str:
         htpy.div(".pt-3.row")[htpy.div(".col")[album.detail_table]],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
-                htpy.details[htpy.summary[htpy.h4["Album art"]], album.art_table]
+                htpy.details[
+                    htpy.summary[htpy.span(".h4")["Album art"]], album.art_table
+                ]
             ]
         ],
         htpy.div(".pt-3.row")[
