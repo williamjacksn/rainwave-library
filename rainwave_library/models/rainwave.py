@@ -49,6 +49,13 @@ class Album:
         return self.data.get("album_id")
 
     @property
+    def library_link(self) -> htpy.Element:
+        return htpy.a(
+            ".text-decoration-none",
+            href=flask.url_for("albums_detail", album_id=self.id),
+        )[self.name]
+
+    @property
     def name(self) -> str:
         return self.data.get("album_name")
 
@@ -277,12 +284,6 @@ class Song:
     @property
     def id(self) -> int:
         return self.data.get("song_id")
-
-    @property
-    def library_link(self) -> htpy.Element:
-        return htpy.a(href=flask.url_for("albums_detail", album_id=self.id))[
-            self.album_name
-        ]
 
     @property
     def link_text(self) -> str:
