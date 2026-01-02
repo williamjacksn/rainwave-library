@@ -289,7 +289,7 @@ def get_ocremix_target_file() -> str:
     first_letter = album[0].lower()
     if first_letter not in string.ascii_lowercase:
         first_letter = "0"
-    library_root = pathlib.Path(os.getenv("LIBRARY_ROOT"))
+    library_root = pathlib.Path("/icecast")
     return str(library_root / "ocr-all" / first_letter / album / f"{title}.mp3")
 
 

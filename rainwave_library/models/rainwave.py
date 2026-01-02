@@ -1,13 +1,14 @@
 import datetime
 import os
 import pathlib
+from typing import TypedDict
 
 import flask
 import fort
 import htpy
 
 cnx_str = os.getenv("RW_CNX", "")
-cnx = fort.PostgresDatabase(cnx_str, maxconn=5)
+cnx = fort.PostgresDatabase(cnx_str, maxconn=5)  # ty:ignore[possibly-missing-attribute]
 
 art_dir = pathlib.Path("/var/www/rainwave.cc/album_art")
 
@@ -32,6 +33,12 @@ def length_display(length: int) -> str:
     return f"{minutes}:{seconds:02d}"
 
 
+class AlbumDict(TypedDict):
+    album_id: int
+    album_name: str
+    song_count: int
+
+
 class Album:
     colspan: int = 4
     thead: htpy.Element = htpy.thead[
@@ -40,7 +47,7 @@ class Album:
         ]
     ]
 
-    def __init__(self, album_data: dict) -> None:
+    def __init__(self, album_data: AlbumDict) -> None:
         self.data = album_data
 
     @property
@@ -115,6 +122,17 @@ class Album:
         ]
 
 
+class ListenerDict(TypedDict):
+    discord_user_id: int
+    group_name: str
+    is_discord_user: bool
+    radio_last_active: datetime.datetime | None
+    rank_title: str
+    rating_count: int
+    user_id: int
+    user_name: str
+
+
 class Listener:
     colspan: int = 8
     thead: htpy.Element = htpy.thead[
@@ -130,7 +148,7 @@ class Listener:
         ]
     ]
 
-    def __init__(self, listener_data: dict) -> None:
+    def __init__(self, listener_data: ListenerDict) -> None:
         self.data = listener_data
 
     @property
@@ -146,7 +164,9 @@ class Listener:
                 ],
                 htpy.tr[
                     htpy.th["Last active"],
-                    htpy.td[self.last_active and self.last_active.date().isoformat()],
+                    htpy.td[
+                        bool(self.last_active) and self.last_active.date().isoformat()
+                    ],
                 ],
             ]
         ]
@@ -240,8 +260,27 @@ class Listener:
             htpy.td(".text-center")[
                 self.is_discord_user and htpy.i(".bi-check-lg", title=self.discord_id)
             ],
-            htpy.td[self.last_active and self.last_active.date().isoformat()],
+            htpy.td[bool(self.last_active) and self.last_active.date().isoformat()],
         ]
+
+
+class SongDict(TypedDict):
+    album_name: str
+    channels: list[int]
+    song_added_on: int
+    song_artist_tag: str
+    song_fave_count: int
+    song_filename: str
+    song_groups: list[str]
+    song_id: int
+    song_length: int
+    song_link_text: str
+    song_origin_sid: int
+    song_rating: float
+    song_rating_count: int
+    song_request_count: int
+    song_title: str
+    song_url: str
 
 
 class Song:
@@ -269,7 +308,7 @@ class Song:
         ],
     ]
 
-    def __init__(self, song_data: dict) -> None:
+    def __init__(self, song_data: SongDict) -> None:
         self.data = song_data
 
     def __len__(self) -> int:
@@ -327,7 +366,7 @@ class Song:
 
     @property
     def origin_channel(self) -> str:
-        return channels.get(self.data.get("song_origin_sid"))
+        return channels.get(self.data.get("song_origin_sid"), "Unknown")
 
     @property
     def rating(self) -> float:
@@ -486,7 +525,7 @@ class Song:
 
 
 def calculate_removed_location(filename: os.PathLike) -> pathlib.Path:
-    library_root = pathlib.Path(os.getenv("LIBRARY_ROOT"))
+    library_root = pathlib.Path("/icecast")
     relative = pathlib.Path(filename).relative_to(library_root)
     return library_root / "removed" / relative
 
