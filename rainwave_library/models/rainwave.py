@@ -54,18 +54,19 @@ class Album:
         files = self.art_files
         prefixes = sorted(set(f.name[0] for f in files))
         return htpy.table(
-            ".align-middle.d-block.table.table-bordered.table-sm.text-center"
+            ".align-middle.d-block.pt-3.table.table-bordered.table-sm.text-center"
         )[
-            htpy.thead[htpy.tr[htpy.th, htpy.th[120], htpy.th[240], htpy.th[320]]],
+            htpy.thead[htpy.tr[htpy.th, (htpy.th[channels.get(p)] for p in prefixes)]],
             htpy.tbody[
                 (
                     htpy.tr[
-                        htpy.th[channels.get(p)],
-                        htpy.td[htpy.img(src=f"{src_base}/{p}_{self.id}_120.jpg")],
-                        htpy.td[htpy.img(src=f"{src_base}/{p}_{self.id}_240.jpg")],
-                        htpy.td[htpy.img(src=f"{src_base}/{p}_{self.id}_320.jpg")],
+                        htpy.th[s],
+                        (
+                            htpy.td[htpy.img(src=f"{src_base}/{p}_{self.id}_{s}.jpg")]
+                            for p in prefixes
+                        ),
                     ]
-                    for p in prefixes
+                    for s in (120, 240, 320)
                 )
             ],
         ]
