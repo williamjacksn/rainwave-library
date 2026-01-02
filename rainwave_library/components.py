@@ -180,6 +180,13 @@ def albums_detail(album: Album, songs: list[Song]) -> str:
 def albums_index() -> str:
     content = [
         _nav_bar(active="albums"),
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.a(
+                    ".btn.btn-outline-primary", href=flask.url_for("albums_missing_art")
+                )[htpy.i(".bi-image"), " Missing art"]
+            ]
+        ],
         htpy.form(hx_target="tbody")[
             htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
                 htpy.div(".col-12.col-sm-auto")[
