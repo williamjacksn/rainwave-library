@@ -54,7 +54,7 @@ class Album:
         files = self.art_files
         prefixes = sorted(set(f.name[0] for f in files))
         return htpy.table(
-            ".align-middle.table.table-bordered.table-responsive.table-sm.text-center"
+            ".align-middle.d-block.table.table-bordered.table-sm.text-center"
         )[
             htpy.thead[htpy.tr[htpy.th, htpy.th[120], htpy.th[240], htpy.th[320]]],
             htpy.tbody[
