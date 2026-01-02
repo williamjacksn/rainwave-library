@@ -9,7 +9,9 @@ import htpy
 cnx_str = os.getenv("RW_CNX", "")
 cnx = fort.PostgresDatabase(cnx_str, maxconn=5)
 
-channels = {
+art_dir = pathlib.Path("/var/www/rainwave.cc/album_art")
+
+channels: dict[int, str] = {
     1: "Game",
     2: "OC ReMix",
     3: "Covers",
@@ -34,6 +36,31 @@ class Album:
 
     def __init__(self, album_data: dict) -> None:
         self.data = album_data
+
+    @property
+    def art_files(self) -> list[pathlib.Path]:
+        pattern = f"*_{self.id}_*"
+        return sorted(pathlib.Path(art_dir).glob(pattern))
+
+    @property
+    def art_table(self) -> htpy.Element:
+        src_base = "https://rainwave.cc/album_art"
+        files = self.art_files
+        prefixes = sorted(f.name[0] for f in files)
+        return htpy.table(".align-middle.table.table-bordered.table-sm.text-center")[
+            htpy.thead[htpy.tr[htpy.th, htpy.th[120], htpy.th[240], htpy.th[320]]],
+            htpy.tbody[
+                (
+                    htpy.tr[
+                        htpy.th[p],
+                        htpy.td[htpy.img(src=f"{src_base}/{p}_{self.id}_120.jpg")],
+                        htpy.td[htpy.img(src=f"{src_base}/{p}_{self.id}_240.jpg")],
+                        htpy.td[htpy.img(src=f"{src_base}/{p}_{self.id}_320.jpg")],
+                    ]
+                    for p in prefixes
+                )
+            ],
+        ]
 
     @property
     def detail_table(self) -> htpy.Element:
@@ -540,7 +567,6 @@ def get_albums_missing_art(db: fort.PostgresDatabase) -> list[Album]:
             order by album_name
     """
     rows = db.q(sql)
-    art_dir = pathlib.Path("/var/www/rainwave.cc/album_art")
     result = []
     for row in rows:
         album_id = row.get("album_id")
