@@ -6,7 +6,7 @@ import flask
 import fort
 import htpy
 
-cnx_str = os.getenv("RW_CNX")
+cnx_str = os.getenv("RW_CNX", "")
 cnx = fort.PostgresDatabase(cnx_str, maxconn=5)
 
 channels = {
@@ -279,6 +279,12 @@ class Song:
         return self.data.get("song_id")
 
     @property
+    def library_link(self) -> htpy.Element:
+        return htpy.a(href=flask.url_for("albums_detail", album_id=self.id))[
+            self.album_name
+        ]
+
+    @property
     def link_text(self) -> str:
         return self.data.get("song_link_text")
 
@@ -522,6 +528,25 @@ def get_albums(
         "query": query,
     }
     return [Album(r) for r in db.q(sql, params)]
+
+
+def get_albums_missing_art(db: fort.PostgresDatabase) -> list[Album]:
+    sql = """
+        select album_id, album_name
+        from r4_songs
+            join r4_albums using (album_id)
+            where song_verified is true
+            order by album_name
+    """
+    rows = db.q(sql)
+    art_dir = pathlib.Path("/var/www/rainwave.cc/album_art")
+    result = []
+    for row in rows:
+        album_id = row.get("album_id")
+        album_fn = f"a_{album_id}_120.jpg"
+        if not art_dir.joinpath(album_fn).exists():
+            result.append(Album(row))
+    return result
 
 
 def get_category_for_album(db: fort.PostgresDatabase, album_name: str) -> str | None:

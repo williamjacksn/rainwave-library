@@ -84,6 +84,13 @@ def albums_detail(album_id: int) -> str:
     return rainwave_library.components.albums_detail(album, songs_)
 
 
+@app.route("/albums/missing-art", methods=["GET"])
+@secure
+def albums_missing_art() -> str:
+    albums_ = rainwave_library.models.rainwave.get_albums_missing_art(flask.g.db)
+    return rainwave_library.components.albums_missing_art(albums_)
+
+
 @app.route("/albums/rows", methods=["POST"])
 @secure
 def albums_rows() -> str:

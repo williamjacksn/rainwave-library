@@ -281,6 +281,11 @@ def albums_index() -> str:
     return str(_base(content))
 
 
+def albums_missing_art(albums: list[Album]) -> str:
+    content = htpy.ul[(htpy.li[a.library_link] for a in albums)]
+    return str(content)
+
+
 def albums_rows(albums: list[Album], page: int) -> str:
     trs = []
     for i, album in enumerate(albums):
