@@ -11,12 +11,13 @@ cnx = fort.PostgresDatabase(cnx_str, maxconn=5)
 
 art_dir = pathlib.Path("/var/www/rainwave.cc/album_art")
 
-channels: dict[int, str] = {
+channels: dict[int | str, str] = {
     1: "Game",
     2: "OC ReMix",
     3: "Covers",
     4: "Chiptune",
     5: "All",
+    "a": "Fallback",
 }
 
 
@@ -46,13 +47,13 @@ class Album:
     def art_table(self) -> htpy.Element:
         src_base = "https://rainwave.cc/album_art"
         files = self.art_files
-        prefixes = sorted(f.name[0] for f in files)
+        prefixes = sorted(set(f.name[0] for f in files))
         return htpy.table(".align-middle.table.table-bordered.table-sm.text-center")[
             htpy.thead[htpy.tr[htpy.th, htpy.th[120], htpy.th[240], htpy.th[320]]],
             htpy.tbody[
                 (
                     htpy.tr[
-                        htpy.th[p],
+                        htpy.th[channels.get(p)],
                         htpy.td[htpy.img(src=f"{src_base}/{p}_{self.id}_120.jpg")],
                         htpy.td[htpy.img(src=f"{src_base}/{p}_{self.id}_240.jpg")],
                         htpy.td[htpy.img(src=f"{src_base}/{p}_{self.id}_320.jpg")],
