@@ -1031,6 +1031,7 @@ def songs_index() -> str:
                                         )[label],
                                     ]
                                     for i, label in channels.items()
+                                    if isinstance(i, int)
                                 ],
                             ]
                         ],
