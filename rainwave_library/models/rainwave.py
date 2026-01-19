@@ -267,6 +267,8 @@ class Listener:
 class SongDict(TypedDict):
     album_name: str
     channels: list[int]
+    raw_rating_avg: float
+    raw_rating_count: int
     song_added_on: int
     song_artist_tag: str
     song_fave_count: int
@@ -375,6 +377,14 @@ class Song:
     @property
     def rating_count(self) -> int:
         return self.data.get("song_rating_count")
+
+    @property
+    def raw_rating_avg(self) -> float:
+        return self.data.get("raw_rating_avg")
+
+    @property
+    def raw_rating_count(self) -> int:
+        return self.data.get("raw_rating_count")
 
     @property
     def request_count(self) -> int:
@@ -493,7 +503,7 @@ class Song:
                         )[htpy.i(".bi-exclamation-circle"), f" {self.rating:.2f}"],
                     ]
                     if 0 < self.rating < 3
-                    else f"{self.rating:.2f}"
+                    else [f"{self.rating:.2f}", " (", f"{self.raw_rating_avg:.2f}", ")"]
                 ],
                 htpy.td(
                     class_=[
@@ -502,7 +512,7 @@ class Song:
                         "text-end",
                         {"text-secondary": self.rating_count == 0},
                     ]
-                )[self.rating_count],
+                )[self.rating_count, " (", self.raw_rating_count, ")"],
                 htpy.td(".d-none.d-md-table-cell.text-end")[length_display(len(self))],
                 htpy.td(".d-none.d-md-table-cell")[
                     self.url
@@ -906,17 +916,30 @@ def get_songs(
             group by s.song_id
         ),
         r as (
-            select song_id, count(*) rating_count, avg(song_rating_user) rating_avg
+            select
+                song_id,
+                count(*) raw_rating_count,
+                avg(song_rating_user) raw_rating_avg
             from r4_song_ratings
             where song_rating_user is not null
             group by song_id
         )
         select
-            a.album_name, c.channels, to_timestamp(s.song_added_on) as song_added_on,
-            s.song_artist_tag, s.song_filename,
-            coalesce(g.song_groups, array[]::text[]) as song_groups, s.song_id,
-            s.song_length, s.song_link_text, coalesce(r.rating_avg, 0) as song_rating,
-            coalesce(r.rating_count, 0) as song_rating_count, s.song_title, s.song_url,
+            a.album_name,
+            c.channels,
+            coalesce(r.raw_rating_avg, 0) as raw_rating_avg,
+            coalesce(r.raw_rating_count, 0) as raw_rating_count,
+            to_timestamp(s.song_added_on) as song_added_on,
+            s.song_artist_tag,
+            s.song_filename,
+            coalesce(g.song_groups, array[]::text[]) as song_groups,
+            s.song_id,
+            s.song_length,
+            s.song_link_text,
+            s.song_rating,
+            s.song_rating_count,
+            s.song_title,
+            s.song_url,
             s.song_origin_sid
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id
