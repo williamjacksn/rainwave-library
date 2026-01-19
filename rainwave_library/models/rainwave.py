@@ -859,7 +859,7 @@ def get_songs(
     if not include_unrated:
         where_clause = f"""
             {where_clause}
-            and s.song_rating > 0
+            and r.rating_count > 0
         """
 
     if channels is None:
@@ -904,17 +904,25 @@ def get_songs(
             from r4_song_group s
             join r4_groups g on g.group_id = s.group_id
             group by s.song_id
+        ),
+        r as (
+            select song_id, count(*) rating_count, avg(song_rating_user) rating_avg
+            from r4_song_ratings
+            where song_rating_user is not null
+            group by song_id
         )
         select
             a.album_name, c.channels, to_timestamp(s.song_added_on) as song_added_on,
             s.song_artist_tag, s.song_filename,
             coalesce(g.song_groups, array[]::text[]) as song_groups, s.song_id,
-            s.song_length, s.song_link_text, s.song_rating, s.song_rating_count,
-            s.song_title, s.song_url, s.song_origin_sid
+            s.song_length, s.song_link_text, coalesce(r.rating_avg, 0) as song_rating,
+            coalesce(r.rating_count, 0) as song_rating_count, s.song_title, s.song_url,
+            s.song_origin_sid
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id
         join c on c.song_id = s.song_id
         left join g on g.song_id = s.song_id
+        left join r on r.song_id = s.song_id
         where {where_clause}
         order by {sort_clause}
         {limit_clause}
