@@ -869,7 +869,7 @@ def get_songs(
     if not include_unrated:
         where_clause = f"""
             {where_clause}
-            and r.rating_count > 0
+            and s.song_rating_count > 0
         """
 
     if channels is None:
