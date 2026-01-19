@@ -812,16 +812,38 @@ def get_song(db: fort.PostgresDatabase, song_id: int) -> Song:
             from r4_song_group s
             join r4_groups g on g.group_id = s.group_id
             group by s.song_id
+        ),
+        r as (
+            select
+                song_id,
+                count(*) raw_rating_count,
+                avg(song_rating_user) raw_rating_avg
+            from r4_song_ratings
+            where song_rating_user is not null
+            group by song_id
         )
         select
-            s.song_added_on, a.album_name, s.song_artist_tag, s.song_fave_count,
-            s.song_filename, coalesce(g.song_groups, array[]::text[]) as song_groups,
-            s.song_id, s.song_length, s.song_link_text, s.song_rating,
-            s.song_rating_count, s.song_request_count, s.song_title, s.song_url,
+            a.album_name,
+            coalesce(r.raw_rating_avg, 0) as raw_rating_avg,
+            coalesce(r.raw_rating_count, 0) as raw_rating_count,
+            s.song_added_on,
+            s.song_artist_tag,
+            s.song_fave_count,
+            s.song_filename,
+            coalesce(g.song_groups, array[]::text[]) as song_groups,
+            s.song_id,
+            s.song_length,
+            s.song_link_text,
+            s.song_rating,
+            s.song_rating_count,
+            s.song_request_count,
+            s.song_title,
+            s.song_url,
             s.song_origin_sid
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id
         left join g on g.song_id = s.song_id
+        left join r on r.song_id = s.song_id
         where s.song_id = %(song_id)s
     """
     params = {

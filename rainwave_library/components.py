@@ -763,8 +763,21 @@ def songs_detail(song: Song) -> str:
                             htpy.th["Added on"],
                             htpy.td[str(song.added_on)],
                         ],
-                        htpy.tr[htpy.th["Rating"], htpy.td[str(song.rating)]],
-                        htpy.tr[htpy.th["Rating count"], htpy.td[song.rating_count]],
+                        htpy.tr[
+                            htpy.th["Rating"],
+                            htpy.td[
+                                str(song.rating),
+                                " (",
+                                str(song.raw_rating_avg),
+                                " raw)",
+                            ],
+                        ],
+                        htpy.tr[
+                            htpy.th["Rating count"],
+                            htpy.td[
+                                song.rating_count, " (", song.raw_rating_count, " raw)"
+                            ],
+                        ],
                         htpy.tr[htpy.th["Fave count"], htpy.td[song.fave_count]],
                         htpy.tr[htpy.th["Request count"], htpy.td[song.request_count]],
                         htpy.tr[
