@@ -552,12 +552,32 @@ def get_album(db: fort.PostgresDatabase, album_id: int) -> Album:
 
 def get_album_songs(db: fort.PostgresDatabase, album_id: int) -> list[Song]:
     sql = """
+        with r as (
+            select
+                song_id,
+                count(*) raw_rating_count,
+                avg(song_rating_user) raw_rating_avg
+            from r4_song_ratings
+            where song_rating_user is not null
+            group by song_id
+        )
         select
-            s.song_id, a.album_name, s.song_title, s.song_artist_tag, s.song_rating,
-            s.song_rating_count, s.song_length,s.song_url, s.song_link_text,
-            s.song_filename, s.song_origin_sid
+            a.album_name,
+            coalesce(r.raw_rating_avg, 0) as raw_rating_avg,
+            coalesce(r.raw_rating_count, 0) as raw_rating_count,
+            s.song_artist_tag,
+            s.song_filename,
+            s.song_id,
+            s.song_length,
+            s.song_link_text,
+            s.song_origin_sid,
+            s.song_rating,
+            s.song_rating_count,
+            s.song_title,
+            s.song_url
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id and s.album_id = %(album_id)s
+        left join r on r.song_id = s.song_id
         where song_verified is true
         order by song_id asc
     """
