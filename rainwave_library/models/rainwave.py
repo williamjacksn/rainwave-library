@@ -609,7 +609,7 @@ def get_albums(
         sort_dir = "asc"
     if sort_col not in ("album_id", "album_name", "song_count"):
         sort_col = "album_id"
-    if sort_col in ("album_name",):
+    if sort_col == "album_name":
         sort_clause = f'{sort_col} collate "C" {sort_dir}'
     else:
         sort_clause = f"{sort_col} {sort_dir}"
