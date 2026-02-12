@@ -465,7 +465,7 @@ def songs_rows() -> str:
     sort_col = flask.request.values.get("sort-col", "song_id")
     sort_dir = flask.request.values.get("sort-dir", "asc")
     input_channels = flask.request.values.getlist("channels")
-    valid_channels = [int(c) for c in input_channels if c.isdigit() and 0 < int(c) < 6]
+    valid_channels = [int(c) for c in input_channels if c.isdigit() and 0 < int(c) < 7]
     app.logger.debug(f"{valid_channels=}")
     if not valid_channels:
         valid_channels = None
@@ -485,7 +485,7 @@ def songs_xlsx() -> flask.Response:
     sort_dir = flask.request.values.get("sort-dir")
     input_channels = flask.request.values.getlist("channels")
     channels = [
-        int(c) for c in input_channels if c.isdigit() and 0 < int(c) < 6
+        int(c) for c in input_channels if c.isdigit() and 0 < int(c) < 7
     ] or None
     include_unrated = "include-unrated" in flask.request.values
     data = rainwave_library.models.rainwave.get_songs(

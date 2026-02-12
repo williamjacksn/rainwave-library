@@ -18,11 +18,13 @@ channels: dict[int | str, str] = {
     3: "Covers",
     4: "Chiptune",
     5: "All",
+    6: "Chill",
     "1": "Game",
     "2": "OC ReMix",
     "3": "Covers",
     "4": "Chiptune",
     "5": "All",
+    "6": "Chill",
     "a": "Fallback",
 }
 
@@ -915,7 +917,7 @@ def get_songs(
         """
 
     if channels is None:
-        channels = [1, 2, 3, 4, 5]
+        channels = [1, 2, 3, 4, 5, 6]
     where_clause = f"""
         {where_clause}
         and %(channels)s && c.channels
