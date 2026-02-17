@@ -42,7 +42,7 @@ def external_url_for(endpoint: str, *args, **kwargs) -> str:  # noqa: ANN002, AN
 
 def secure(f: typing.Callable) -> typing.Callable:
     @functools.wraps(f)
-    def decorated_function(*args, **kwargs) -> flask.Response:  # noqa: ANN002, ANN003
+    def decorated_function(*args, **kwargs) -> werkzeug.Response:  # noqa: ANN002, ANN003
         if "role" not in flask.session or flask.session.get("role") == "member":
             return flask.redirect(flask.url_for("index"))
         return f(*args, **kwargs)
@@ -62,7 +62,7 @@ def before_request() -> None:
 
 
 @app.route("/", methods=["GET"])
-def index() -> flask.Response | str:
+def index() -> werkzeug.Response | str:
     if "role" not in flask.session:
         return rainwave_library.components.sign_in()
     if flask.session.get("role") == "member":
@@ -128,13 +128,13 @@ def api_elections() -> flask.Response:
 
 @app.route("/assume-member", methods=["GET"])
 @secure
-def assume_member() -> flask.Response:
+def assume_member() -> werkzeug.Response:
     flask.session.update({"role": "member"})
     return flask.redirect(flask.url_for("index"))
 
 
 @app.route("/authorize", methods=["GET"])
-def authorize() -> flask.Response:
+def authorize() -> werkzeug.Response:
     if flask.session.get("state") != flask.request.values.get("state"):
         return flask.Response("State mismatch", 401)
     token_endpoint = "https://discord.com/api/v10/oauth2/token"  # noqa: S105
@@ -182,7 +182,7 @@ def authorize() -> flask.Response:
 
 @app.route("/bluesky", methods=["POST"])
 @secure
-def bluesky() -> flask.Response:
+def bluesky() -> werkzeug.Response:
     b = rainwave_library.models.bsky.get_client_from_env()
     b.post(flask.request.values.get("body"))
     return flask.redirect(flask.url_for("index"))
@@ -309,7 +309,7 @@ def listeners_detail(listener_id: int) -> str:
 
 @app.route("/listeners/<int:listener_id>/edit", methods=["GET", "POST"])
 @secure
-def listeners_edit(listener_id: int) -> flask.Response | str:
+def listeners_edit(listener_id: int) -> werkzeug.Response | str:
     listener = rainwave_library.models.rainwave.get_listener(flask.g.db, listener_id)
     if flask.request.method == "GET":
         return rainwave_library.components.listeners_edit(listener)
@@ -342,7 +342,7 @@ def nothing() -> str:
 
 
 @app.route("/sign-in", methods=["GET"])
-def sign_in() -> flask.Response:
+def sign_in() -> werkzeug.Response:
     state = secrets.token_urlsafe()
     flask.session.update({"state": state})
     redirect_uri = external_url_for("authorize")
@@ -360,7 +360,7 @@ def sign_in() -> flask.Response:
 
 
 @app.route("/sign-out", methods=["GET"])
-def sign_out() -> flask.Response:
+def sign_out() -> werkzeug.Response:
     flask.session.pop("discord_id")
     flask.session.pop("discord_username")
     flask.session.pop("role")
@@ -423,7 +423,7 @@ def songs_play(song_id: int) -> str:
 
 @app.route("/songs/<int:song_id>/remove", methods=["GET", "POST"])
 @secure
-def songs_remove(song_id: int) -> flask.Response | str:
+def songs_remove(song_id: int) -> werkzeug.Response | str:
     song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
     song_filename = pathlib.Path(song.filename)
     new_loc = rainwave_library.models.rainwave.calculate_removed_location(song_filename)
