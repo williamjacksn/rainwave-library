@@ -943,6 +943,7 @@ def songs_index() -> str:
     search_input = htpy.input(
         ".form-control",
         aria_label="Search songs",
+        autocapitalize="none",
         hx_indicator="#filters-indicator",
         hx_post=flask.url_for("songs_rows"),
         hx_trigger="search, keyup changed delay:300ms",
