@@ -112,7 +112,21 @@ def _nav_bar(active: str = "songs") -> htpy.Element:
     ]
 
 
-def _sign_out_button(show_bsky: bool = False) -> htpy.Node:
+def _user_menu(show_bsky: bool = False) -> htpy.Node:
+    role = flask.session.get("role")
+    avatar_url = flask.g.discord_avatar_url
+    display_name = flask.g.discord_display_name
+    toggle: htpy.Node = (
+        htpy.img(
+            ".rounded-circle",
+            alt=f"Avatar for {display_name}",
+            height=40,
+            src=avatar_url,
+            width=40,
+        )
+        if avatar_url
+        else htpy.i(".bi-person-circle")
+    )
     return [
         show_bsky
         and htpy.div(".col-auto")[
@@ -123,8 +137,28 @@ def _sign_out_button(show_bsky: bool = False) -> htpy.Node:
             )[htpy.i(".bi-pencil-square"), htpy.span(".d-none.d-sm-inline")[" Post"]]
         ],
         htpy.div(".col-auto")[
-            htpy.a(".btn.btn-outline-danger", href=flask.url_for("sign_out"))[
-                htpy.i(".bi-door-open"), htpy.span(".d-none.d-sm-inline")[" Sign out"]
+            htpy.div(".dropdown")[
+                htpy.button(
+                    ".btn.btn-link.pe-0.pt-0", data_bs_toggle="dropdown", type="button"
+                )[toggle],
+                htpy.ul(".dropdown-menu.dropdown-menu-end")[
+                    htpy.li[htpy.span(".dropdown-item-text.fw-semibold")[display_name]],
+                    htpy.li[htpy.span(".dropdown-item-text.text-secondary")[role]],
+                    htpy.li[htpy.hr(".dropdown-divider")],
+                    role == "staff"
+                    and htpy.li[
+                        htpy.a(
+                            ".dropdown-item",
+                            href=flask.url_for("assume_member"),
+                        )["Assume member"]
+                    ],
+                    htpy.li[
+                        htpy.a(
+                            ".dropdown-item",
+                            href=flask.url_for("sign_out"),
+                        )["Sign out"]
+                    ],
+                ],
             ]
         ],
         show_bsky
@@ -162,7 +196,7 @@ def _sign_out_button(show_bsky: bool = False) -> htpy.Node:
 def albums_detail(album: Album, songs: list[Song]) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
-            _back_button(flask.url_for("albums"), "Albums"), _sign_out_button(True)
+            _back_button(flask.url_for("albums"), "Albums"), _user_menu(True)
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Album details"]]],
         htpy.div(".pt-3.row")[htpy.div(".col")[album.detail_table]],
@@ -549,7 +583,7 @@ def listeners_detail(listener: Listener) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
             _back_button(flask.url_for("listeners"), "Listeners"),
-            _sign_out_button(True),
+            _user_menu(True),
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Listener details"]]],
         htpy.div(".pt-3.row")[htpy.div(".col")[listener.detail_table]],
@@ -565,7 +599,7 @@ def listeners_edit(listener: Listener) -> str:
                 flask.url_for("listeners_detail", listener_id=listener.id),
                 "Listener details",
             ),
-            _sign_out_button(True),
+            _user_menu(True),
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Edit listener"]]],
         htpy.div(".pt-3.row")[htpy.div(".col")[listener.edit_form]],
@@ -706,27 +740,11 @@ def welcome(role: str) -> str:
             ("albums", "Albums"),
             ("listeners", "Listeners"),
             ("get_ocremix", "OC ReMix"),
-            ("assume_member", "Assume member permissions"),
         ]
     content = [
         htpy.div(".align-items-center.d-flex.g-1.pt-3.row")[
             htpy.div(".col-auto.me-auto")[htpy.h1["Rainwave Library"]],
-            _sign_out_button(False),
-        ],
-        htpy.div(".pt-3.row")[
-            htpy.div(".col")[
-                htpy.p(".align-items-center.d-flex.gap-2.text-secondary")[
-                    flask.g.discord_avatar_url
-                    and htpy.img(
-                        ".rounded-circle",
-                        alt="",
-                        height=32,
-                        src=flask.g.discord_avatar_url,
-                        width=32,
-                    ),
-                    f"Signed in as {flask.g.discord_display_name} ({role})",
-                ]
-            ]
+            _user_menu(False),
         ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
@@ -759,7 +777,7 @@ def sign_in() -> str:
 def songs_detail(song: Song) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
-            _back_button(flask.url_for("songs"), "Songs"), _sign_out_button(True)
+            _back_button(flask.url_for("songs"), "Songs"), _user_menu(True)
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Song details"]]],
         htpy.div(".pt-3.row")[
@@ -870,7 +888,7 @@ def songs_edit(song: Song) -> str:
                 flask.url_for("songs_detail", song_id=song.id),
                 "Song details",
             ),
-            _sign_out_button(True),
+            _user_menu(True),
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Edit tags"]]],
         htpy.div(".pt-3.row")[
@@ -1201,7 +1219,7 @@ def songs_remove(song: Song, new_loc: str) -> str:
                 flask.url_for("songs_detail", song_id=song.id),
                 "Song details",
             ),
-            _sign_out_button(True),
+            _user_menu(True),
         ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
