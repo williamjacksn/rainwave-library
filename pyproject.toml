@@ -14,7 +14,7 @@ dependencies = [
     "psycopg2-binary>=2.9.12",
     "waitress>=3.0.2",
     "werkzeug>=3.1.5",
-    "xlsxwriter>=3.2.3",
+    "xlsxwriter>=3.2.9",
 ]
 
 [dependency-groups]
