@@ -22,7 +22,7 @@ import rainwave_library.components
 import rainwave_library.models
 
 app = flask.Flask(__name__)
-app.wsgi_app = werkzeug.middleware.proxy_fix.ProxyFix(
+app.wsgi_app = werkzeug.middleware.proxy_fix.ProxyFix(  # ty:ignore[invalid-assignment]
     app.wsgi_app, x_for=1, x_proto=1, x_port=1
 )
 
