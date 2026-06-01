@@ -1225,7 +1225,11 @@ def welcome(role: str) -> str:
             ("albums", "Albums", "Browse albums and check for missing art"),
             ("listeners", "Listeners", "Browse and manage Rainwave listener accounts"),
             ("get_ocremix", "OC ReMix", "Download and tag remixes from ocremix.org"),
-            ("bluesky", "Post to Bluesky", "Post an update to the Rainwave Bluesky account"),
+            (
+                "bluesky",
+                "Post to Bluesky",
+                "Post an update to the Rainwave Bluesky account",
+            ),
         ]
     content = [
         htpy.div(".g-1.pt-3.row")[
