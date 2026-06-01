@@ -271,6 +271,7 @@ dependencies = [
     { name = "notch" },
     { name = "psycopg2-binary" },
     { name = "waitress" },
+    { name = "werkzeug" },
     { name = "xlsxwriter" },
 ]
 
@@ -290,6 +291,7 @@ requires-dist = [
     { name = "notch", specifier = ">=2025.2" },
     { name = "psycopg2-binary", specifier = ">=2.9.12" },
     { name = "waitress", specifier = ">=3.0.2" },
+    { name = "werkzeug", specifier = ">=3.1.5" },
     { name = "xlsxwriter", specifier = ">=3.2.3" },
 ]
 
