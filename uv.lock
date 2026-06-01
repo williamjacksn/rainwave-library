@@ -288,7 +288,7 @@ requires-dist = [
     { name = "htpy", specifier = ">=26.5.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "mutagen", specifier = ">=1.47.0" },
-    { name = "notch", specifier = ">=2025.2" },
+    { name = "notch", specifier = ">=2026.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.12" },
     { name = "waitress", specifier = ">=3.0.2" },
     { name = "werkzeug", specifier = ">=3.1.5" },
