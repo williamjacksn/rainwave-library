@@ -10,7 +10,7 @@ import rainwave_library.app
 notch.configure()
 
 
-def handle_sigterm(_signal: int, _frame: types.FrameType) -> None:
+def handle_sigterm(_signal: int, _frame: types.FrameType | None) -> None:
     sys.exit()
 
 
