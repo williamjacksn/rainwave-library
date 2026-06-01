@@ -925,6 +925,7 @@ def songs_index() -> str:
         hx_post=flask.url_for("songs_rows"),
         hx_trigger="search, keyup changed delay:300ms",
         name="q",
+        onkeydown="return event.key !== 'Enter'",
         placeholder="Search songs...",
         title="Case-insensitive search for album, title, artist, filename, or URL",
         type="search",
