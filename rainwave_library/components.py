@@ -71,7 +71,7 @@ def _hx_script() -> htpy.Element:
 def _nav_bar(active: str = "songs") -> htpy.Element:
     return htpy.nav(".bg-body-secondary.navbar.navbar-expand-sm")[
         htpy.div(".container-fluid")[
-            htpy.a(".navbar-brand")[
+            htpy.a(".navbar-brand", href=flask.url_for("index"))[
                 htpy.i(".bi-boombox-fill", style="color: #f73"), " ", "Library"
             ],
             htpy.button(
@@ -698,10 +698,51 @@ def listeners_rows(listeners: list[Listener], page: int) -> str:
     return str(content)
 
 
-def not_authorized() -> str:
-    content = htpy.div(".align-items-center.d-flex.g-1.pt-3.row")[
-        htpy.div(".col-auto.me-auto")[htpy.h1["Not authorized"]],
-        _sign_out_button(False),
+def welcome(role: str) -> str:
+    tools: list[tuple[str, str]] = []
+    if role == "staff":
+        tools = [
+            ("songs", "Songs"),
+            ("albums", "Albums"),
+            ("listeners", "Listeners"),
+            ("get_ocremix", "OC ReMix"),
+            ("assume_member", "Assume member permissions"),
+        ]
+    content = [
+        htpy.div(".align-items-center.d-flex.g-1.pt-3.row")[
+            htpy.div(".col-auto.me-auto")[htpy.h1["Rainwave Library"]],
+            _sign_out_button(False),
+        ],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.p(".align-items-center.d-flex.gap-2.text-secondary")[
+                    flask.g.discord_avatar_url
+                    and htpy.img(
+                        ".rounded-circle",
+                        alt="",
+                        height=32,
+                        src=flask.g.discord_avatar_url,
+                        width=32,
+                    ),
+                    f"Signed in as {flask.g.discord_display_name} ({role})",
+                ]
+            ]
+        ],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.div(".list-group")[
+                    [
+                        htpy.a(
+                            ".list-group-item.list-group-item-action",
+                            href=flask.url_for(endpoint),
+                        )[label]
+                        for endpoint, label in tools
+                    ]
+                    if tools
+                    else htpy.p["No tools are available for your account yet."]
+                ]
+            ]
+        ],
     ]
     return str(_base(content))
 

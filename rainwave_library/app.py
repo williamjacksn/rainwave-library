@@ -58,6 +58,8 @@ def before_request() -> None:
     flask.session.permanent = True
     flask.g.discord_id = flask.session.get("discord_id")
     flask.g.discord_username = flask.session.get("discord_username")
+    flask.g.discord_display_name = flask.session.get("discord_display_name")
+    flask.g.discord_avatar_url = flask.session.get("discord_avatar_url")
     flask.g.db = rainwave_library.models.rainwave.cnx
 
 
@@ -65,9 +67,7 @@ def before_request() -> None:
 def index() -> werkzeug.Response | str:
     if "role" not in flask.session:
         return rainwave_library.components.sign_in()
-    if flask.session.get("role") == "member":
-        return rainwave_library.components.not_authorized()
-    return flask.redirect(flask.url_for("songs"))
+    return rainwave_library.components.welcome(flask.session.get("role", "member"))
 
 
 @app.route("/albums", methods=["GET"])
@@ -151,12 +151,24 @@ def authorize() -> werkzeug.Response:
     guild_member_url = f"https://discord.com/api/v10/users/@me/guilds/{guild_id}/member"
     headers = {"Authorization": f"Bearer {access_token}"}
     resp = httpx.get(guild_member_url, headers=headers).json()
-    username = resp.get("user", {}).get("username")
-    user_id = resp.get("user", {}).get("id")
+    user = resp.get("user", {})
+    user_id = user.get("id")
+    username = user.get("username")
+    display_name = resp.get("nick") or user.get("global_name") or username
+    guild_avatar = resp.get("avatar")
+    user_avatar = user.get("avatar")
+    if guild_avatar:
+        avatar_url = f"https://cdn.discordapp.com/guilds/{guild_id}/users/{user_id}/avatars/{guild_avatar}.png"
+    elif user_avatar:
+        avatar_url = f"https://cdn.discordapp.com/avatars/{user_id}/{user_avatar}.png"
+    else:
+        avatar_url = None
     flask.session.update(
         {
             "discord_id": user_id,
             "discord_username": username,
+            "discord_display_name": display_name,
+            "discord_avatar_url": avatar_url,
         }
     )
     user_roles = resp.get("roles")
