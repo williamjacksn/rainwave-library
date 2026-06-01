@@ -184,7 +184,7 @@ def authorize() -> werkzeug.Response:
 @secure
 def bluesky() -> werkzeug.Response:
     b = rainwave_library.models.bsky.get_client_from_env()
-    b.post(flask.request.values.get("body"))
+    b.post(flask.request.values["body"])
     return flask.redirect(flask.url_for("index"))
 
 
@@ -205,7 +205,7 @@ def get_ocremix() -> str:
 @app.route("/get-ocremix/download", methods=["POST"])
 @secure
 def get_ocremix_download() -> str:
-    r = httpx.get(flask.request.values.get("download-from"))
+    r = httpx.get(flask.request.values["download-from"])
     mp3_data = io.BytesIO(r.content)
     tags = mutagen.id3.ID3(mp3_data)
     tags.delall("TALB")
@@ -253,7 +253,7 @@ def get_ocremix_download() -> str:
 @app.route("/get-ocremix/fetch", methods=["POST"])
 @secure
 def get_ocremix_fetch() -> flask.Response | str:
-    ocr_id = int(flask.request.values.get("ocr-id"))
+    ocr_id = int(flask.request.values["ocr-id"])
     url = f"https://williamjacksn.github.io/ocremix-data/remix/OCR{ocr_id:05}.json"
     try:
         ocr_info = httpx.get(url).json()
@@ -276,12 +276,12 @@ def get_ocremix_fetch() -> flask.Response | str:
 @app.route("/get-ocremix/target-file", methods=["POST"])
 @secure
 def get_ocremix_target_file() -> str:
-    album = rainwave_library.models.mp3.make_safe(flask.request.values.get("album"))
+    album = rainwave_library.models.mp3.make_safe(flask.request.values["album"])
     album_bad_chars = set(album) - (set(string.ascii_letters) | set(string.digits))
     if album_bad_chars:
         bad_char = sorted(album_bad_chars)[0]
         return f"Unsupported character in album: {bad_char!r} [{ord(bad_char)}]"
-    title = rainwave_library.models.mp3.make_safe(flask.request.values.get("title"))
+    title = rainwave_library.models.mp3.make_safe(flask.request.values["title"])
     title_bad_chars = set(title) - (set(string.ascii_letters) | set(string.digits))
     if title_bad_chars:
         bad_char = sorted(title_bad_chars)[0]
@@ -395,12 +395,12 @@ def songs_edit(song_id: int) -> str:
         return rainwave_library.components.songs_edit(song)
 
     kwargs = {
-        "album": flask.request.values.get("album"),
-        "artist": flask.request.values.get("artist"),
-        "categories": flask.request.values.get("categories"),
-        "link_text": flask.request.values.get("link-text"),
-        "title": flask.request.values.get("title"),
-        "url": flask.request.values.get("url"),
+        "album": flask.request.values["album"],
+        "artist": flask.request.values["artist"],
+        "categories": flask.request.values["categories"],
+        "link_text": flask.request.values["link-text"],
+        "title": flask.request.values["title"],
+        "url": flask.request.values["url"],
     }
     result = rainwave_library.models.mp3.set_tags(song.filename, **kwargs)
     if result:
@@ -481,8 +481,8 @@ def songs_rows() -> str:
 def songs_xlsx() -> flask.Response:
     query = flask.request.values.get("q")
     page = 0
-    sort_col = flask.request.values.get("sort-col")
-    sort_dir = flask.request.values.get("sort-dir")
+    sort_col = flask.request.values["sort-col"]
+    sort_dir = flask.request.values["sort-dir"]
     input_channels = flask.request.values.getlist("channels")
     channels = [
         int(c) for c in input_channels if c.isdigit() and 0 < int(c) < 7

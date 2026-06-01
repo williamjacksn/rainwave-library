@@ -1003,7 +1003,7 @@ def get_songs(
 
 
 def set_discord_user_id(
-    db: fort.PostgresDatabase, user_id: int, discord_user_id: str
+    db: fort.PostgresDatabase, user_id: int, discord_user_id: str | None
 ) -> None:
     params = {
         "discord_user_id": discord_user_id,
