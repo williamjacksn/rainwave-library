@@ -12,7 +12,7 @@ from rainwave_library.models.rainwave import (
 )
 
 
-def _back_button(href: str, label: str) -> htpy.Element:
+def _back_button(href: str, label: str) -> htpy.Renderable:
     return htpy.div(".col-auto.me-auto")[
         htpy.a(".btn.btn-outline-primary", href=href)[
             htpy.i(".bi-caret-left-fill"), " ", label
@@ -20,7 +20,7 @@ def _back_button(href: str, label: str) -> htpy.Element:
     ]
 
 
-def _base(content: htpy.Node) -> htpy.Element:
+def _base(content: htpy.Node) -> htpy.Renderable:
     return htpy.html(lang="en")[
         htpy.head[
             htpy.title["Rainwave Library"],
@@ -47,7 +47,7 @@ def _bi_stylesheet() -> htpy.Renderable:
     )
 
 
-def _bs_script() -> htpy.Element:
+def _bs_script() -> htpy.Renderable:
     return htpy.script(src=f"{_cdn}/bootstrap@{v.bs}/dist/js/bootstrap.bundle.min.js")
 
 
@@ -64,11 +64,11 @@ def _favicon() -> htpy.Renderable:
     return htpy.link(href=flask.url_for("favicon"), rel="icon")
 
 
-def _hx_script() -> htpy.Element:
+def _hx_script() -> htpy.Renderable:
     return htpy.script(src=f"{_cdn}/htmx.org@{v.hx}/dist/htmx.js")
 
 
-def _user_menu(show_bsky: bool = False) -> htpy.Node:
+def _user_menu() -> htpy.Renderable:
     role = flask.session.get("role")
     avatar_url = flask.g.discord_avatar_url
     display_name = flask.g.discord_display_name
@@ -83,76 +83,37 @@ def _user_menu(show_bsky: bool = False) -> htpy.Node:
         if avatar_url
         else htpy.i(".bi-person-circle")
     )
-    return [
-        show_bsky
-        and htpy.div(".col-auto")[
+    return htpy.div(".col-auto")[
+        htpy.div(".dropdown")[
             htpy.button(
-                ".btn.btn-outline-primary",
-                data_bs_target="#bsky-modal",
-                data_bs_toggle="modal",
-            )[htpy.i(".bi-pencil-square"), htpy.span(".d-none.d-sm-inline")[" Post"]]
-        ],
-        htpy.div(".col-auto")[
-            htpy.div(".dropdown")[
-                htpy.button(
-                    ".btn.btn-link.pe-0.pt-0", data_bs_toggle="dropdown", type="button"
-                )[toggle],
-                htpy.ul(".dropdown-menu.dropdown-menu-end")[
-                    htpy.li[htpy.span(".dropdown-item-text.fw-semibold")[display_name]],
-                    htpy.li[htpy.span(".dropdown-item-text.text-secondary")[role]],
-                    htpy.li[htpy.hr(".dropdown-divider")],
-                    role == "staff"
-                    and htpy.li[
-                        htpy.a(
-                            ".dropdown-item",
-                            href=flask.url_for("assume_member"),
-                        )["Assume member"]
-                    ],
-                    htpy.li[
-                        htpy.a(
-                            ".dropdown-item",
-                            href=flask.url_for("sign_out"),
-                        )["Sign out"]
-                    ],
+                ".btn.btn-link.pe-0.pt-0", data_bs_toggle="dropdown", type="button"
+            )[toggle],
+            htpy.ul(".dropdown-menu.dropdown-menu-end")[
+                htpy.li[htpy.span(".dropdown-item-text.fw-semibold")[display_name]],
+                htpy.li[htpy.span(".dropdown-item-text.text-secondary")[role]],
+                htpy.li[htpy.hr(".dropdown-divider")],
+                role == "staff"
+                and htpy.li[
+                    htpy.a(
+                        ".dropdown-item",
+                        href=flask.url_for("assume_member"),
+                    )["Assume member"]
                 ],
-            ]
-        ],
-        show_bsky
-        and htpy.div("#bsky-modal.modal")[
-            htpy.div(".modal-dialog.modal-dialog-centered")[
-                htpy.div(".modal-content")[
-                    htpy.div(".modal-body")[
-                        htpy.form(
-                            ".mb-0", action=flask.url_for("bluesky"), method="post"
-                        )[
-                            htpy.h5(".mb-3")[
-                                htpy.label(for_="body")["Post to Bluesky"]
-                            ],
-                            htpy.textarea(
-                                "#body.form-control.mb-3",
-                                name="body",
-                                required=True,
-                                rows=10,
-                            ),
-                            htpy.div(".row")[
-                                htpy.div(".col-auto.ms-auto")[
-                                    htpy.button(
-                                        ".btn.btn-outline-primary", type="submit"
-                                    )["Post"]
-                                ]
-                            ],
-                        ]
-                    ]
-                ]
-            ]
-        ],
+                htpy.li[
+                    htpy.a(
+                        ".dropdown-item",
+                        href=flask.url_for("sign_out"),
+                    )["Sign out"]
+                ],
+            ],
+        ]
     ]
 
 
 def albums_detail(album: Album, songs: list[Song]) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
-            _back_button(flask.url_for("albums"), "Albums"), _user_menu(True)
+            _back_button(flask.url_for("albums"), "Albums"), _user_menu()
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Album details"]]],
         htpy.div(".pt-3.row")[htpy.div(".col")[album.detail_table]],
@@ -178,7 +139,7 @@ def albums_detail(album: Album, songs: list[Song]) -> str:
 def albums_index() -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
-            _back_button(flask.url_for("index"), "Home"), _user_menu(True)
+            _back_button(flask.url_for("index"), "Home"), _user_menu()
         ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
@@ -291,7 +252,7 @@ def albums_index() -> str:
 def albums_missing_art(albums: list[Album]) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
-            _back_button(flask.url_for("albums"), "Albums"), _user_menu(True)
+            _back_button(flask.url_for("albums"), "Albums"), _user_menu()
         ],
         htpy.div(".pt-3.row")[
             htpy.h2["Albums missing art"],
@@ -328,6 +289,32 @@ def albums_rows(albums: list[Album], page: int) -> str:
         )
     content = htpy.fragment[trs]
     return str(content)
+
+
+def bluesky_post() -> str:
+    content = [
+        htpy.div(".g-1.pt-3.row")[
+            _back_button(flask.url_for("index"), "Home"), _user_menu()
+        ],
+        htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Post to Bluesky"]]],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.form(action=flask.url_for("bluesky"), method="post")[
+                    htpy.div(".mb-3")[
+                        htpy.label(".form-label", for_="body")["Post"],
+                        htpy.textarea(
+                            "#body.form-control",
+                            name="body",
+                            required=True,
+                            rows=10,
+                        ),
+                    ],
+                    htpy.button(".btn.btn-outline-primary", type="submit")["Post"],
+                ]
+            ]
+        ],
+    ]
+    return str(_base(content))
 
 
 def favicon() -> str:
@@ -526,7 +513,7 @@ def get_ocremix_start(max_ocr_num: int) -> str:
     ]
     content = [
         htpy.div(".g-1.pt-3.row")[
-            _back_button(flask.url_for("index"), "Home"), _user_menu(True)
+            _back_button(flask.url_for("index"), "Home"), _user_menu()
         ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
@@ -545,7 +532,7 @@ def listeners_detail(listener: Listener) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
             _back_button(flask.url_for("listeners"), "Listeners"),
-            _user_menu(True),
+            _user_menu(),
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Listener details"]]],
         htpy.div(".pt-3.row")[htpy.div(".col")[listener.detail_table]],
@@ -561,7 +548,7 @@ def listeners_edit(listener: Listener) -> str:
                 flask.url_for("listeners_detail", listener_id=listener.id),
                 "Listener details",
             ),
-            _user_menu(True),
+            _user_menu(),
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Edit listener"]]],
         htpy.div(".pt-3.row")[htpy.div(".col")[listener.edit_form]],
@@ -572,7 +559,7 @@ def listeners_edit(listener: Listener) -> str:
 def listeners_index(ranks: list[dict]) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
-            _back_button(flask.url_for("index"), "Home"), _user_menu(True)
+            _back_button(flask.url_for("index"), "Home"), _user_menu()
         ],
         htpy.form(hx_target="tbody")[
             htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
@@ -696,43 +683,6 @@ def listeners_rows(listeners: list[Listener], page: int) -> str:
     return str(content)
 
 
-def welcome(role: str) -> str:
-    tools: list[tuple[str, str]] = []
-    if role == "staff":
-        tools = [
-            ("songs", "Songs"),
-            ("albums", "Albums"),
-            ("listeners", "Listeners"),
-            ("get_ocremix", "OC ReMix"),
-        ]
-    content = [
-        htpy.div(".g-1.pt-3.row")[
-            htpy.div(".col-auto.me-auto")[
-                htpy.a(".btn.btn-outline-dark.pe-none", href="#")[
-                    htpy.i(".bi-boombox-fill", style="color: #f73"), " Rainwave Library"
-                ]
-            ],
-            _user_menu(False),
-        ],
-        htpy.div(".pt-3.row")[
-            htpy.div(".col")[
-                htpy.div(".list-group")[
-                    [
-                        htpy.a(
-                            ".list-group-item.list-group-item-action",
-                            href=flask.url_for(endpoint),
-                        )[label]
-                        for endpoint, label in tools
-                    ]
-                    if tools
-                    else htpy.p["No tools are available for your account yet."]
-                ]
-            ]
-        ],
-    ]
-    return str(_base(content))
-
-
 def sign_in() -> str:
     content = htpy.div(".pt-3.row")[
         htpy.div(".col")[
@@ -745,7 +695,7 @@ def sign_in() -> str:
 def songs_detail(song: Song) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
-            _back_button(flask.url_for("songs"), "Songs"), _user_menu(True)
+            _back_button(flask.url_for("songs"), "Songs"), _user_menu()
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Song details"]]],
         htpy.div(".pt-3.row")[
@@ -856,7 +806,7 @@ def songs_edit(song: Song) -> str:
                 flask.url_for("songs_detail", song_id=song.id),
                 "Song details",
             ),
-            _user_menu(True),
+            _user_menu(),
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Edit tags"]]],
         htpy.div(".pt-3.row")[
@@ -981,7 +931,7 @@ def songs_index() -> str:
     )
     content = [
         htpy.div(".g-1.pt-3.row")[
-            _back_button(flask.url_for("index"), "Home"), _user_menu(True)
+            _back_button(flask.url_for("index"), "Home"), _user_menu()
         ],
         htpy.form(action=flask.url_for("songs_xlsx"), hx_target="tbody", method="post")[
             htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
@@ -1189,7 +1139,7 @@ def songs_remove(song: Song, new_loc: str) -> str:
                 flask.url_for("songs_detail", song_id=song.id),
                 "Song details",
             ),
-            _user_menu(True),
+            _user_menu(),
         ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
@@ -1264,3 +1214,41 @@ def songs_rows(songs: list[Song], page: int) -> str:
             ]
         )
     return str(htpy.fragment[trs])
+
+
+def welcome(role: str) -> str:
+    tools: list[tuple[str, str]] = []
+    if role == "staff":
+        tools = [
+            ("songs", "Songs"),
+            ("albums", "Albums"),
+            ("listeners", "Listeners"),
+            ("get_ocremix", "OC ReMix"),
+            ("bluesky", "Post to Bluesky"),
+        ]
+    content = [
+        htpy.div(".g-1.pt-3.row")[
+            htpy.div(".col-auto.me-auto")[
+                htpy.a(".btn.btn-outline-dark.pe-none", href="#")[
+                    htpy.i(".bi-boombox-fill", style="color: #f73"), " Rainwave Library"
+                ]
+            ],
+            _user_menu(),
+        ],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.div(".list-group")[
+                    [
+                        htpy.a(
+                            ".list-group-item.list-group-item-action",
+                            href=flask.url_for(endpoint),
+                        )[label]
+                        for endpoint, label in tools
+                    ]
+                    if tools
+                    else htpy.p["No tools are available for your account yet."]
+                ]
+            ]
+        ],
+    ]
+    return str(_base(content))

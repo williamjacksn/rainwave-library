@@ -192,9 +192,11 @@ def authorize() -> werkzeug.Response:
     return flask.redirect(flask.url_for("index"))
 
 
-@app.route("/bluesky", methods=["POST"])
+@app.route("/bluesky", methods=["GET", "POST"])
 @secure
-def bluesky() -> werkzeug.Response:
+def bluesky() -> werkzeug.Response | str:
+    if flask.request.method == "GET":
+        return rainwave_library.components.bluesky_post()
     b = rainwave_library.models.bsky.get_client_from_env()
     b.post(flask.request.values["body"])
     return flask.redirect(flask.url_for("index"))
