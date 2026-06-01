@@ -1217,14 +1217,14 @@ def songs_rows(songs: list[Song], page: int) -> str:
 
 
 def welcome(role: str) -> str:
-    tools: list[tuple[str, str]] = []
+    tools: list[tuple[str, str, str]] = []
     if role == "staff":
         tools = [
-            ("songs", "Songs"),
-            ("albums", "Albums"),
-            ("listeners", "Listeners"),
-            ("get_ocremix", "OC ReMix"),
-            ("bluesky", "Post to Bluesky"),
+            ("songs", "Songs", "Browse and manage songs in the Rainwave library"),
+            ("albums", "Albums", "Browse albums and check for missing art"),
+            ("listeners", "Listeners", "Browse and manage Rainwave listener accounts"),
+            ("get_ocremix", "OC ReMix", "Download and tag remixes from ocremix.org"),
+            ("bluesky", "Post to Bluesky", "Post an update to the Rainwave Bluesky account"),
         ]
     content = [
         htpy.div(".g-1.pt-3.row")[
@@ -1242,8 +1242,11 @@ def welcome(role: str) -> str:
                         htpy.a(
                             ".list-group-item.list-group-item-action",
                             href=flask.url_for(endpoint),
-                        )[label]
-                        for endpoint, label in tools
+                        )[
+                            htpy.div(".fw-semibold")[label],
+                            htpy.div(".small.text-secondary")[description],
+                        ]
+                        for endpoint, label, description in tools
                     ]
                     if tools
                     else htpy.p["No tools are available for your account yet."]
