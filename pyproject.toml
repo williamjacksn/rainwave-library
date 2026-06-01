@@ -13,14 +13,14 @@ dependencies = [
     "notch>=2026.0",
     "psycopg2-binary>=2.9.12",
     "waitress>=3.0.2",
-    "werkzeug>=3.1.5",
+    "werkzeug>=3.1.8",
     "xlsxwriter>=3.2.9",
 ]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.15.14",
-    "ty>=0.0.40",
+    "ruff>=0.15.15",
+    "ty>=0.0.41",
 ]
 
 [tool.ruff.lint]
