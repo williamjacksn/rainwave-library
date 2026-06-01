@@ -8,7 +8,7 @@ import fort
 import htpy
 
 cnx_str = os.getenv("RW_CNX", "")
-cnx = fort.PostgresDatabase(cnx_str, maxconn=5)  # ty:ignore[possibly-missing-attribute]
+cnx = fort.PostgresDatabase(cnx_str, maxconn=5)
 
 art_dir = pathlib.Path("/var/www/rainwave.cc/album_art")
 

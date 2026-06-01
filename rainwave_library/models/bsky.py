@@ -17,13 +17,13 @@ class BlueskyClient:
     password: str
     pds_host: str = "https://bsky.social"
 
-    _access_token: str = dataclasses.field(default=None, init=False, repr=False)
+    _access_token: str = dataclasses.field(default="", init=False, repr=False)
 
     @property
     def access_token(self) -> str:
-        if self._access_token is None:
-            session = self.create_session()
-            self._access_token = session.get("accessJwt")
+        if self._access_token == "":
+            session: dict[str, str] = self.create_session()
+            self._access_token = session["accessJwt"]
         return self._access_token
 
     def create_record(self, record: dict) -> dict:
@@ -56,7 +56,7 @@ class BlueskyClient:
 
 
 def get_client_from_env() -> BlueskyClient:
-    return BlueskyClient(os.getenv("BSKY_HANDLE"), os.getenv("BSKY_PASSWORD"))
+    return BlueskyClient(os.getenv("BSKY_HANDLE", ""), os.getenv("BSKY_PASSWORD", ""))
 
 
 def main() -> None:

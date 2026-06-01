@@ -426,7 +426,7 @@ def get_ocremix_fetch(ocr_info: dict, categories: list[str]) -> str:
                     name="artist",
                     required=True,
                     type="text",
-                    value=", ".join(a.get("name") for a in ocr_info.get("artists")),
+                    value=", ".join(a.get("name") for a in ocr_info["artists"]),
                 )
             ],
         ],
