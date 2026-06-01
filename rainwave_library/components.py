@@ -68,50 +68,6 @@ def _hx_script() -> htpy.Element:
     return htpy.script(src=f"{_cdn}/htmx.org@{v.hx}/dist/htmx.js")
 
 
-def _nav_bar(active: str = "songs") -> htpy.Element:
-    return htpy.nav(".bg-body-secondary.navbar.navbar-expand-sm")[
-        htpy.div(".container-fluid")[
-            htpy.a(".navbar-brand", href=flask.url_for("index"))[
-                htpy.i(".bi-boombox-fill", style="color: #f73"), " ", "Library"
-            ],
-            htpy.button(
-                ".navbar-toggler",
-                data_bs_target="#nav",
-                data_bs_toggle="collapse",
-                type="button",
-            )[htpy.span(".navbar-toggler-icon")],
-            htpy.div("#nav.collapse.navbar-collapse")[
-                htpy.ul(".navbar-nav")[
-                    htpy.li(".nav-item")[
-                        htpy.a(
-                            class_=["nav-link", {"active": active == "songs"}],
-                            href=flask.url_for("songs"),
-                        )["Songs"]
-                    ],
-                    htpy.li(".nav-item")[
-                        htpy.a(
-                            class_=["nav-link", {"active": active == "albums"}],
-                            href=flask.url_for("albums"),
-                        )["Albums"]
-                    ],
-                    htpy.li(".nav-item")[
-                        htpy.a(
-                            class_=["nav-link", {"active": active == "listeners"}],
-                            href=flask.url_for("listeners"),
-                        )["Listeners"]
-                    ],
-                    htpy.li(".nav-item")[
-                        htpy.a(
-                            class_=["nav-link", {"active": active == "ocremix"}],
-                            href=flask.url_for("get_ocremix"),
-                        )["OCR"]
-                    ],
-                ]
-            ],
-        ]
-    ]
-
-
 def _user_menu(show_bsky: bool = False) -> htpy.Node:
     role = flask.session.get("role")
     avatar_url = flask.g.discord_avatar_url
@@ -221,7 +177,9 @@ def albums_detail(album: Album, songs: list[Song]) -> str:
 
 def albums_index() -> str:
     content = [
-        _nav_bar(active="albums"),
+        htpy.div(".g-1.pt-3.row")[
+            _back_button(flask.url_for("index"), "Home"), _user_menu(True)
+        ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
                 htpy.a(
@@ -332,7 +290,9 @@ def albums_index() -> str:
 
 def albums_missing_art(albums: list[Album]) -> str:
     content = [
-        _nav_bar(active="albums"),
+        htpy.div(".g-1.pt-3.row")[
+            _back_button(flask.url_for("albums"), "Albums"), _user_menu(True)
+        ],
         htpy.div(".pt-3.row")[
             htpy.h2["Albums missing art"],
             htpy.div(".col")[htpy.ul[(htpy.li[a.library_link] for a in albums)]],
@@ -565,7 +525,9 @@ def get_ocremix_start(max_ocr_num: int) -> str:
         ],
     ]
     content = [
-        _nav_bar(active="ocremix"),
+        htpy.div(".g-1.pt-3.row")[
+            _back_button(flask.url_for("index"), "Home"), _user_menu(True)
+        ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
                 htpy.form[
@@ -609,7 +571,9 @@ def listeners_edit(listener: Listener) -> str:
 
 def listeners_index(ranks: list[dict]) -> str:
     content = [
-        _nav_bar(active="listeners"),
+        htpy.div(".g-1.pt-3.row")[
+            _back_button(flask.url_for("index"), "Home"), _user_menu(True)
+        ],
         htpy.form(hx_target="tbody")[
             htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
                 htpy.div(".col-12.col-sm-auto")[
@@ -742,8 +706,12 @@ def welcome(role: str) -> str:
             ("get_ocremix", "OC ReMix"),
         ]
     content = [
-        htpy.div(".align-items-center.d-flex.g-1.pt-3.row")[
-            htpy.div(".col-auto.me-auto")[htpy.h1["Rainwave Library"]],
+        htpy.div(".g-1.pt-3.row")[
+            htpy.div(".col-auto.me-auto")[
+                htpy.a(".btn.btn-outline-dark.pe-none", href="#")[
+                    htpy.i(".bi-boombox-fill", style="color: #f73"), " Rainwave Library"
+                ]
+            ],
             _user_menu(False),
         ],
         htpy.div(".pt-3.row")[
@@ -1012,7 +980,9 @@ def songs_index() -> str:
         type="search",
     )
     content = [
-        _nav_bar(active="songs"),
+        htpy.div(".g-1.pt-3.row")[
+            _back_button(flask.url_for("index"), "Home"), _user_menu(True)
+        ],
         htpy.form(action=flask.url_for("songs_xlsx"), hx_target="tbody", method="post")[
             htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
                 htpy.div(".col-12.col-sm-auto")[search_input],
