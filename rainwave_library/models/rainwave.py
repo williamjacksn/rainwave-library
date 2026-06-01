@@ -1,7 +1,7 @@
 import datetime
 import os
 import pathlib
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import flask
 import fort
@@ -549,7 +549,8 @@ def get_album(db: fort.PostgresDatabase, album_id: int) -> Album:
         where album_id = %(album_id)s
     """
     params = {"album_id": album_id}
-    return Album(db.q_one(sql, params))
+    row = db.q_one(sql, params)
+    return Album(cast(AlbumDict, cast(object, row)))
 
 
 def get_album_songs(db: fort.PostgresDatabase, album_id: int) -> list[Song]:
@@ -584,7 +585,8 @@ def get_album_songs(db: fort.PostgresDatabase, album_id: int) -> list[Song]:
         order by song_id asc
     """
     params = {"album_id": album_id}
-    return [Song(r) for r in db.q(sql, params)]
+    rows = db.q(sql, params)
+    return [Song(r) for r in cast(list[SongDict], cast(object, rows))]
 
 
 def get_albums(
@@ -635,7 +637,8 @@ def get_albums(
         "offset": 100 * (page - 1),
         "query": query,
     }
-    return [Album(r) for r in db.q(sql, params)]
+    rows = db.q(sql, params)
+    return [Album(r) for r in cast(list[AlbumDict], cast(object, rows))]
 
 
 def get_albums_missing_art(db: fort.PostgresDatabase) -> list[Album]:
@@ -649,6 +652,7 @@ def get_albums_missing_art(db: fort.PostgresDatabase) -> list[Album]:
     rows = db.q(sql)
     result = []
     for row in rows:
+        row = cast(AlbumDict, cast(object, row))
         album_id = row.get("album_id")
         album_fn = f"a_{album_id}_120.jpg"
         if not art_dir.joinpath(album_fn).exists():
@@ -736,7 +740,8 @@ def get_listener(db: fort.PostgresDatabase, listener_id: int) -> Listener:
         where u.user_id = %(user_id)s
     """
     params = {"user_id": listener_id}
-    return Listener(db.q_one(sql, params))
+    row = db.q_one(sql, params)
+    return Listener(cast(ListenerDict, cast(object, row)))
 
 
 def get_listeners(
@@ -803,7 +808,8 @@ def get_listeners(
         "query": query,
         "ranks": ranks,
     }
-    return [Listener(r) for r in db.q(sql, params)]
+    rows = db.q(sql, params)
+    return [Listener(r) for r in cast(list[ListenerDict], cast(object, rows))]
 
 
 def get_max_ocr_num(db: fort.PostgresDatabase) -> int:
@@ -871,7 +877,8 @@ def get_song(db: fort.PostgresDatabase, song_id: int) -> Song:
     params = {
         "song_id": song_id,
     }
-    return Song(db.q_one(sql, params))
+    row = db.q_one(sql, params)
+    return Song(cast(SongDict, cast(object, row)))
 
 
 def get_song_filenames(db: fort.PostgresDatabase) -> dict:
@@ -999,7 +1006,8 @@ def get_songs(
         "offset": 100 * (page - 1),
         "query": query,
     }
-    return [Song(r) for r in db.q(sql, params)]
+    rows = db.q(sql, params)
+    return [Song(r) for r in cast(list[SongDict], cast(object, rows))]
 
 
 def set_discord_user_id(
