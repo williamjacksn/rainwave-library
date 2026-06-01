@@ -262,7 +262,9 @@ class Listener:
             htpy.td(".text-center")[
                 self.is_discord_user and htpy.i(".bi-check-lg", title=self.discord_id)
             ],
-            htpy.td[bool(self.last_active) and self.last_active.date().isoformat()],
+            htpy.td(".text-nowrap")[
+                bool(self.last_active) and self.last_active.date().isoformat()
+            ],
         ]
 
 
