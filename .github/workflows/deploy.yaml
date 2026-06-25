@@ -11,6 +11,7 @@ concurrency:
 jobs:
   deploy:
     name: Deploy
+    environment: production
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -20,4 +21,4 @@ jobs:
         env:
           SSH_HOST: ${{ secrets.ssh_host }}
           SSH_PRIVATE_KEY: ${{ secrets.ssh_private_key }}
-          SSH_USER: ${{ secrets.ssh_user }}
+          SSH_USER: ${{ vars.ssh_user }}
