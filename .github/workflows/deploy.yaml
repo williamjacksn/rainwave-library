@@ -19,6 +19,6 @@ jobs:
       - name: Deploy
         run: sh ci/ssh-deploy.sh
         env:
-          SSH_HOST: ${{ secrets.ssh_host }}
+          SSH_HOST: ${{ vars.ssh_host }}
           SSH_PRIVATE_KEY: ${{ secrets.ssh_private_key }}
           SSH_USER: ${{ vars.ssh_user }}
