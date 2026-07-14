@@ -28,6 +28,12 @@ app.wsgi_app = werkzeug.middleware.proxy_fix.ProxyFix(  # ty:ignore[invalid-assi
 
 app.secret_key = os.getenv("SECRET_KEY")
 app.config["PREFERRED_URL_SCHEME"] = os.getenv("SCHEME", "https")
+storage_dir = pathlib.Path(os.getenv("STATE_DIRECTORY") or ".local")
+app.config["STORAGE_CNX"] = os.getenv(
+    "STORAGE_CNX", str(storage_dir / "rainwave-library.db")
+)
+
+rainwave_library.models.storage.connection_init(app.config["STORAGE_CNX"])
 
 
 def external_url_for(endpoint: str, *args, **kwargs) -> str:  # noqa: ANN002, ANN003
