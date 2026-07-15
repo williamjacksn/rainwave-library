@@ -1932,6 +1932,7 @@ def songs_index() -> str:
         htpy.div(".g-1.pt-3.row")[
             _back_button(flask.url_for("index"), "Home"), _user_menu()
         ],
+        htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Songs"]]],
         htpy.form(action=flask.url_for("songs_xlsx"), hx_target="tbody", method="post")[
             htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
                 htpy.div(".col-12.col-sm-auto")[search_input],
