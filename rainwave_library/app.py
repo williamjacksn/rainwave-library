@@ -525,7 +525,54 @@ def settings() -> str:
 @app.route("/suggestions", methods=["GET"])
 @signed_in
 def suggestions() -> str:
-    return rainwave_library.components.suggestions_index()
+    return rainwave_library.components.suggestions_index(
+        is_staff=flask.session.get("role") == "staff"
+    )
+
+
+@app.route("/suggestions/requester-discord-id", methods=["GET", "POST"])
+@secure
+def suggestions_requester_discord_id() -> werkzeug.Response | str:
+    if flask.request.method == "GET":
+        return rainwave_library.components.suggestion_discord_user_form()
+
+    requester_name = flask.request.form.get("requester-name", "")
+    requester_discord_id = flask.request.form.get("requester-discord-id", "")
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        try:
+            updated = rainwave_library.models.suggestions.requester_discord_id_update(
+                storage_cnx,
+                requester_name,
+                requester_discord_id,
+            )
+        except ValueError as error:
+            return rainwave_library.components.suggestion_discord_user_form(
+                requester_name=requester_name,
+                requester_discord_id=requester_discord_id,
+                result=("alert-danger", str(error)),
+            )
+    finally:
+        storage_cnx.close()
+
+    if updated == 0:
+        return rainwave_library.components.suggestion_discord_user_form(
+            requester_name=requester_name,
+            requester_discord_id=requester_discord_id,
+            result=(
+                "alert-warning",
+                "No suggestions matched that Discord username.",
+            ),
+        )
+
+    redirect_url = flask.url_for("suggestions")
+    if flask.request.headers.get("HX-Request") == "true":
+        response = flask.make_response()
+        response.headers["HX-Redirect"] = redirect_url
+        return response
+    return flask.redirect(redirect_url)
 
 
 @app.route("/suggestions/rows", methods=["POST"])

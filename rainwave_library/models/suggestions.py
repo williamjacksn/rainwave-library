@@ -453,6 +453,48 @@ def suggestion_update(
     return True
 
 
+def requester_discord_id_update(
+    con: sqlite3.Connection,
+    requester_name: str,
+    requester_discord_id: str,
+) -> int:
+    requester_name = requester_name.strip()
+    requester_discord_id = requester_discord_id.strip()
+    if not requester_name:
+        msg = "Discord username is required."
+        raise ValueError(msg)
+    if not requester_discord_id.isdigit():
+        msg = "Discord user ID must contain only digits."
+        raise ValueError(msg)
+
+    try:
+        cursor = con.execute(
+            """
+            update suggestions
+            set
+                requester_discord_id = :requester_discord_id,
+                updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            where requester_name = :requester_name collate nocase
+            """,
+            {
+                "requester_name": requester_name,
+                "requester_discord_id": requester_discord_id,
+            },
+        )
+        updated = cursor.rowcount
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+
+    log.info(
+        "Set requester Discord user ID for %s suggestion(s) matching %s",
+        updated,
+        requester_name,
+    )
+    return updated
+
+
 def _json_list(
     client: httpx.Client,
     url: str,

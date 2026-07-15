@@ -1713,13 +1713,79 @@ def suggestion_detail_row(
     return str(content)
 
 
-def suggestions_index() -> str:
+def suggestion_discord_user_form(
+    requester_name: str = "",
+    requester_discord_id: str = "",
+    result: tuple[str, str] | None = None,
+) -> str:
+    url = flask.url_for("suggestions_requester_discord_id")
+    return str(
+        htpy.form(
+            ".align-items-end.d-flex.flex-wrap.gap-2",
+            action=url,
+            hx_disabled_elt="button",
+            hx_post=url,
+            hx_swap="outerHTML",
+            method="post",
+        )[
+            result
+            and htpy.div(f".alert.{result[0]}.mb-0.py-2.w-100", role="alert")[
+                result[1]
+            ],
+            htpy.div[
+                htpy.label(".form-label.small", for_="bulk-requester-name")[
+                    "Discord username"
+                ],
+                htpy.input(
+                    "#bulk-requester-name.form-control",
+                    autocomplete="off",
+                    name="requester-name",
+                    required=True,
+                    type="text",
+                    value=requester_name,
+                ),
+            ],
+            htpy.div[
+                htpy.label(".form-label.small", for_="bulk-requester-discord-id")[
+                    "Discord user ID"
+                ],
+                htpy.input(
+                    "#bulk-requester-discord-id.form-control",
+                    autocomplete="off",
+                    inputmode="numeric",
+                    name="requester-discord-id",
+                    pattern="[0-9]+",
+                    required=True,
+                    type="text",
+                    value=requester_discord_id,
+                ),
+            ],
+            htpy.button(".btn.btn-outline-primary", type="submit")[
+                htpy.i(".bi-discord"), " Update suggestions"
+            ],
+        ]
+    )
+
+
+def suggestions_index(is_staff: bool) -> str:
     rows_url = flask.url_for("suggestions_rows")
     content = [
         htpy.div(".g-1.pt-3.row")[
             _back_button(flask.url_for("index"), "Home"), _user_menu()
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Music suggestions"]]],
+        is_staff
+        and htpy.div(".pt-3.row")[
+            htpy.div(".col-auto")[
+                htpy.button(
+                    ".btn.btn-outline-primary",
+                    hx_get=flask.url_for("suggestions_requester_discord_id"),
+                    hx_swap="outerHTML",
+                    title="Set requester Discord user IDs",
+                    type="button",
+                )[htpy.i(".bi-discord"), " Match Discord user"]
+            ]
+        ],
         htpy.form(
             "#suggestion-filters",
             hx_include="#suggestion-filters",
