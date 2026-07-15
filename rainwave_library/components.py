@@ -292,6 +292,33 @@ def albums_rows(albums: list[Album], page: int) -> str:
     return str(content)
 
 
+def artists_detail(artist: Artist, songs: list[Song]) -> str:
+    song_rows: list[htpy.Node] = [song.tr for song in songs]
+    if not song_rows:
+        song_rows.append(
+            htpy.tr(".text-center")[
+                htpy.td(colspan=Song.colspan)["This artist has no verified songs."]
+            ]
+        )
+    content = [
+        htpy.div(".g-1.pt-3.row")[
+            _back_button(flask.url_for("artists"), "Artists"), _user_menu()
+        ],
+        htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Artist details"]]],
+        htpy.div(".pt-3.row")[htpy.div(".col")[artist.detail_table]],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.h4["Songs"],
+                htpy.table(".align-middle.table.table-bordered.table-sm.table-striped")[
+                    Song.thead, htpy.tbody[song_rows]
+                ],
+            ]
+        ],
+        htpy.div("#audio"),
+    ]
+    return str(_base(content))
+
+
 def artists_index() -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[

@@ -132,10 +132,10 @@ class ArtistDict(TypedDict):
 
 
 class Artist:
-    colspan: int = 3
+    colspan: int = 4
     thead: htpy.Element = htpy.thead[
         htpy.tr(".text-center")[
-            htpy.th["ID"], htpy.th["Artist name"], htpy.th["Songs"]
+            htpy.th, htpy.th["ID"], htpy.th["Artist name"], htpy.th["Songs"]
         ]
     ]
 
@@ -145,6 +145,23 @@ class Artist:
     @property
     def id(self) -> int:
         return self.data.get("artist_id")
+
+    @property
+    def detail_table(self) -> htpy.Element:
+        return htpy.table(".align-middle.d-block.table")[
+            htpy.tbody[
+                htpy.tr[htpy.th["ID"], htpy.td[htpy.code[self.id]]],
+                htpy.tr[htpy.th["Artist name"], htpy.td[self.name]],
+                htpy.tr[htpy.th["Songs"], htpy.td[self.song_count]],
+            ]
+        ]
+
+    @property
+    def library_link(self) -> htpy.Element:
+        return htpy.a(
+            ".text-decoration-none",
+            href=flask.url_for("artists_detail", artist_id=self.id),
+        )[self.name]
 
     @property
     def name(self) -> str:
@@ -157,6 +174,13 @@ class Artist:
     @property
     def tr(self) -> htpy.Element:
         return htpy.tr[
+            htpy.td(".text-center.text-nowrap")[
+                htpy.a(
+                    ".text-decoration-none",
+                    href=flask.url_for("artists_detail", artist_id=self.id),
+                    title="Artist detail page",
+                )[htpy.i(".bi-info-circle.me-1")]
+            ],
             htpy.td(".text-end")[htpy.code[self.id]],
             htpy.td(".user-select-all")[self.name],
             htpy.td(".text-end")[self.song_count],
@@ -753,6 +777,62 @@ def get_artists(
     }
     rows = db.q(sql, params)
     return [Artist(row) for row in cast(list[ArtistDict], cast(object, rows))]
+
+
+def get_artist(db: fort.PostgresDatabase, artist_id: int) -> Artist | None:
+    sql = """
+        select
+            a.artist_id,
+            a.artist_name,
+            count(s.song_id) song_count
+        from r4_artists a
+        left join r4_song_artist sa on sa.artist_id = a.artist_id
+        left join r4_songs s
+            on s.song_id = sa.song_id and s.song_verified is true
+        where a.artist_id = %(artist_id)s
+        group by a.artist_id, a.artist_name
+    """
+    row = db.q_one(sql, {"artist_id": artist_id})
+    if row is None:
+        return None
+    return Artist(cast(ArtistDict, cast(object, row)))
+
+
+def get_artist_songs(db: fort.PostgresDatabase, artist_id: int) -> list[Song]:
+    sql = """
+        with r as (
+            select
+                song_id,
+                count(*) raw_rating_count,
+                avg(song_rating_user) raw_rating_avg
+            from r4_song_ratings
+            where song_rating_user is not null
+            group by song_id
+        )
+        select
+            a.album_name,
+            coalesce(r.raw_rating_avg, 0) as raw_rating_avg,
+            coalesce(r.raw_rating_count, 0) as raw_rating_count,
+            s.song_artist_tag,
+            s.song_filename,
+            s.song_id,
+            s.song_length,
+            s.song_link_text,
+            s.song_origin_sid,
+            s.song_rating,
+            s.song_rating_count,
+            s.song_title,
+            s.song_url
+        from r4_song_artist sa
+        join r4_songs s
+            on s.song_id = sa.song_id and s.song_verified is true
+        join r4_albums a on a.album_id = s.album_id
+        left join r on r.song_id = s.song_id
+        where sa.artist_id = %(artist_id)s
+        order by a.album_name collate "C", s.song_title collate "C", s.song_id
+    """
+    rows = db.q(sql, {"artist_id": artist_id})
+    return [Song(row) for row in cast(list[SongDict], cast(object, rows))]
 
 
 def get_category_for_album(db: fort.PostgresDatabase, album_name: str) -> str | None:

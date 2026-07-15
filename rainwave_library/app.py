@@ -156,6 +156,18 @@ def artists() -> str:
     return rainwave_library.components.artists_index()
 
 
+@app.route("/artists/<int:artist_id>", methods=["GET"])
+@secure
+def artists_detail(artist_id: int) -> str:
+    artist = rainwave_library.models.rainwave.get_artist(flask.g.db, artist_id)
+    if artist is None:
+        flask.abort(404)
+    songs_ = rainwave_library.models.rainwave.get_artist_songs(
+        flask.g.db, artist_id
+    )
+    return rainwave_library.components.artists_detail(artist, songs_)
+
+
 @app.route("/artists/rows", methods=["POST"])
 @secure
 def artists_rows() -> str:
