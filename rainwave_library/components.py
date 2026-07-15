@@ -1161,14 +1161,12 @@ def settings_index(settings: list[tuple[str, str, bool]]) -> str:
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Application settings"],]],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
-                htpy.div(".table-responsive")[
-                    htpy.table(
-                        ".align-middle.table.table-bordered.table-sm.table-striped"
-                    )[
-                        htpy.thead[htpy.tr[htpy.th["Key"], htpy.th["Value"]]],
-                        htpy.tbody[rows],
-                    ]
-                ],
+                htpy.table(
+                    ".align-middle.d-block.table.table-bordered.table-sm.table-striped"
+                )[
+                    htpy.thead[htpy.tr[htpy.th["Key"], htpy.th["Value"]]],
+                    htpy.tbody[rows],
+                ]
             ]
         ],
     ]
