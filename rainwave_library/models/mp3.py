@@ -66,6 +66,34 @@ def make_safe(s: str) -> str:
     return s.translate(translate_table)
 
 
+def rename_artist(
+    mp3s: typing.Iterable[str | pathlib.Path], old_name: str, new_name: str
+) -> list[Exception]:
+    errors: list[Exception] = []
+    for mp3 in mp3s:
+        try:
+            tags = mutagen.id3.ID3(mp3)
+            artist_frames = tags.getall("TPE1")
+            if not artist_frames or not artist_frames[0].text:
+                continue
+            artists = [artist.strip() for artist in artist_frames[0].text[0].split(",")]
+            changed = False
+            for index, artist in enumerate(artists):
+                if artist == old_name:
+                    artists[index] = new_name
+                    changed = True
+            if not changed:
+                continue
+            tags.delall("TPE1")
+            tags.add(mutagen.id3.TPE1(encoding=3, text=[", ".join(artists)]))
+            tags.save(mp3)
+            log.info(f"Renamed artist {old_name!r} to {new_name!r} in {mp3}")
+        except (mutagen.MutagenError, OSError) as e:
+            log.error(f"Unable to rename artist in {mp3}: {e}")
+            errors.append(e)
+    return errors
+
+
 def set_tags(filename: str, **kwargs: str) -> str:
     """Takes a filename and the following possible kwargs:
     album, artist, categories, link_text, title, url"""

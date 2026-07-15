@@ -292,7 +292,11 @@ def albums_rows(albums: list[Album], page: int) -> str:
     return str(content)
 
 
-def artists_detail(artist: Artist, songs: list[Song]) -> str:
+def artists_detail(
+    artist: Artist,
+    songs: list[Song],
+    rename_result: tuple[str, str] | None = None,
+) -> str:
     song_rows: list[htpy.Node] = [song.tr for song in songs]
     if not song_rows:
         song_rows.append(
@@ -306,6 +310,57 @@ def artists_detail(artist: Artist, songs: list[Song]) -> str:
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Artist details"]]],
         htpy.div(".pt-3.row")[htpy.div(".col")[artist.detail_table]],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col-12.col-lg-6")[
+                htpy.button(
+                    ".btn.btn-outline-primary",
+                    aria_controls="artist-rename",
+                    aria_expanded="true" if rename_result else "false",
+                    data_bs_target="#artist-rename",
+                    data_bs_toggle="collapse",
+                    type="button",
+                )[htpy.i(".bi-pencil"), " Rename artist"],
+                htpy.div(
+                    "#artist-rename.collapse.show"
+                    if rename_result
+                    else "#artist-rename.collapse"
+                )[
+                    htpy.div(".card.card-body.mt-2")[
+                        rename_result
+                        and htpy.div(f".alert.{rename_result[0]}", role="alert")[
+                            rename_result[1]
+                        ],
+                        htpy.form(
+                            method="post",
+                            onsubmit=(
+                                "return window.confirm('Rename this artist in every "
+                                "associated song file?')"
+                            ),
+                        )[
+                            htpy.label(".form-label", for_="artist-name")[
+                                "Artist name"
+                            ],
+                            htpy.div(".input-group")[
+                                htpy.input(
+                                    "#artist-name.form-control",
+                                    name="artist-name",
+                                    required=True,
+                                    type="text",
+                                    value=artist.name,
+                                ),
+                                htpy.button(".btn.btn-outline-primary", type="submit")[
+                                    htpy.i(".bi-pencil"), " Rename"
+                                ],
+                            ],
+                            htpy.div(".form-text")[
+                                "Updates the artist tag in every verified song file "
+                                "for this artist."
+                            ],
+                        ],
+                    ]
+                ],
+            ]
+        ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
                 htpy.h4["Songs"],
