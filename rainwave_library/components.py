@@ -2438,7 +2438,7 @@ def welcome(role: str) -> str:
         (
             "suggestions",
             "Music suggestions",
-            "Browse music requested for the Rainwave library",
+            "Browse music suggested for the Rainwave library",
         )
     ]
     if role == "staff":
