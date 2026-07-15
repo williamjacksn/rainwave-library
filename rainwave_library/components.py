@@ -1237,7 +1237,13 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             ],
             suggestion.claimed_by_name
             and htpy.div(".small.mt-1")[
-                htpy.strong["Claimed by: "], suggestion.claimed_by_name
+                htpy.strong["Claimed by: "],
+                suggestion.claimed_by_name,
+                suggestion.claimed_by_discord_id
+                and htpy.i(
+                    ".bi-discord.ms-1",
+                    title=f"Discord user {suggestion.claimed_by_discord_id}",
+                ),
             ],
             suggestion.requested_at
             and htpy.div(".small.mt-1")[
@@ -1283,8 +1289,13 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                 title=f"Discord user {suggestion.requester_discord_id}",
             ),
         ],
-        htpy.td(".d-none.d-md-table-cell")[
-            suggestion.claimed_by_name or htpy.span(".text-secondary")["—"]
+        htpy.td(".d-none.d-md-table-cell.text-nowrap")[
+            suggestion.claimed_by_name or htpy.span(".text-secondary")["—"],
+            suggestion.claimed_by_discord_id
+            and htpy.i(
+                ".bi-discord.ms-1",
+                title=f"Discord user {suggestion.claimed_by_discord_id}",
+            ),
         ],
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[
             suggestion.requested_at or htpy.span(".text-secondary")["—"]
@@ -1795,9 +1806,6 @@ def suggestion_discord_user_form(
                     type="text",
                     value=discord_username,
                 ),
-                htpy.div(".form-text")[
-                    "Matches both requested by and claimed by names."
-                ],
             ],
             htpy.div[
                 htpy.label(".form-label.small", for_="bulk-discord-user-id")[

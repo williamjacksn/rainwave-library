@@ -71,6 +71,7 @@ class Suggestion:
     requester_discord_id: str | None
     requested_at: str | None
     claimed_by_name: str | None
+    claimed_by_discord_id: str | None
     channel_ids: tuple[int, ...]
     tags: tuple[str, ...]
 
@@ -102,7 +103,6 @@ class SuggestionActivity:
 @dataclass(frozen=True)
 class SuggestionDetail(Suggestion):
     primary_channel_id: int | None
-    claimed_by_discord_id: str | None
     claimed_at: str | None
     resolved_at: str | None
     resolution_notes: str | None
@@ -141,6 +141,7 @@ def _suggestion_from_row(row: sqlite3.Row) -> Suggestion:
         requester_discord_id=row["requester_discord_id"],
         requested_at=row["requested_at"],
         claimed_by_name=row["claimed_by_name"],
+        claimed_by_discord_id=row["claimed_by_discord_id"],
         channel_ids=tuple(
             sorted(
                 int(channel_id)
@@ -178,6 +179,7 @@ def suggestions_get(
             s.requester_discord_id,
             s.requested_at,
             s.claimed_by_name,
+            s.claimed_by_discord_id,
             (
                 select group_concat(channel_id, ',')
                 from suggestion_channels sc
