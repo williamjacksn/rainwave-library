@@ -1175,6 +1175,9 @@ def settings_index(settings: list[tuple[str, str, bool]]) -> str:
 
 
 def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
+    editable = flask.session.get("role") == "staff"
+    action = "Edit" if editable else "View details for"
+    action_title = "Edit suggestion" if editable else "View suggestion details"
     status_classes = {
         "new": "text-bg-primary",
         "claimed": "text-bg-warning",
@@ -1191,13 +1194,13 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
         htpy.td(".text-center.text-nowrap")[
             htpy.a(
                 ".text-decoration-none",
-                aria_label=f"View details for {suggestion.title}",
+                aria_label=f"{action} {suggestion.title}",
                 href="#",
                 hx_get=flask.url_for("suggestion_details", suggestion_id=suggestion.id),
                 hx_swap="outerHTML",
                 hx_target="closest tr",
-                title="View suggestion details",
-            )[htpy.i(".bi-eye")]
+                title=action_title,
+            )[htpy.i(".bi-pencil" if editable else ".bi-eye")]
         ],
         htpy.td[
             htpy.span(
@@ -1260,7 +1263,231 @@ def _suggestion_detail_table(
     ]
 
 
-def suggestion_detail_row(suggestion: SuggestionDetail) -> str:
+def _suggestion_edit_form(
+    suggestion: SuggestionDetail,
+    edit_result: tuple[str, str] | None,
+) -> htpy.Element:
+    rainwave_channels = [
+        (channel_id, label)
+        for channel_id, label in channels.items()
+        if isinstance(channel_id, int) and channel_id in range(1, 7)
+    ]
+    return htpy.form(
+        hx_disabled_elt="button",
+        hx_post=flask.url_for("suggestion_update", suggestion_id=suggestion.id),
+        hx_swap="outerHTML",
+        hx_target="closest tr",
+    )[
+        edit_result
+        and htpy.div(f".alert.{edit_result[0]}", role="alert")[edit_result[1]],
+        htpy.div(".g-3.row")[
+            htpy.div(".col-12.small.text-secondary")[
+                "Suggestion ID: ", htpy.code[suggestion.id]
+            ],
+            htpy.div(".col-12")[
+                htpy.label(".form-label", for_="title")["Title"],
+                htpy.input(
+                    "#title.form-control",
+                    name="title",
+                    required=True,
+                    type="text",
+                    value=suggestion.title,
+                ),
+            ],
+            htpy.div(".col-12.col-md-4")[
+                htpy.label(".form-label", for_="kind")["Kind"],
+                htpy.select("#kind.form-select", name="kind")[
+                    [
+                        htpy.option(
+                            selected=kind == suggestion.kind,
+                            value=kind,
+                        )[kind.title()]
+                        for kind in Suggestion.kinds
+                    ]
+                ],
+            ],
+            htpy.div(".col-12.col-md-4")[
+                htpy.label(".form-label", for_="status")["Status"],
+                htpy.select("#status.form-select", name="status")[
+                    [
+                        htpy.option(
+                            selected=status == suggestion.status,
+                            value=status,
+                        )[status.title()]
+                        for status in Suggestion.statuses
+                    ]
+                ],
+            ],
+            htpy.div(".col-12.col-md-4.d-flex.align-items-end")[
+                htpy.div(".form-check.mb-2")[
+                    htpy.input(
+                        "#archived.form-check-input",
+                        checked=suggestion.archived,
+                        name="archived",
+                        type="checkbox",
+                        value="1",
+                    ),
+                    htpy.label(".form-check-label", for_="archived")["Archived"],
+                ]
+            ],
+            htpy.div(".col-12")[
+                htpy.label(".form-label", for_="description")["Description"],
+                htpy.textarea(
+                    "#description.form-control",
+                    name="description",
+                    rows=6,
+                )[suggestion.description],
+            ],
+        ],
+        htpy.h6(".mt-4")["Request"],
+        htpy.div(".g-3.row")[
+            htpy.div(".col-12.col-lg-4")[
+                htpy.label(".form-label", for_="requester-name")["Requested by"],
+                htpy.input(
+                    "#requester-name.form-control",
+                    name="requester-name",
+                    type="text",
+                    value=suggestion.requester_name or "",
+                ),
+            ],
+            htpy.div(".col-12.col-lg-4")[
+                htpy.label(".form-label", for_="requester-discord-id")[
+                    "Requester Discord ID"
+                ],
+                htpy.input(
+                    "#requester-discord-id.form-control",
+                    name="requester-discord-id",
+                    type="text",
+                    value=suggestion.requester_discord_id or "",
+                ),
+            ],
+            htpy.div(".col-12.col-lg-4")[
+                htpy.label(".form-label", for_="requested-at")["Requested"],
+                htpy.input(
+                    "#requested-at.form-control",
+                    name="requested-at",
+                    type="text",
+                    value=suggestion.requested_at or "",
+                ),
+            ],
+        ],
+        htpy.h6(".mt-4")["Assignment and resolution"],
+        htpy.div(".g-3.row")[
+            htpy.div(".col-12.col-lg-4")[
+                htpy.label(".form-label", for_="claimed-by-name")["Claimed by"],
+                htpy.input(
+                    "#claimed-by-name.form-control",
+                    name="claimed-by-name",
+                    type="text",
+                    value=suggestion.claimed_by_name or "",
+                ),
+            ],
+            htpy.div(".col-12.col-lg-4")[
+                htpy.label(".form-label", for_="claimed-by-discord-id")[
+                    "Claimant Discord ID"
+                ],
+                htpy.input(
+                    "#claimed-by-discord-id.form-control",
+                    name="claimed-by-discord-id",
+                    type="text",
+                    value=suggestion.claimed_by_discord_id or "",
+                ),
+            ],
+            htpy.div(".col-12.col-lg-4")[
+                htpy.label(".form-label", for_="claimed-at")["Claimed"],
+                htpy.input(
+                    "#claimed-at.form-control",
+                    name="claimed-at",
+                    type="text",
+                    value=suggestion.claimed_at or "",
+                ),
+            ],
+            htpy.div(".col-12.col-lg-4")[
+                htpy.label(".form-label", for_="resolved-at")["Resolved"],
+                htpy.input(
+                    "#resolved-at.form-control",
+                    name="resolved-at",
+                    type="text",
+                    value=suggestion.resolved_at or "",
+                ),
+            ],
+            htpy.div(".col-12.col-lg-8")[
+                htpy.label(".form-label", for_="resolution-notes")["Resolution notes"],
+                htpy.textarea(
+                    "#resolution-notes.form-control",
+                    name="resolution-notes",
+                    rows=2,
+                )[suggestion.resolution_notes or ""],
+            ],
+        ],
+        htpy.h6(".mt-4")["Organization"],
+        htpy.div(".g-3.row")[
+            htpy.div(".col-12.col-lg-5")[
+                htpy.div(".form-label")["Channels"],
+                htpy.div(".d-flex.flex-wrap.gap-3")[
+                    [
+                        htpy.div(".form-check")[
+                            htpy.input(
+                                f"#channel-{channel_id}.form-check-input",
+                                checked=channel_id in suggestion.channel_ids,
+                                name="channels",
+                                type="checkbox",
+                                value=channel_id,
+                            ),
+                            htpy.label(
+                                ".form-check-label", for_=f"channel-{channel_id}"
+                            )[label],
+                        ]
+                        for channel_id, label in rainwave_channels
+                    ]
+                ],
+            ],
+            htpy.div(".col-12.col-lg-3")[
+                htpy.label(".form-label", for_="primary-channel")["Primary channel"],
+                htpy.select("#primary-channel.form-select", name="primary-channel")[
+                    htpy.option(value="")["None"],
+                    [
+                        htpy.option(
+                            selected=channel_id == suggestion.primary_channel_id,
+                            value=channel_id,
+                        )[label]
+                        for channel_id, label in rainwave_channels
+                    ],
+                ],
+                htpy.div(".form-text")[
+                    "The primary channel is automatically included above."
+                ],
+            ],
+            htpy.div(".col-12.col-lg-4")[
+                htpy.label(".form-label", for_="sort-order")["Sort order"],
+                htpy.input(
+                    "#sort-order.form-control",
+                    name="sort-order",
+                    step="any",
+                    type="number",
+                    value=str(suggestion.sort_order),
+                ),
+            ],
+            htpy.div(".col-12")[
+                htpy.label(".form-label", for_="tags")["Tags"],
+                htpy.textarea("#tags.form-control", name="tags", rows=3)[
+                    "\n".join(suggestion.tags)
+                ],
+                htpy.div(".form-text")["Enter one tag per line."],
+            ],
+        ],
+        htpy.button(".btn.btn-outline-success.mt-3", type="submit")[
+            htpy.i(".bi-file-earmark-play"), " Save suggestion"
+        ],
+    ]
+
+
+def suggestion_detail_row(
+    suggestion: SuggestionDetail,
+    *,
+    editable: bool = False,
+    edit_result: tuple[str, str] | None = None,
+) -> str:
     channel_badges: htpy.Node = (
         htpy.fragment[
             [
@@ -1447,23 +1674,29 @@ def suggestion_detail_row(suggestion: SuggestionDetail) -> str:
                     )[htpy.i(".bi-x-lg")],
                 ],
                 htpy.div(".card-body")[
-                    htpy.div(".g-3.row")[
-                        htpy.div(".col-12.col-xl-6")[htpy.h6["Summary"], summary],
-                        htpy.div(".col-12.col-xl-6")[
-                            htpy.h6["Request"], request_details
+                    editable and _suggestion_edit_form(suggestion, edit_result),
+                    not editable
+                    and htpy.fragment[
+                        htpy.div(".g-3.row")[
+                            htpy.div(".col-12.col-xl-6")[htpy.h6["Summary"], summary],
+                            htpy.div(".col-12.col-xl-6")[
+                                htpy.h6["Request"], request_details
+                            ],
+                            htpy.div(".col-12.col-xl-6")[
+                                htpy.h6["Assignment and resolution"], resolution_details
+                            ],
+                            htpy.div(".col-12.col-xl-6")[
+                                htpy.h6["Import metadata"], import_details
+                            ],
                         ],
-                        htpy.div(".col-12.col-xl-6")[
-                            htpy.h6["Assignment and resolution"], resolution_details
-                        ],
-                        htpy.div(".col-12.col-xl-6")[
-                            htpy.h6["Import metadata"], import_details
-                        ],
+                        htpy.h6(".mt-3")["Description"],
+                        htpy.div(
+                            ".bg-body-tertiary.border.p-2.rounded",
+                            style="white-space: pre-wrap",
+                        )[_suggestion_value(suggestion.description)],
                     ],
-                    htpy.h6(".mt-3")["Description"],
-                    htpy.div(
-                        ".bg-body-tertiary.border.p-2.rounded",
-                        style="white-space: pre-wrap",
-                    )[_suggestion_value(suggestion.description)],
+                    editable and htpy.h6(".mt-4")["Import metadata"],
+                    editable and import_details,
                     htpy.h6(".mt-3")["Links"],
                     links,
                     htpy.h6(".mt-3")["Activity"],
@@ -1512,13 +1745,7 @@ def suggestions_index() -> str:
                         htpy.option(value="")["All statuses"],
                         [
                             htpy.option(value=status)[status.title()]
-                            for status in (
-                                "new",
-                                "claimed",
-                                "processed",
-                                "fulfilled",
-                                "declined",
-                            )
+                            for status in Suggestion.statuses
                         ],
                     ]
                 ],

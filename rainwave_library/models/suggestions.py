@@ -1,5 +1,6 @@
 import datetime
 import logging
+import math
 import re
 import secrets
 import sqlite3
@@ -51,6 +52,14 @@ class TrelloImportResult:
 @dataclass(frozen=True)
 class Suggestion:
     colspan: typing.ClassVar[int] = 8
+    kinds: typing.ClassVar[tuple[str, ...]] = ("addition", "removal", "cleanup")
+    statuses: typing.ClassVar[tuple[str, ...]] = (
+        "new",
+        "claimed",
+        "processed",
+        "fulfilled",
+        "declined",
+    )
 
     id: str
     title: str
@@ -152,8 +161,7 @@ def suggestions_get(
     include_archived: bool = False,
 ) -> list[Suggestion]:
     query = query.strip() if query else None
-    valid_statuses = {"new", "claimed", "fulfilled", "declined", "processed"}
-    if status not in valid_statuses:
+    if status not in Suggestion.statuses:
         status = None
     page = max(page, 1)
     rows = con.execute(
@@ -313,6 +321,134 @@ def suggestion_get(
         links=links,
         activities=activities,
     )
+
+
+def suggestion_update(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    *,
+    title: str,
+    kind: str,
+    status: str,
+    archived: bool,
+    description: str,
+    requester_name: str | None,
+    requester_discord_id: str | None,
+    requested_at: str | None,
+    claimed_by_name: str | None,
+    claimed_by_discord_id: str | None,
+    claimed_at: str | None,
+    resolved_at: str | None,
+    resolution_notes: str | None,
+    sort_order: float,
+    channel_ids: typing.Iterable[int],
+    primary_channel_id: int | None,
+    tags: typing.Iterable[str],
+) -> bool:
+    title = title.strip()
+    if not title:
+        msg = "Suggestion title is required."
+        raise ValueError(msg)
+    if kind not in Suggestion.kinds:
+        msg = "Invalid suggestion kind."
+        raise ValueError(msg)
+    if status not in Suggestion.statuses:
+        msg = "Invalid suggestion status."
+        raise ValueError(msg)
+    if not math.isfinite(sort_order):
+        msg = "Sort order must be a finite number."
+        raise ValueError(msg)
+
+    normalized_channel_ids = set(channel_ids)
+    if any(channel_id not in range(1, 7) for channel_id in normalized_channel_ids):
+        msg = "Invalid Rainwave channel."
+        raise ValueError(msg)
+    if primary_channel_id is not None:
+        if primary_channel_id not in range(1, 7):
+            msg = "Invalid primary Rainwave channel."
+            raise ValueError(msg)
+        normalized_channel_ids.add(primary_channel_id)
+    normalized_tags = sorted(
+        {tag.strip() for tag in tags if tag.strip()}, key=str.casefold
+    )
+
+    try:
+        cursor = con.execute(
+            """
+            update suggestions
+            set
+                title = :title,
+                kind = :kind,
+                status = :status,
+                archived = :archived,
+                description = :description,
+                requester_name = :requester_name,
+                requester_discord_id = :requester_discord_id,
+                requested_at = :requested_at,
+                claimed_by_name = :claimed_by_name,
+                claimed_by_discord_id = :claimed_by_discord_id,
+                claimed_at = :claimed_at,
+                resolved_at = :resolved_at,
+                resolution_notes = :resolution_notes,
+                sort_order = :sort_order,
+                updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            where suggestion_id = :suggestion_id
+            """,
+            {
+                "suggestion_id": suggestion_id,
+                "title": title,
+                "kind": kind,
+                "status": status,
+                "archived": int(archived),
+                "description": description,
+                "requester_name": requester_name,
+                "requester_discord_id": requester_discord_id,
+                "requested_at": requested_at,
+                "claimed_by_name": claimed_by_name,
+                "claimed_by_discord_id": claimed_by_discord_id,
+                "claimed_at": claimed_at,
+                "resolved_at": resolved_at,
+                "resolution_notes": resolution_notes,
+                "sort_order": sort_order,
+            },
+        )
+        if cursor.rowcount == 0:
+            con.rollback()
+            return False
+
+        con.execute(
+            "delete from suggestion_channels where suggestion_id = ?",
+            (suggestion_id,),
+        )
+        con.executemany(
+            """
+            insert into suggestion_channels (suggestion_id, channel_id, is_primary)
+            values (?, ?, ?)
+            """,
+            (
+                (
+                    suggestion_id,
+                    channel_id,
+                    int(channel_id == primary_channel_id),
+                )
+                for channel_id in sorted(normalized_channel_ids)
+            ),
+        )
+        con.execute(
+            "delete from suggestion_tags where suggestion_id = ?",
+            (suggestion_id,),
+        )
+        con.executemany(
+            "insert into suggestion_tags (suggestion_id, tag) values (?, ?)",
+            ((suggestion_id, tag) for tag in normalized_tags),
+        )
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+
+    log.info("Updated suggestion %s", suggestion_id)
+    return True
 
 
 def _json_list(

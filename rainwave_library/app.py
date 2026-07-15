@@ -561,7 +561,78 @@ def suggestion_details(suggestion_id: str) -> str:
         storage_cnx.close()
     if suggestion is None:
         flask.abort(404)
-    return rainwave_library.components.suggestion_detail_row(suggestion)
+    return rainwave_library.components.suggestion_detail_row(
+        suggestion, editable=flask.session.get("role") == "staff"
+    )
+
+
+@app.route("/suggestions/<suggestion_id>", methods=["POST"])
+@secure
+def suggestion_update(suggestion_id: str) -> str:
+    def optional_value(name: str) -> str | None:
+        value = flask.request.form.get(name, "").strip()
+        return value or None
+
+    result: tuple[str, str]
+    try:
+        sort_order = float(flask.request.form.get("sort-order", "0"))
+        channel_ids = [
+            int(channel_id)
+            for channel_id in flask.request.form.getlist("channels")
+            if channel_id.isdigit()
+        ]
+        primary_channel = flask.request.form.get("primary-channel", "")
+        primary_channel_id = int(primary_channel) if primary_channel.isdigit() else None
+        storage_cnx = rainwave_library.models.storage.connection_get(
+            app.config["STORAGE_CNX"]
+        )
+        try:
+            updated = rainwave_library.models.suggestions.suggestion_update(
+                storage_cnx,
+                suggestion_id,
+                title=flask.request.form.get("title", ""),
+                kind=flask.request.form.get("kind", ""),
+                status=flask.request.form.get("status", ""),
+                archived="archived" in flask.request.form,
+                description=flask.request.form.get("description", ""),
+                requester_name=optional_value("requester-name"),
+                requester_discord_id=optional_value("requester-discord-id"),
+                requested_at=optional_value("requested-at"),
+                claimed_by_name=optional_value("claimed-by-name"),
+                claimed_by_discord_id=optional_value("claimed-by-discord-id"),
+                claimed_at=optional_value("claimed-at"),
+                resolved_at=optional_value("resolved-at"),
+                resolution_notes=optional_value("resolution-notes"),
+                sort_order=sort_order,
+                channel_ids=channel_ids,
+                primary_channel_id=primary_channel_id,
+                tags=flask.request.form.get("tags", "").splitlines(),
+            )
+            if not updated:
+                flask.abort(404)
+            suggestion = rainwave_library.models.suggestions.suggestion_get(
+                storage_cnx, suggestion_id
+            )
+        finally:
+            storage_cnx.close()
+        result = ("alert-success", "Suggestion updated.")
+    except ValueError as error:
+        result = ("alert-danger", str(error))
+        storage_cnx = rainwave_library.models.storage.connection_get(
+            app.config["STORAGE_CNX"]
+        )
+        try:
+            suggestion = rainwave_library.models.suggestions.suggestion_get(
+                storage_cnx, suggestion_id
+            )
+        finally:
+            storage_cnx.close()
+
+    if suggestion is None:
+        flask.abort(404)
+    return rainwave_library.components.suggestion_detail_row(
+        suggestion, editable=True, edit_result=result
+    )
 
 
 @app.route("/suggestions/<suggestion_id>/row", methods=["GET"])
