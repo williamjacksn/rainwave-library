@@ -2070,7 +2070,7 @@ def suggestions_index(is_staff: bool) -> str:
                                         "Suggestion",
                                         "Suggested by",
                                         "Claimed by",
-                                        "Requested",
+                                        "Suggested at",
                                         "Tags",
                                     )
                                 ],
