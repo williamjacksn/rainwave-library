@@ -739,6 +739,7 @@ def get_ocremix_start(max_ocr_num: int) -> str:
         htpy.div(".g-1.pt-3.row")[
             _back_button(flask.url_for("index"), "Home"), _user_menu()
         ],
+        htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["OC ReMix"]]],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
                 htpy.form[
