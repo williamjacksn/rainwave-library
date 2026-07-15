@@ -1225,7 +1225,14 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                 and htpy.span(".badge.text-bg-secondary")["archived"],
             ],
         ],
-        htpy.td[suggestion.requester_name or htpy.span(".text-secondary")["—"]],
+        htpy.td(".text-nowrap")[
+            suggestion.requester_name or htpy.span(".text-secondary")["—"],
+            suggestion.requester_discord_id
+            and htpy.i(
+                ".bi-discord.ms-1",
+                title=f"Discord user {suggestion.requester_discord_id}",
+            ),
+        ],
         htpy.td[suggestion.claimed_by_name or htpy.span(".text-secondary")["—"]],
         htpy.td(".text-nowrap")[
             suggestion.requested_at or htpy.span(".text-secondary")["—"]
@@ -1657,10 +1664,7 @@ def suggestion_detail_row(
     content = htpy.tr[
         htpy.td(colspan=Suggestion.colspan)[
             htpy.div(".card.my-2")[
-                htpy.div(
-                    ".align-items-center.card-header.d-flex.gap-2.justify-content-between"
-                )[
-                    htpy.h5(".mb-0")[suggestion.title],
+                htpy.div(".align-items-center.card-header.d-flex.gap-2")[
                     htpy.button(
                         ".btn.btn-outline-secondary.btn-sm",
                         aria_label="Close suggestion details",
@@ -1672,6 +1676,7 @@ def suggestion_detail_row(
                         title="Close suggestion details",
                         type="button",
                     )[htpy.i(".bi-x-lg")],
+                    htpy.h5(".mb-0")[suggestion.title],
                 ],
                 htpy.div(".card-body")[
                     editable and _suggestion_edit_form(suggestion, edit_result),

@@ -68,6 +68,7 @@ class Suggestion:
     archived: bool
     description: str
     requester_name: str | None
+    requester_discord_id: str | None
     requested_at: str | None
     claimed_by_name: str | None
     channel_ids: tuple[int, ...]
@@ -101,7 +102,6 @@ class SuggestionActivity:
 @dataclass(frozen=True)
 class SuggestionDetail(Suggestion):
     primary_channel_id: int | None
-    requester_discord_id: str | None
     claimed_by_discord_id: str | None
     claimed_at: str | None
     resolved_at: str | None
@@ -138,6 +138,7 @@ def _suggestion_from_row(row: sqlite3.Row) -> Suggestion:
         archived=bool(row["archived"]),
         description=row["description"],
         requester_name=row["requester_name"],
+        requester_discord_id=row["requester_discord_id"],
         requested_at=row["requested_at"],
         claimed_by_name=row["claimed_by_name"],
         channel_ids=tuple(
@@ -174,6 +175,7 @@ def suggestions_get(
             s.archived,
             s.description,
             s.requester_name,
+            s.requester_discord_id,
             s.requested_at,
             s.claimed_by_name,
             (
