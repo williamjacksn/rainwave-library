@@ -339,6 +339,71 @@ def suggestion_get(
     )
 
 
+def suggestion_create(
+    con: sqlite3.Connection,
+    *,
+    title: str,
+    description: str,
+    channel_id: int,
+    requester_name: str | None,
+    requester_discord_id: str | None,
+) -> str:
+    title = title.strip()
+    if not title:
+        msg = "Suggestion title is required."
+        raise ValueError(msg)
+    if channel_id not in range(1, 7):
+        msg = "A valid Rainwave channel is required."
+        raise ValueError(msg)
+
+    suggestion_id = id_new()
+    try:
+        con.execute(
+            """
+            insert into suggestions (
+                suggestion_id,
+                title,
+                description,
+                requester_name,
+                requester_discord_id,
+                requested_at,
+                created_at,
+                updated_at
+            ) values (
+                :suggestion_id,
+                :title,
+                :description,
+                :requester_name,
+                :requester_discord_id,
+                strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+                strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+                strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            )
+            """,
+            {
+                "suggestion_id": suggestion_id,
+                "title": title,
+                "description": description.strip(),
+                "requester_name": requester_name,
+                "requester_discord_id": requester_discord_id,
+            },
+        )
+        con.execute(
+            """
+            insert into suggestion_channels (suggestion_id, channel_id, is_primary)
+            values (?, ?, 1)
+            """,
+            (suggestion_id, channel_id),
+        )
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+
+    log.info("Created native suggestion %s", suggestion_id)
+    return suggestion_id
+
+
 def suggestion_update(
     con: sqlite3.Connection,
     suggestion_id: str,

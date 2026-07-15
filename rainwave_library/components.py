@@ -1775,6 +1775,114 @@ def suggestion_detail_row(
     return str(content)
 
 
+def _suggestion_create_row(
+    title: str = "",
+    description: str = "",
+    channel_id: int | None = None,
+    result: tuple[str, str] | None = None,
+) -> htpy.Element:
+    url = flask.url_for("suggestion_create")
+    rainwave_channels = [
+        (value, label)
+        for value, label in channels.items()
+        if isinstance(value, int) and value in range(1, 7)
+    ]
+    return htpy.tr[
+        htpy.td(colspan=Suggestion.colspan)[
+            htpy.div(".card.my-2")[
+                htpy.div(".align-items-center.card-header.d-flex.gap-2")[
+                    htpy.button(
+                        ".btn.btn-outline-secondary.btn-sm",
+                        aria_label="Close new suggestion form",
+                        hx_get=flask.url_for("suggestion_create", close=1),
+                        hx_swap="innerHTML",
+                        hx_target="closest tbody",
+                        title="Close new suggestion form",
+                        type="button",
+                    )[htpy.i(".bi-x-lg")],
+                    htpy.h5(".mb-0")["New suggestion"],
+                ],
+                htpy.div(".card-body")[
+                    htpy.form(
+                        action=url,
+                        hx_disabled_elt="button",
+                        hx_post=url,
+                        hx_swap="outerHTML",
+                        hx_target="closest tr",
+                        method="post",
+                    )[
+                        result
+                        and htpy.div(f".alert.{result[0]}.py-2", role="alert")[
+                            result[1]
+                        ],
+                        htpy.div(".align-items-end.g-2.row")[
+                            htpy.div(".col-12.col-lg-4")[
+                                htpy.label(".form-label", for_="new-suggestion-title")[
+                                    "Title"
+                                ],
+                                htpy.input(
+                                    "#new-suggestion-title.form-control",
+                                    name="title",
+                                    required=True,
+                                    type="text",
+                                    value=title,
+                                ),
+                            ],
+                            htpy.div(".col-12.col-sm-5.col-lg-2")[
+                                htpy.label(
+                                    ".form-label", for_="new-suggestion-channel"
+                                )["Channel"],
+                                htpy.select(
+                                    "#new-suggestion-channel.form-select",
+                                    name="channel",
+                                    required=True,
+                                )[
+                                    htpy.option(
+                                        disabled=True,
+                                        selected=channel_id is None,
+                                        value="",
+                                    )["Choose a channel"],
+                                    [
+                                        htpy.option(
+                                            selected=value == channel_id,
+                                            value=value,
+                                        )[label]
+                                        for value, label in rainwave_channels
+                                    ],
+                                ],
+                            ],
+                            htpy.div(".col-12.col-lg")[
+                                htpy.label(
+                                    ".form-label", for_="new-suggestion-description"
+                                )["Details or links"],
+                                htpy.textarea(
+                                    "#new-suggestion-description.form-control",
+                                    name="description",
+                                    rows=2,
+                                )[description],
+                            ],
+                            htpy.div(".col-auto")[
+                                htpy.button(".btn.btn-outline-success", type="submit")[
+                                    htpy.i(".bi-plus-lg"), " Add suggestion"
+                                ]
+                            ],
+                        ],
+                    ],
+                ],
+            ]
+        ]
+    ]
+
+
+def suggestion_create_row(
+    title: str = "",
+    description: str = "",
+    channel_id: int | None = None,
+    result: tuple[str, str] | None = None,
+) -> str:
+    return str(_suggestion_create_row(title, description, channel_id, result))
+
+
 def suggestion_discord_user_form(
     discord_username: str = "",
     discord_user_id: str = "",
@@ -1836,17 +1944,26 @@ def suggestions_index(is_staff: bool) -> str:
             _back_button(flask.url_for("index"), "Home"), _user_menu()
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Music suggestions"]]],
-        is_staff
-        and htpy.div(".pt-3.row")[
+        htpy.div(".g-1.pt-3.row")[
             htpy.div(".col-auto")[
                 htpy.button(
-                    ".btn.btn-outline-primary",
+                    ".btn.btn-outline-success.mb-1",
+                    hx_get=flask.url_for("suggestion_create"),
+                    hx_swap="innerHTML",
+                    hx_target="#suggestion-create",
+                    type="button",
+                )[htpy.i(".bi-plus-lg"), " New suggestion"]
+            ],
+            is_staff
+            and htpy.div(".col-auto")[
+                htpy.button(
+                    ".btn.btn-outline-primary.mb-1",
                     hx_get=flask.url_for("suggestions_requester_discord_id"),
                     hx_swap="outerHTML",
                     title="Set suggestion Discord user IDs",
                     type="button",
                 )[htpy.i(".bi-discord"), " Match Discord user"]
-            ]
+            ],
         ],
         htpy.form(
             "#suggestion-filters",
@@ -1959,6 +2076,7 @@ def suggestions_index(is_staff: bool) -> str:
                                 ],
                             ]
                         ],
+                        htpy.tbody("#suggestion-create"),
                         htpy.tbody(
                             "#suggestion-rows",
                             hx_include="#suggestion-filters",

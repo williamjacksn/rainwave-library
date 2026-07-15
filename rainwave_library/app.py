@@ -530,6 +530,51 @@ def suggestions() -> str:
     )
 
 
+@app.route("/suggestions/create", methods=["GET", "POST"])
+@signed_in
+def suggestion_create() -> werkzeug.Response | str:
+    if flask.request.method == "GET":
+        if "close" in flask.request.args:
+            return ""
+        return rainwave_library.components.suggestion_create_row()
+
+    title = flask.request.form.get("title", "")
+    description = flask.request.form.get("description", "")
+    channel = flask.request.form.get("channel", "")
+    channel_id = int(channel) if channel.isdigit() else 0
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        try:
+            rainwave_library.models.suggestions.suggestion_create(
+                storage_cnx,
+                title=title,
+                description=description,
+                channel_id=channel_id,
+                requester_name=flask.g.discord_display_name,
+                requester_discord_id=(
+                    str(flask.g.discord_id) if flask.g.discord_id else None
+                ),
+            )
+        except ValueError as error:
+            return rainwave_library.components.suggestion_create_row(
+                title=title,
+                description=description,
+                channel_id=channel_id or None,
+                result=("alert-danger", str(error)),
+            )
+    finally:
+        storage_cnx.close()
+
+    redirect_url = flask.url_for("suggestions")
+    if flask.request.headers.get("HX-Request") == "true":
+        response = flask.make_response()
+        response.headers["HX-Redirect"] = redirect_url
+        return response
+    return flask.redirect(redirect_url)
+
+
 @app.route("/suggestions/requester-discord-id", methods=["GET", "POST"])
 @secure
 def suggestions_requester_discord_id() -> werkzeug.Response | str:
