@@ -1227,7 +1227,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                 or htpy.span(".text-secondary")["—"],
             ],
             htpy.div(".small.mt-1")[
-                htpy.strong["Requested by: "],
+                htpy.strong["Suggested by: "],
                 suggestion.requester_name or htpy.span(".text-secondary")["—"],
                 suggestion.requester_discord_id
                 and htpy.i(
@@ -1412,7 +1412,7 @@ def _suggestion_edit_form(
         htpy.h6(".mt-4")["Request"],
         htpy.div(".g-3.row")[
             htpy.div(".col-12.col-lg-4")[
-                htpy.label(".form-label", for_="requester-name")["Requested by"],
+                htpy.label(".form-label", for_="requester-name")["Suggested by"],
                 htpy.input(
                     "#requester-name.form-control",
                     name="requester-name",
@@ -1611,7 +1611,7 @@ def suggestion_detail_row(
     )
     request_details = _suggestion_detail_table(
         [
-            ("Requested by", _suggestion_value(suggestion.requester_name)),
+            ("Suggested by", _suggestion_value(suggestion.requester_name)),
             (
                 "Requester Discord ID",
                 _suggestion_value(suggestion.requester_discord_id),
@@ -1920,7 +1920,7 @@ def suggestions_index(is_staff: bool) -> str:
                                         "Status",
                                         "Channels",
                                         "Suggestion",
-                                        "Requested by",
+                                        "Suggested by",
                                         "Claimed by",
                                         "Requested",
                                         "Tags",
