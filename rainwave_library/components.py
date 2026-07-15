@@ -11,6 +11,7 @@ from rainwave_library.models.rainwave import (
     channels,
     length_display,
 )
+from rainwave_library.models.suggestions import Suggestion
 
 
 def _back_button(href: str, label: str) -> htpy.Renderable:
@@ -1173,6 +1174,190 @@ def settings_index(settings: list[tuple[str, str, bool]]) -> str:
     return str(_base(content))
 
 
+def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
+    status_classes = {
+        "new": "text-bg-primary",
+        "claimed": "text-bg-warning",
+        "processed": "text-bg-info",
+        "fulfilled": "text-bg-success",
+        "declined": "text-bg-danger",
+    }
+    kind_classes = {
+        "removal": "text-bg-danger",
+        "cleanup": "text-bg-dark",
+    }
+    return htpy.tr(class_={"text-secondary": suggestion.archived})[
+        htpy.td[
+            htpy.span(
+                f".badge.{status_classes.get(suggestion.status, 'text-bg-light')}"
+            )[suggestion.status.title()]
+        ],
+        htpy.td[
+            [
+                htpy.span(".badge.border.me-1.text-bg-light.text-dark")[
+                    channels.get(channel_id, str(channel_id))
+                ]
+                for channel_id in suggestion.channel_ids
+            ]
+            or htpy.span(".text-secondary")["—"]
+        ],
+        htpy.td[
+            htpy.div(".fw-semibold")[suggestion.title],
+            htpy.div(".d-flex.flex-wrap.gap-1.mt-1")[
+                suggestion.kind != "addition"
+                and htpy.span(
+                    f".badge.{kind_classes.get(suggestion.kind, 'text-bg-secondary')}"
+                )[suggestion.kind],
+                suggestion.archived
+                and htpy.span(".badge.text-bg-secondary")["archived"],
+            ],
+        ],
+        htpy.td[suggestion.requester_name or htpy.span(".text-secondary")["—"]],
+        htpy.td[suggestion.claimed_by_name or htpy.span(".text-secondary")["—"]],
+        htpy.td(".text-nowrap")[
+            suggestion.requested_at or htpy.span(".text-secondary")["—"]
+        ],
+        htpy.td[
+            [htpy.span(".badge.me-1.text-bg-secondary")[tag] for tag in suggestion.tags]
+            or htpy.span(".text-secondary")["—"]
+        ],
+    ]
+
+
+def suggestions_index() -> str:
+    rows_url = flask.url_for("suggestions_rows")
+    content = [
+        htpy.div(".g-1.pt-3.row")[
+            _back_button(flask.url_for("index"), "Home"), _user_menu()
+        ],
+        htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Music suggestions"]]],
+        htpy.form(
+            "#suggestion-filters",
+            hx_include="#suggestion-filters",
+            hx_target="#suggestion-rows",
+            onsubmit="return false",
+        )[
+            htpy.div(".align-items-center.g-2.pt-3.row")[
+                htpy.div(".col-12.col-md-5")[
+                    htpy.input(
+                        ".form-control",
+                        aria_label="Search music suggestions",
+                        hx_indicator="#suggestion-filters-indicator",
+                        hx_post=rows_url,
+                        hx_trigger="search, keyup changed delay:300ms",
+                        name="q",
+                        placeholder="Search suggestions...",
+                        type="search",
+                    )
+                ],
+                htpy.div(".col-12.col-md-auto")[
+                    htpy.select(
+                        ".form-select",
+                        aria_label="Filter by status",
+                        hx_indicator="#suggestion-filters-indicator",
+                        hx_post=rows_url,
+                        name="status",
+                    )[
+                        htpy.option(value="")["All statuses"],
+                        [
+                            htpy.option(value=status)[status.title()]
+                            for status in (
+                                "new",
+                                "claimed",
+                                "processed",
+                                "fulfilled",
+                                "declined",
+                            )
+                        ],
+                    ]
+                ],
+                htpy.div(".col-auto")[
+                    htpy.div(".form-check")[
+                        htpy.input(
+                            "#include-archived.form-check-input",
+                            hx_indicator="#suggestion-filters-indicator",
+                            hx_post=rows_url,
+                            name="include-archived",
+                            type="checkbox",
+                            value="1",
+                        ),
+                        htpy.label(".form-check-label", for_="include-archived")[
+                            "Include archived"
+                        ],
+                    ]
+                ],
+                htpy.div(".col-auto")[
+                    htpy.span(
+                        "#suggestion-filters-indicator.htmx-indicator.spinner-border.spinner-border-sm.text-primary"
+                    )
+                ],
+            ]
+        ],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.div(".table-responsive")[
+                    htpy.table(
+                        ".align-middle.table.table-bordered.table-sm.table-striped"
+                    )[
+                        htpy.thead[
+                            htpy.tr[
+                                htpy.th["Status"],
+                                htpy.th["Channels"],
+                                htpy.th["Suggestion"],
+                                htpy.th["Requested by"],
+                                htpy.th["Claimed by"],
+                                htpy.th["Requested"],
+                                htpy.th["Tags"],
+                            ]
+                        ],
+                        htpy.tbody(
+                            "#suggestion-rows",
+                            hx_include="#suggestion-filters",
+                            hx_post=rows_url,
+                            hx_trigger="load",
+                        )[
+                            htpy.tr[
+                                htpy.td(".py-3.text-center", colspan=7)[
+                                    htpy.span(
+                                        ".htmx-indicator.spinner-border.spinner-border-sm"
+                                    )
+                                ]
+                            ]
+                        ],
+                    ]
+                ]
+            ]
+        ],
+    ]
+    return str(_base(content))
+
+
+def suggestions_rows(suggestions: list[Suggestion], page: int) -> str:
+    rows = []
+    for index, suggestion in enumerate(suggestions):
+        if index < 100:
+            rows.append(_suggestion_row(suggestion))
+        else:
+            rows.append(
+                htpy.tr[
+                    htpy.td(
+                        ".py-3.text-center",
+                        colspan=7,
+                        hx_include="#suggestion-filters",
+                        hx_post=flask.url_for("suggestions_rows", page=page + 1),
+                        hx_swap="outerHTML",
+                        hx_target="closest tr",
+                        hx_trigger="revealed",
+                    )[htpy.span(".htmx-indicator.spinner-border.spinner-border-sm")]
+                ]
+            )
+    if not rows:
+        rows.append(
+            htpy.tr[htpy.td(".py-3.text-center", colspan=7)["No suggestions found."]]
+        )
+    return str(htpy.fragment[rows])
+
+
 def songs_index() -> str:
     search_input = htpy.input(
         ".form-control",
@@ -1475,25 +1660,41 @@ def songs_rows(songs: list[Song], page: int) -> str:
 
 
 def welcome(role: str) -> str:
-    tools: list[tuple[str, str, str]] = []
+    tools: list[tuple[str, str, str]] = [
+        (
+            "suggestions",
+            "Music suggestions",
+            "Browse music requested for the Rainwave library",
+        )
+    ]
     if role == "staff":
-        tools = [
-            ("songs", "Songs", "Browse and manage songs in the Rainwave library"),
-            ("albums", "Albums", "Browse albums and check for missing art"),
-            ("artists", "Artists", "Browse artists and their song counts"),
-            ("listeners", "Listeners", "Browse and manage Rainwave listener accounts"),
-            ("get_ocremix", "OC ReMix", "Download and tag remixes from ocremix.org"),
-            (
-                "bluesky",
-                "Post to Bluesky",
-                "Post an update to the Rainwave Bluesky account",
-            ),
-            (
-                "settings",
-                "Application settings",
-                "View application configuration stored in SQLite",
-            ),
-        ]
+        tools.extend(
+            [
+                ("songs", "Songs", "Browse and manage songs in the Rainwave library"),
+                ("albums", "Albums", "Browse albums and check for missing art"),
+                ("artists", "Artists", "Browse artists and their song counts"),
+                (
+                    "listeners",
+                    "Listeners",
+                    "Browse and manage Rainwave listener accounts",
+                ),
+                (
+                    "get_ocremix",
+                    "OC ReMix",
+                    "Download and tag remixes from ocremix.org",
+                ),
+                (
+                    "bluesky",
+                    "Post to Bluesky",
+                    "Post an update to the Rainwave Bluesky account",
+                ),
+                (
+                    "settings",
+                    "Application settings",
+                    "View application configuration stored in SQLite",
+                ),
+            ]
+        )
     content = [
         htpy.div(".g-1.pt-3.row")[
             htpy.div(".col-auto.me-auto")[

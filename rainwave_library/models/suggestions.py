@@ -49,6 +49,21 @@ class TrelloImportResult:
 
 
 @dataclass(frozen=True)
+class Suggestion:
+    id: str
+    title: str
+    kind: str
+    status: str
+    archived: bool
+    description: str
+    requester_name: str | None
+    requested_at: str | None
+    claimed_by_name: str | None
+    channel_ids: tuple[int, ...]
+    tags: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class _ListInfo:
     kind: str = "addition"
     status: str = "new"
@@ -60,6 +75,97 @@ class _ListInfo:
 
 def id_new() -> str:
     return secrets.token_urlsafe(16)
+
+
+def suggestions_get(
+    con: sqlite3.Connection,
+    query: str | None,
+    status: str | None,
+    page: int,
+    include_archived: bool = False,
+) -> list[Suggestion]:
+    query = query.strip() if query else None
+    valid_statuses = {"new", "claimed", "fulfilled", "declined", "processed"}
+    if status not in valid_statuses:
+        status = None
+    page = max(page, 1)
+    rows = con.execute(
+        """
+        select
+            s.suggestion_id,
+            s.title,
+            s.kind,
+            s.status,
+            s.archived,
+            s.description,
+            s.requester_name,
+            s.requested_at,
+            s.claimed_by_name,
+            (
+                select group_concat(channel_id, ',')
+                from suggestion_channels sc
+                where sc.suggestion_id = s.suggestion_id
+            ) channel_ids,
+            (
+                select group_concat(tag, char(31))
+                from suggestion_tags st
+                where st.suggestion_id = s.suggestion_id
+            ) tags
+        from suggestions s
+        where (:include_archived or not s.archived)
+            and (:status is null or s.status = :status)
+            and (
+                :query is null
+                or s.title like :query
+                or s.description like :query
+                or coalesce(s.requester_name, '') like :query
+                or coalesce(s.claimed_by_name, '') like :query
+            )
+        order by
+            s.archived,
+            case s.status
+                when 'new' then 1
+                when 'claimed' then 2
+                when 'processed' then 3
+                when 'fulfilled' then 4
+                when 'declined' then 5
+            end,
+            s.sort_order,
+            s.title collate nocase,
+            s.suggestion_id
+        limit 101 offset :offset
+        """,
+        {
+            "include_archived": int(include_archived),
+            "offset": 100 * (page - 1),
+            "query": f"%{query}%" if query else None,
+            "status": status,
+        },
+    ).fetchall()
+    return [
+        Suggestion(
+            id=row["suggestion_id"],
+            title=row["title"],
+            kind=row["kind"],
+            status=row["status"],
+            archived=bool(row["archived"]),
+            description=row["description"],
+            requester_name=row["requester_name"],
+            requested_at=row["requested_at"],
+            claimed_by_name=row["claimed_by_name"],
+            channel_ids=tuple(
+                sorted(
+                    int(channel_id)
+                    for channel_id in (row["channel_ids"] or "").split(",")
+                    if channel_id
+                )
+            ),
+            tags=tuple(sorted((row["tags"] or "").split("\x1f"), key=str.casefold))
+            if row["tags"]
+            else (),
+        )
+        for row in rows
+    ]
 
 
 def _json_list(

@@ -87,6 +87,16 @@ def external_url_for(endpoint: str, *args, **kwargs) -> str:  # noqa: ANN002, AN
     )
 
 
+def signed_in(f: typing.Callable) -> typing.Callable:
+    @functools.wraps(f)
+    def decorated_function(*args, **kwargs) -> werkzeug.Response:  # noqa: ANN002, ANN003
+        if "role" not in flask.session:
+            return flask.redirect(flask.url_for("index"))
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
 def secure(f: typing.Callable) -> typing.Callable:
     @functools.wraps(f)
     def decorated_function(*args, **kwargs) -> werkzeug.Response:  # noqa: ANN002, ANN003
@@ -510,6 +520,31 @@ def settings() -> str:
     finally:
         storage_cnx.close()
     return rainwave_library.components.settings_index(settings_)
+
+
+@app.route("/suggestions", methods=["GET"])
+@signed_in
+def suggestions() -> str:
+    return rainwave_library.components.suggestions_index()
+
+
+@app.route("/suggestions/rows", methods=["POST"])
+@signed_in
+def suggestions_rows() -> str:
+    query = flask.request.values.get("q")
+    status = flask.request.values.get("status")
+    page = max(int(flask.request.values.get("page", 1)), 1)
+    include_archived = "include-archived" in flask.request.values
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestions_ = rainwave_library.models.suggestions.suggestions_get(
+            storage_cnx, query, status, page, include_archived
+        )
+    finally:
+        storage_cnx.close()
+    return rainwave_library.components.suggestions_rows(suggestions_, page)
 
 
 @app.route("/sign-in", methods=["GET"])
