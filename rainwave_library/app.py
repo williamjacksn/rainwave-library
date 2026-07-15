@@ -181,10 +181,8 @@ def artists_detail(artist_id: int) -> werkzeug.Response | str:
                     "See the application log for details.",
                 )
             else:
-                renamed_artist = (
-                    rainwave_library.models.rainwave.get_artist_by_name(
-                        flask.g.db, new_name
-                    )
+                renamed_artist = rainwave_library.models.rainwave.get_artist_by_name(
+                    flask.g.db, new_name
                 )
                 if renamed_artist is None:
                     time.sleep(1)
@@ -195,9 +193,7 @@ def artists_detail(artist_id: int) -> werkzeug.Response | str:
                     )
                 if renamed_artist is not None:
                     return flask.redirect(
-                        flask.url_for(
-                            "artists_detail", artist_id=renamed_artist.id
-                        )
+                        flask.url_for("artists_detail", artist_id=renamed_artist.id)
                     )
                 rename_result = (
                     "alert-warning",

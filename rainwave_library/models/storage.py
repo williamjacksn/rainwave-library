@@ -32,9 +32,7 @@ def settings_get(con: sqlite3.Connection) -> list[tuple[str, str, bool]]:
     rows = con.execute(
         "select key, value, protected from settings order by key"
     ).fetchall()
-    return [
-        (row["key"], row["value"], bool(row["protected"])) for row in rows
-    ]
+    return [(row["key"], row["value"], bool(row["protected"])) for row in rows]
 
 
 def user_version_get(con: sqlite3.Connection) -> int:
