@@ -24,9 +24,7 @@ import rainwave_library.models.storage
 
 def database_get() -> fort.PostgresDatabase:
     storage_dir = pathlib.Path(os.getenv("STATE_DIRECTORY") or ".local")
-    storage_path = os.getenv(
-        "STORAGE_CNX", str(storage_dir / "rainwave-library.db")
-    )
+    storage_path = os.getenv("STORAGE_CNX", str(storage_dir / "rainwave-library.db"))
     rainwave_library.models.storage.connection_init(storage_path)
     storage_cnx = rainwave_library.models.storage.connection_get(storage_path)
     try:
@@ -70,9 +68,7 @@ def run(
     print(header)
     print("  ".join("-" * widths[column] for column in columns))
     for row in rows:
-        print(
-            "  ".join(str(row[column]).ljust(widths[column]) for column in columns)
-        )
+        print("  ".join(str(row[column]).ljust(widths[column]) for column in columns))
     print(f"({len(rows)} row{'s' if len(rows) != 1 else ''})")
 
 
