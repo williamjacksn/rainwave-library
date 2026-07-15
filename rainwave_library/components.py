@@ -11,7 +11,7 @@ from rainwave_library.models.rainwave import (
     channels,
     length_display,
 )
-from rainwave_library.models.suggestions import Suggestion
+from rainwave_library.models.suggestions import Suggestion, SuggestionDetail
 
 
 def _back_button(href: str, label: str) -> htpy.Renderable:
@@ -1186,7 +1186,19 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
         "removal": "text-bg-danger",
         "cleanup": "text-bg-dark",
     }
+    kind_class = kind_classes.get(suggestion.kind, "text-bg-secondary")
     return htpy.tr(class_={"text-secondary": suggestion.archived})[
+        htpy.td(".text-center.text-nowrap")[
+            htpy.a(
+                ".text-decoration-none",
+                aria_label=f"View details for {suggestion.title}",
+                href="#",
+                hx_get=flask.url_for("suggestion_details", suggestion_id=suggestion.id),
+                hx_swap="outerHTML",
+                hx_target="closest tr",
+                title="View suggestion details",
+            )[htpy.i(".bi-eye")]
+        ],
         htpy.td[
             htpy.span(
                 f".badge.{status_classes.get(suggestion.status, 'text-bg-light')}"
@@ -1205,9 +1217,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             htpy.div(".fw-semibold")[suggestion.title],
             htpy.div(".d-flex.flex-wrap.gap-1.mt-1")[
                 suggestion.kind != "addition"
-                and htpy.span(
-                    f".badge.{kind_classes.get(suggestion.kind, 'text-bg-secondary')}"
-                )[suggestion.kind],
+                and htpy.span(f".badge.{kind_class}")[suggestion.kind],
                 suggestion.archived
                 and htpy.span(".badge.text-bg-secondary")["archived"],
             ],
@@ -1222,6 +1232,247 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             or htpy.span(".text-secondary")["—"]
         ],
     ]
+
+
+def suggestion_row(suggestion: Suggestion) -> str:
+    return str(_suggestion_row(suggestion))
+
+
+def _suggestion_value(value: str | int | float | None) -> htpy.Node:
+    if value is None or value == "":
+        return htpy.span(".text-secondary")["—"]
+    return str(value)
+
+
+def _suggestion_detail_table(
+    rows: list[tuple[str, htpy.Node]],
+) -> htpy.Element:
+    return htpy.table(".table.table-sm")[
+        htpy.tbody[
+            [
+                htpy.tr[
+                    htpy.th(".text-nowrap", scope="row")[label],
+                    htpy.td[display_value],
+                ]
+                for label, display_value in rows
+            ]
+        ]
+    ]
+
+
+def suggestion_detail_row(suggestion: SuggestionDetail) -> str:
+    channel_badges: htpy.Node = (
+        htpy.fragment[
+            [
+                htpy.span(".badge.border.me-1.text-bg-light.text-dark")[
+                    channels.get(channel_id, str(channel_id))
+                ]
+                for channel_id in suggestion.channel_ids
+            ]
+        ]
+        if suggestion.channel_ids
+        else htpy.span(".text-secondary")["—"]
+    )
+    tag_badges: htpy.Node = (
+        htpy.fragment[
+            [htpy.span(".badge.me-1.text-bg-secondary")[tag] for tag in suggestion.tags]
+        ]
+        if suggestion.tags
+        else htpy.span(".text-secondary")["—"]
+    )
+    trello_link: htpy.Node = (
+        htpy.a(
+            href=suggestion.trello_url,
+            rel="noopener",
+            target="_blank",
+        )[suggestion.trello_url, " ", htpy.i(".bi-box-arrow-up-right")]
+        if suggestion.trello_url
+        else htpy.span(".text-secondary")["—"]
+    )
+    summary = _suggestion_detail_table(
+        [
+            ("ID", htpy.code[suggestion.id]),
+            ("Status", suggestion.status.title()),
+            ("Kind", suggestion.kind.title()),
+            ("Archived", "Yes" if suggestion.archived else "No"),
+            ("Channels", channel_badges),
+            (
+                "Primary channel",
+                _suggestion_value(
+                    channels.get(
+                        suggestion.primary_channel_id,
+                        str(suggestion.primary_channel_id),
+                    )
+                    if suggestion.primary_channel_id is not None
+                    else None
+                ),
+            ),
+            ("Tags", tag_badges),
+            ("Sort order", str(suggestion.sort_order)),
+        ]
+    )
+    request_details = _suggestion_detail_table(
+        [
+            ("Requested by", _suggestion_value(suggestion.requester_name)),
+            (
+                "Requester Discord ID",
+                _suggestion_value(suggestion.requester_discord_id),
+            ),
+            ("Requested", _suggestion_value(suggestion.requested_at)),
+        ]
+    )
+    resolution_details = _suggestion_detail_table(
+        [
+            ("Claimed by", _suggestion_value(suggestion.claimed_by_name)),
+            (
+                "Claimant Discord ID",
+                _suggestion_value(suggestion.claimed_by_discord_id),
+            ),
+            ("Claimed", _suggestion_value(suggestion.claimed_at)),
+            ("Resolved", _suggestion_value(suggestion.resolved_at)),
+            (
+                "Resolution notes",
+                htpy.div(style="white-space: pre-wrap")[
+                    _suggestion_value(suggestion.resolution_notes)
+                ],
+            ),
+        ]
+    )
+    import_details = _suggestion_detail_table(
+        [
+            ("Created", _suggestion_value(suggestion.created_at)),
+            ("Updated", _suggestion_value(suggestion.updated_at)),
+            ("Trello card ID", _suggestion_value(suggestion.trello_card_id)),
+            ("Trello URL", trello_link),
+        ]
+    )
+    links: htpy.Node = (
+        htpy.div(".list-group")[
+            [
+                htpy.div(".list-group-item")[
+                    htpy.div(".align-items-start.d-flex.gap-2.justify-content-between")[
+                        htpy.a(
+                            ".text-break",
+                            href=link.url,
+                            rel="noopener",
+                            target="_blank",
+                        )[
+                            link.label or link.url,
+                            " ",
+                            htpy.i(".bi-box-arrow-up-right"),
+                        ],
+                        htpy.span(".badge.text-bg-secondary")[link.type],
+                    ],
+                    htpy.div(".small.text-secondary")[
+                        link.label and [link.url, htpy.br],
+                        "ID: ",
+                        htpy.code[link.id],
+                        " · Sort order: ",
+                        str(link.sort_order),
+                        link.trello_attachment_id
+                        and [
+                            " · Trello attachment: ",
+                            htpy.code[link.trello_attachment_id],
+                        ],
+                    ],
+                ]
+                for link in suggestion.links
+            ]
+        ]
+        if suggestion.links
+        else htpy.p(".text-secondary")["No links."]
+    )
+    activities: htpy.Node = (
+        htpy.div(".list-group")[
+            [
+                htpy.div(".list-group-item")[
+                    htpy.div(".d-flex.gap-2.justify-content-between")[
+                        htpy.strong[activity.type.replace("-", " ").title()],
+                        htpy.span(".small.text-secondary.text-nowrap")[
+                            activity.created_at
+                        ],
+                    ],
+                    htpy.div(".small.text-secondary")[
+                        "Actor: ",
+                        activity.actor_name or "—",
+                        activity.actor_discord_id
+                        and [" · Discord: ", htpy.code[activity.actor_discord_id]],
+                        activity.trello_member_id
+                        and [
+                            " · Trello member: ",
+                            htpy.code[activity.trello_member_id],
+                        ],
+                    ],
+                    activity.body
+                    and htpy.div(".mt-2", style="white-space: pre-wrap")[activity.body],
+                    (activity.old_value is not None or activity.new_value is not None)
+                    and htpy.div(".mt-2")[
+                        _suggestion_value(activity.old_value),
+                        " → ",
+                        _suggestion_value(activity.new_value),
+                    ],
+                    htpy.div(".small.text-secondary")[
+                        "ID: ",
+                        htpy.code[activity.id],
+                        activity.trello_action_id
+                        and [
+                            " · Trello action: ",
+                            htpy.code[activity.trello_action_id],
+                        ],
+                    ],
+                ]
+                for activity in suggestion.activities
+            ]
+        ]
+        if suggestion.activities
+        else htpy.p(".text-secondary")["No activity."]
+    )
+    content = htpy.tr[
+        htpy.td(colspan=Suggestion.colspan)[
+            htpy.div(".card.my-2")[
+                htpy.div(
+                    ".align-items-center.card-header.d-flex.gap-2.justify-content-between"
+                )[
+                    htpy.h5(".mb-0")[suggestion.title],
+                    htpy.button(
+                        ".btn.btn-outline-secondary.btn-sm",
+                        aria_label="Close suggestion details",
+                        hx_get=flask.url_for(
+                            "suggestion_row", suggestion_id=suggestion.id
+                        ),
+                        hx_swap="outerHTML",
+                        hx_target="closest tr",
+                        title="Close suggestion details",
+                        type="button",
+                    )[htpy.i(".bi-x-lg")],
+                ],
+                htpy.div(".card-body")[
+                    htpy.div(".g-3.row")[
+                        htpy.div(".col-12.col-xl-6")[htpy.h6["Summary"], summary],
+                        htpy.div(".col-12.col-xl-6")[
+                            htpy.h6["Request"], request_details
+                        ],
+                        htpy.div(".col-12.col-xl-6")[
+                            htpy.h6["Assignment and resolution"], resolution_details
+                        ],
+                        htpy.div(".col-12.col-xl-6")[
+                            htpy.h6["Import metadata"], import_details
+                        ],
+                    ],
+                    htpy.h6(".mt-3")["Description"],
+                    htpy.div(
+                        ".bg-body-tertiary.border.p-2.rounded",
+                        style="white-space: pre-wrap",
+                    )[_suggestion_value(suggestion.description)],
+                    htpy.h6(".mt-3")["Links"],
+                    links,
+                    htpy.h6(".mt-3")["Activity"],
+                    activities,
+                ],
+            ]
+        ]
+    ]
+    return str(content)
 
 
 def suggestions_index() -> str:
@@ -1301,6 +1552,7 @@ def suggestions_index() -> str:
                     )[
                         htpy.thead[
                             htpy.tr[
+                                htpy.th,
                                 htpy.th["Status"],
                                 htpy.th["Channels"],
                                 htpy.th["Suggestion"],
@@ -1317,7 +1569,9 @@ def suggestions_index() -> str:
                             hx_trigger="load",
                         )[
                             htpy.tr[
-                                htpy.td(".py-3.text-center", colspan=7)[
+                                htpy.td(
+                                    ".py-3.text-center", colspan=Suggestion.colspan
+                                )[
                                     htpy.span(
                                         ".htmx-indicator.spinner-border.spinner-border-sm"
                                     )
@@ -1342,7 +1596,7 @@ def suggestions_rows(suggestions: list[Suggestion], page: int) -> str:
                 htpy.tr[
                     htpy.td(
                         ".py-3.text-center",
-                        colspan=7,
+                        colspan=Suggestion.colspan,
                         hx_include="#suggestion-filters",
                         hx_post=flask.url_for("suggestions_rows", page=page + 1),
                         hx_swap="outerHTML",
@@ -1353,7 +1607,11 @@ def suggestions_rows(suggestions: list[Suggestion], page: int) -> str:
             )
     if not rows:
         rows.append(
-            htpy.tr[htpy.td(".py-3.text-center", colspan=7)["No suggestions found."]]
+            htpy.tr[
+                htpy.td(".py-3.text-center", colspan=Suggestion.colspan)[
+                    "No suggestions found."
+                ]
+            ]
         )
     return str(htpy.fragment[rows])
 

@@ -50,6 +50,8 @@ class TrelloImportResult:
 
 @dataclass(frozen=True)
 class Suggestion:
+    colspan: typing.ClassVar[int] = 8
+
     id: str
     title: str
     kind: str
@@ -64,6 +66,47 @@ class Suggestion:
 
 
 @dataclass(frozen=True)
+class SuggestionLink:
+    id: str
+    type: str
+    url: str
+    label: str | None
+    sort_order: float
+    trello_attachment_id: str | None
+
+
+@dataclass(frozen=True)
+class SuggestionActivity:
+    id: str
+    type: str
+    actor_name: str | None
+    actor_discord_id: str | None
+    body: str | None
+    old_value: str | None
+    new_value: str | None
+    created_at: str
+    trello_action_id: str | None
+    trello_member_id: str | None
+
+
+@dataclass(frozen=True)
+class SuggestionDetail(Suggestion):
+    primary_channel_id: int | None
+    requester_discord_id: str | None
+    claimed_by_discord_id: str | None
+    claimed_at: str | None
+    resolved_at: str | None
+    resolution_notes: str | None
+    sort_order: float
+    created_at: str
+    updated_at: str
+    trello_card_id: str | None
+    trello_url: str | None
+    links: tuple[SuggestionLink, ...]
+    activities: tuple[SuggestionActivity, ...]
+
+
+@dataclass(frozen=True)
 class _ListInfo:
     kind: str = "addition"
     status: str = "new"
@@ -75,6 +118,30 @@ class _ListInfo:
 
 def id_new() -> str:
     return secrets.token_urlsafe(16)
+
+
+def _suggestion_from_row(row: sqlite3.Row) -> Suggestion:
+    return Suggestion(
+        id=row["suggestion_id"],
+        title=row["title"],
+        kind=row["kind"],
+        status=row["status"],
+        archived=bool(row["archived"]),
+        description=row["description"],
+        requester_name=row["requester_name"],
+        requested_at=row["requested_at"],
+        claimed_by_name=row["claimed_by_name"],
+        channel_ids=tuple(
+            sorted(
+                int(channel_id)
+                for channel_id in (row["channel_ids"] or "").split(",")
+                if channel_id
+            )
+        ),
+        tags=tuple(sorted((row["tags"] or "").split("\x1f"), key=str.casefold))
+        if row["tags"]
+        else (),
+    )
 
 
 def suggestions_get(
@@ -142,30 +209,110 @@ def suggestions_get(
             "status": status,
         },
     ).fetchall()
-    return [
-        Suggestion(
-            id=row["suggestion_id"],
-            title=row["title"],
-            kind=row["kind"],
-            status=row["status"],
-            archived=bool(row["archived"]),
-            description=row["description"],
-            requester_name=row["requester_name"],
-            requested_at=row["requested_at"],
-            claimed_by_name=row["claimed_by_name"],
-            channel_ids=tuple(
-                sorted(
-                    int(channel_id)
-                    for channel_id in (row["channel_ids"] or "").split(",")
-                    if channel_id
-                )
-            ),
-            tags=tuple(sorted((row["tags"] or "").split("\x1f"), key=str.casefold))
-            if row["tags"]
-            else (),
+    return [_suggestion_from_row(row) for row in rows]
+
+
+def suggestion_get(
+    con: sqlite3.Connection, suggestion_id: str
+) -> SuggestionDetail | None:
+    row = con.execute(
+        """
+        select
+            s.*,
+            (
+                select group_concat(channel_id, ',')
+                from suggestion_channels sc
+                where sc.suggestion_id = s.suggestion_id
+            ) channel_ids,
+            (
+                select group_concat(tag, char(31))
+                from suggestion_tags st
+                where st.suggestion_id = s.suggestion_id
+            ) tags,
+            (
+                select channel_id
+                from suggestion_channels sc
+                where sc.suggestion_id = s.suggestion_id and sc.is_primary
+                order by channel_id
+                limit 1
+            ) primary_channel_id
+        from suggestions s
+        where s.suggestion_id = ?
+        """,
+        (suggestion_id,),
+    ).fetchone()
+    if row is None:
+        return None
+
+    suggestion = _suggestion_from_row(row)
+    links = tuple(
+        SuggestionLink(
+            id=link["link_id"],
+            type=link["link_type"],
+            url=link["url"],
+            label=link["label"],
+            sort_order=float(link["sort_order"]),
+            trello_attachment_id=link["trello_attachment_id"],
         )
-        for row in rows
-    ]
+        for link in con.execute(
+            """
+            select *
+            from suggestion_links
+            where suggestion_id = ?
+            order by sort_order, link_id
+            """,
+            (suggestion_id,),
+        ).fetchall()
+    )
+    activities = tuple(
+        SuggestionActivity(
+            id=activity["activity_id"],
+            type=activity["activity_type"],
+            actor_name=activity["actor_name"],
+            actor_discord_id=activity["actor_discord_id"],
+            body=activity["body"],
+            old_value=activity["old_value"],
+            new_value=activity["new_value"],
+            created_at=activity["created_at"],
+            trello_action_id=activity["trello_action_id"],
+            trello_member_id=activity["trello_member_id"],
+        )
+        for activity in con.execute(
+            """
+            select *
+            from suggestion_activity
+            where suggestion_id = ?
+            order by created_at, activity_id
+            """,
+            (suggestion_id,),
+        ).fetchall()
+    )
+    return SuggestionDetail(
+        id=suggestion.id,
+        title=suggestion.title,
+        kind=suggestion.kind,
+        status=suggestion.status,
+        archived=suggestion.archived,
+        description=suggestion.description,
+        requester_name=suggestion.requester_name,
+        requested_at=suggestion.requested_at,
+        claimed_by_name=suggestion.claimed_by_name,
+        channel_ids=suggestion.channel_ids,
+        tags=suggestion.tags,
+        primary_channel_id=row["primary_channel_id"],
+        requester_discord_id=row["requester_discord_id"],
+        claimed_by_discord_id=row["claimed_by_discord_id"],
+        claimed_at=row["claimed_at"],
+        resolved_at=row["resolved_at"],
+        resolution_notes=row["resolution_notes"],
+        sort_order=float(row["sort_order"]),
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
+        trello_card_id=row["trello_card_id"],
+        trello_url=row["trello_url"],
+        links=links,
+        activities=activities,
+    )
 
 
 def _json_list(

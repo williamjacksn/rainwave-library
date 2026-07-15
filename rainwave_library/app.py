@@ -547,6 +547,40 @@ def suggestions_rows() -> str:
     return rainwave_library.components.suggestions_rows(suggestions_, page)
 
 
+@app.route("/suggestions/<suggestion_id>/details", methods=["GET"])
+@signed_in
+def suggestion_details(suggestion_id: str) -> str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+    finally:
+        storage_cnx.close()
+    if suggestion is None:
+        flask.abort(404)
+    return rainwave_library.components.suggestion_detail_row(suggestion)
+
+
+@app.route("/suggestions/<suggestion_id>/row", methods=["GET"])
+@signed_in
+def suggestion_row(suggestion_id: str) -> str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+    finally:
+        storage_cnx.close()
+    if suggestion is None:
+        flask.abort(404)
+    return rainwave_library.components.suggestion_row(suggestion)
+
+
 @app.route("/sign-in", methods=["GET"])
 def sign_in() -> werkzeug.Response:
     state = secrets.token_urlsafe()
