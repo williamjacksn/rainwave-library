@@ -143,6 +143,7 @@ def albums_index() -> str:
         htpy.div(".g-1.pt-3.row")[
             _back_button(flask.url_for("index"), "Home"), _user_menu()
         ],
+        htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Albums"]]],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
                 htpy.a(
@@ -784,6 +785,7 @@ def listeners_index(ranks: list[dict]) -> str:
         htpy.div(".g-1.pt-3.row")[
             _back_button(flask.url_for("index"), "Home"), _user_menu()
         ],
+        htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Listeners"]]],
         htpy.form(hx_target="tbody")[
             htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
                 htpy.div(".col-12.col-sm-auto")[
@@ -2248,7 +2250,7 @@ def welcome(role: str) -> str:
                 (
                     "settings",
                     "Application settings",
-                    "View application configuration stored in SQLite",
+                    "View application configuration",
                 ),
             ]
         )
