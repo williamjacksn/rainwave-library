@@ -28,6 +28,11 @@ def setting_get(con: sqlite3.Connection, key: str) -> str | None:
     return row["value"]
 
 
+def settings_get(con: sqlite3.Connection) -> list[tuple[str, str]]:
+    rows = con.execute("select key, value from settings order by key").fetchall()
+    return [(row["key"], row["value"]) for row in rows]
+
+
 def user_version_get(con: sqlite3.Connection) -> int:
     return con.execute("pragma user_version").fetchone()[0]
 

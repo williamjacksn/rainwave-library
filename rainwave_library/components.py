@@ -916,6 +916,39 @@ def songs_edit_result(alert_class: str, edit_result: str) -> str:
     return str(htpy.p(f".alert.{alert_class}")[edit_result])
 
 
+def settings_index(settings: list[tuple[str, str]]) -> str:
+    rows = [
+        htpy.tr[
+            htpy.td[htpy.code(".user-select-all")[key]],
+            htpy.td(".text-break")[htpy.code(".user-select-all")[value]],
+        ]
+        for key, value in settings
+    ]
+    if not rows:
+        rows.append(
+            htpy.tr[htpy.td(".py-3.text-center", colspan=2)["No settings found."]]
+        )
+    content = [
+        htpy.div(".g-1.pt-3.row")[
+            _back_button(flask.url_for("index"), "Home"), _user_menu()
+        ],
+        htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Application settings"],]],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.div(".table-responsive")[
+                    htpy.table(
+                        ".align-middle.table.table-bordered.table-sm.table-striped"
+                    )[
+                        htpy.thead[htpy.tr[htpy.th["Key"], htpy.th["Value"]]],
+                        htpy.tbody[rows],
+                    ]
+                ],
+            ]
+        ],
+    ]
+    return str(_base(content))
+
+
 def songs_index() -> str:
     search_input = htpy.input(
         ".form-control",
@@ -1229,6 +1262,11 @@ def welcome(role: str) -> str:
                 "bluesky",
                 "Post to Bluesky",
                 "Post an update to the Rainwave Bluesky account",
+            ),
+            (
+                "settings",
+                "Application settings",
+                "View application configuration stored in SQLite",
             ),
         ]
     content = [

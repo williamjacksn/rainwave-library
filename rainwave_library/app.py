@@ -403,6 +403,19 @@ def nothing() -> str:
     return ""
 
 
+@app.route("/settings", methods=["GET"])
+@secure
+def settings() -> str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        settings_ = rainwave_library.models.storage.settings_get(storage_cnx)
+    finally:
+        storage_cnx.close()
+    return rainwave_library.components.settings_index(settings_)
+
+
 @app.route("/sign-in", methods=["GET"])
 def sign_in() -> werkzeug.Response:
     state = secrets.token_urlsafe()
