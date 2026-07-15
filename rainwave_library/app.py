@@ -34,6 +34,13 @@ app.config["STORAGE_CNX"] = os.getenv(
 )
 
 rainwave_library.models.storage.connection_init(app.config["STORAGE_CNX"])
+storage_cnx = rainwave_library.models.storage.connection_get(
+    app.config["STORAGE_CNX"]
+)
+try:
+    rainwave_library.models.storage.migrate(storage_cnx)
+finally:
+    storage_cnx.close()
 
 
 def external_url_for(endpoint: str, *args, **kwargs) -> str:  # noqa: ANN002, ANN003
