@@ -584,12 +584,29 @@ def suggestions_rows() -> str:
     status = flask.request.values.get("status")
     page = max(int(flask.request.values.get("page", 1)), 1)
     include_archived = "include-archived" in flask.request.values
+    is_staff = flask.session.get("role") == "staff"
+    requester_discord_id = (
+        str(flask.g.discord_id or "")
+        if "your-suggestions" in flask.request.values
+        else None
+    )
+    claimed_by_discord_id = (
+        str(flask.g.discord_id or "")
+        if is_staff and "your-claims" in flask.request.values
+        else None
+    )
     storage_cnx = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         suggestions_ = rainwave_library.models.suggestions.suggestions_get(
-            storage_cnx, query, status, page, include_archived
+            storage_cnx,
+            query,
+            status,
+            page,
+            include_archived,
+            requester_discord_id,
+            claimed_by_discord_id,
         )
     finally:
         storage_cnx.close()

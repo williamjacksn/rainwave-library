@@ -161,6 +161,8 @@ def suggestions_get(
     status: str | None,
     page: int,
     include_archived: bool = False,
+    requester_discord_id: str | None = None,
+    claimed_by_discord_id: str | None = None,
 ) -> list[Suggestion]:
     query = query.strip() if query else None
     if status not in Suggestion.statuses:
@@ -194,6 +196,14 @@ def suggestions_get(
         where (:include_archived or not s.archived)
             and (:status is null or s.status = :status)
             and (
+                :requester_discord_id is null
+                or s.requester_discord_id = :requester_discord_id
+            )
+            and (
+                :claimed_by_discord_id is null
+                or s.claimed_by_discord_id = :claimed_by_discord_id
+            )
+            and (
                 :query is null
                 or s.title like :query
                 or s.description like :query
@@ -215,9 +225,11 @@ def suggestions_get(
         limit 101 offset :offset
         """,
         {
+            "claimed_by_discord_id": claimed_by_discord_id,
             "include_archived": int(include_archived),
             "offset": 100 * (page - 1),
             "query": f"%{query}%" if query else None,
+            "requester_discord_id": requester_discord_id,
             "status": status,
         },
     ).fetchall()

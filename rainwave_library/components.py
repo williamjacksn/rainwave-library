@@ -1885,6 +1885,37 @@ def suggestions_index(is_staff: bool) -> str:
                 htpy.div(".col-auto")[
                     htpy.div(".form-check")[
                         htpy.input(
+                            "#your-suggestions.form-check-input",
+                            hx_indicator="#suggestion-filters-indicator",
+                            hx_post=rows_url,
+                            name="your-suggestions",
+                            type="checkbox",
+                            value="1",
+                        ),
+                        htpy.label(".form-check-label", for_="your-suggestions")[
+                            "Your suggestions"
+                        ],
+                    ]
+                ],
+                is_staff
+                and htpy.div(".col-auto")[
+                    htpy.div(".form-check")[
+                        htpy.input(
+                            "#your-claims.form-check-input",
+                            hx_indicator="#suggestion-filters-indicator",
+                            hx_post=rows_url,
+                            name="your-claims",
+                            type="checkbox",
+                            value="1",
+                        ),
+                        htpy.label(".form-check-label", for_="your-claims")[
+                            "Your claims"
+                        ],
+                    ]
+                ],
+                htpy.div(".col-auto")[
+                    htpy.div(".form-check")[
+                        htpy.input(
                             "#include-archived.form-check-input",
                             hx_indicator="#suggestion-filters-indicator",
                             hx_post=rows_url,
