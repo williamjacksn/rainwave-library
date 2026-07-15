@@ -1205,12 +1205,59 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                 title=action_title,
             )[htpy.i(".bi-pencil" if editable else ".bi-eye")]
         ],
-        htpy.td[
+        htpy.td(".d-table-cell.d-md-none")[
+            htpy.div(".fw-semibold.text-break")[suggestion.title],
+            htpy.div(".d-flex.flex-wrap.gap-1.mt-1")[
+                htpy.span(
+                    f".badge.{status_classes.get(suggestion.status, 'text-bg-light')}"
+                )[suggestion.status.title()],
+                suggestion.kind != "addition"
+                and htpy.span(f".badge.{kind_class}")[suggestion.kind],
+                suggestion.archived
+                and htpy.span(".badge.text-bg-secondary")["archived"],
+            ],
+            htpy.div(".small.mt-2")[
+                htpy.strong["Channels: "],
+                [
+                    htpy.span(".badge.border.me-1.text-bg-light.text-dark")[
+                        channels.get(channel_id, str(channel_id))
+                    ]
+                    for channel_id in suggestion.channel_ids
+                ]
+                or htpy.span(".text-secondary")["—"],
+            ],
+            htpy.div(".small.mt-1")[
+                htpy.strong["Requested by: "],
+                suggestion.requester_name or htpy.span(".text-secondary")["—"],
+                suggestion.requester_discord_id
+                and htpy.i(
+                    ".bi-discord.ms-1",
+                    title=f"Discord user {suggestion.requester_discord_id}",
+                ),
+            ],
+            suggestion.claimed_by_name
+            and htpy.div(".small.mt-1")[
+                htpy.strong["Claimed by: "], suggestion.claimed_by_name
+            ],
+            suggestion.requested_at
+            and htpy.div(".small.mt-1")[
+                htpy.strong["Requested: "], suggestion.requested_at
+            ],
+            htpy.div(".small.mt-1")[
+                htpy.strong["Tags: "],
+                [
+                    htpy.span(".badge.me-1.text-bg-secondary")[tag]
+                    for tag in suggestion.tags
+                ]
+                or htpy.span(".text-secondary")["—"],
+            ],
+        ],
+        htpy.td(".d-none.d-md-table-cell")[
             htpy.span(
                 f".badge.{status_classes.get(suggestion.status, 'text-bg-light')}"
             )[suggestion.status.title()]
         ],
-        htpy.td[
+        htpy.td(".d-none.d-md-table-cell")[
             [
                 htpy.span(".badge.border.me-1.text-bg-light.text-dark")[
                     channels.get(channel_id, str(channel_id))
@@ -1219,7 +1266,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             ]
             or htpy.span(".text-secondary")["—"]
         ],
-        htpy.td[
+        htpy.td(".d-none.d-md-table-cell")[
             htpy.div(".fw-semibold")[suggestion.title],
             htpy.div(".d-flex.flex-wrap.gap-1.mt-1")[
                 suggestion.kind != "addition"
@@ -1228,7 +1275,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                 and htpy.span(".badge.text-bg-secondary")["archived"],
             ],
         ],
-        htpy.td(".text-nowrap")[
+        htpy.td(".d-none.d-md-table-cell.text-nowrap")[
             suggestion.requester_name or htpy.span(".text-secondary")["—"],
             suggestion.requester_discord_id
             and htpy.i(
@@ -1236,11 +1283,13 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                 title=f"Discord user {suggestion.requester_discord_id}",
             ),
         ],
-        htpy.td[suggestion.claimed_by_name or htpy.span(".text-secondary")["—"]],
-        htpy.td(".text-nowrap")[
+        htpy.td(".d-none.d-md-table-cell")[
+            suggestion.claimed_by_name or htpy.span(".text-secondary")["—"]
+        ],
+        htpy.td(".d-none.d-md-table-cell.text-nowrap")[
             suggestion.requested_at or htpy.span(".text-secondary")["—"]
         ],
-        htpy.td[
+        htpy.td(".d-none.d-md-table-cell")[
             [htpy.span(".badge.me-1.text-bg-secondary")[tag] for tag in suggestion.tags]
             or htpy.span(".text-secondary")["—"]
         ],
@@ -1265,7 +1314,7 @@ def _suggestion_detail_table(
             [
                 htpy.tr[
                     htpy.th(".text-nowrap", scope="row")[label],
-                    htpy.td[display_value],
+                    htpy.td(".text-break")[display_value],
                 ]
                 for label, display_value in rows
             ]
@@ -1519,6 +1568,7 @@ def suggestion_detail_row(
     )
     trello_link: htpy.Node = (
         htpy.a(
+            ".text-break",
             href=suggestion.trello_url,
             rel="noopener",
             target="_blank",
@@ -1623,11 +1673,9 @@ def suggestion_detail_row(
         htpy.div(".list-group")[
             [
                 htpy.div(".list-group-item")[
-                    htpy.div(".d-flex.gap-2.justify-content-between")[
+                    htpy.div(".d-flex.flex-wrap.gap-2.justify-content-between")[
                         htpy.strong[activity.type.replace("-", " ").title()],
-                        htpy.span(".small.text-secondary.text-nowrap")[
-                            activity.created_at
-                        ],
+                        htpy.span(".small.text-secondary")[activity.created_at],
                     ],
                     htpy.div(".small.text-secondary")[
                         "Actor: ",
@@ -1854,13 +1902,19 @@ def suggestions_index(is_staff: bool) -> str:
                         htpy.thead[
                             htpy.tr[
                                 htpy.th,
-                                htpy.th["Status"],
-                                htpy.th["Channels"],
-                                htpy.th["Suggestion"],
-                                htpy.th["Requested by"],
-                                htpy.th["Claimed by"],
-                                htpy.th["Requested"],
-                                htpy.th["Tags"],
+                                htpy.th(".d-table-cell.d-md-none")["Suggestion"],
+                                [
+                                    htpy.th(".d-none.d-md-table-cell")[label]
+                                    for label in (
+                                        "Status",
+                                        "Channels",
+                                        "Suggestion",
+                                        "Requested by",
+                                        "Claimed by",
+                                        "Requested",
+                                        "Tags",
+                                    )
+                                ],
                             ]
                         ],
                         htpy.tbody(
