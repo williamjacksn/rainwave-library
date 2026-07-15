@@ -1422,7 +1422,7 @@ def _suggestion_edit_form(
             ],
             htpy.div(".col-12.col-lg-4")[
                 htpy.label(".form-label", for_="requester-discord-id")[
-                    "Requester Discord ID"
+                    "Suggested by Discord ID"
                 ],
                 htpy.input(
                     "#requester-discord-id.form-control",
@@ -1432,7 +1432,7 @@ def _suggestion_edit_form(
                 ),
             ],
             htpy.div(".col-12.col-lg-4")[
-                htpy.label(".form-label", for_="requested-at")["Requested"],
+                htpy.label(".form-label", for_="requested-at")["Suggested at"],
                 htpy.input(
                     "#requested-at.form-control",
                     name="requested-at",
@@ -1454,7 +1454,7 @@ def _suggestion_edit_form(
             ],
             htpy.div(".col-12.col-lg-4")[
                 htpy.label(".form-label", for_="claimed-by-discord-id")[
-                    "Claimant Discord ID"
+                    "Claimed by Discord ID"
                 ],
                 htpy.input(
                     "#claimed-by-discord-id.form-control",
@@ -1464,7 +1464,7 @@ def _suggestion_edit_form(
                 ),
             ],
             htpy.div(".col-12.col-lg-4")[
-                htpy.label(".form-label", for_="claimed-at")["Claimed"],
+                htpy.label(".form-label", for_="claimed-at")["Claimed at"],
                 htpy.input(
                     "#claimed-at.form-control",
                     name="claimed-at",
