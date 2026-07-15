@@ -125,6 +125,44 @@ class Album:
         ]
 
 
+class ArtistDict(TypedDict):
+    artist_id: int
+    artist_name: str
+    song_count: int
+
+
+class Artist:
+    colspan: int = 3
+    thead: htpy.Element = htpy.thead[
+        htpy.tr(".text-center")[
+            htpy.th["ID"], htpy.th["Artist name"], htpy.th["Songs"]
+        ]
+    ]
+
+    def __init__(self, artist_data: ArtistDict) -> None:
+        self.data = artist_data
+
+    @property
+    def id(self) -> int:
+        return self.data.get("artist_id")
+
+    @property
+    def name(self) -> str:
+        return self.data.get("artist_name")
+
+    @property
+    def song_count(self) -> int:
+        return self.data.get("song_count")
+
+    @property
+    def tr(self) -> htpy.Element:
+        return htpy.tr[
+            htpy.td(".text-end")[htpy.code[self.id]],
+            htpy.td(".user-select-all")[self.name],
+            htpy.td(".text-end")[self.song_count],
+        ]
+
+
 class ListenerDict(TypedDict):
     discord_user_id: int
     group_name: str
@@ -663,6 +701,58 @@ def get_albums_missing_art(db: fort.PostgresDatabase) -> list[Album]:
         if not art_dir.joinpath(album_fn).exists():
             result.append(Album(row))
     return result
+
+
+def get_artists(
+    db: fort.PostgresDatabase,
+    query: str | None = None,
+    page: int = 1,
+    sort_col: str = "artist_id",
+    sort_dir: str = "asc",
+) -> list[Artist]:
+    where_clause = "true"
+    if query:
+        where_clause = """
+            position(
+                lower(%(query)s) in concat_ws(
+                    ' ',
+                    lower(a.artist_name),
+                    lower(a.artist_name_searchable)
+                )
+            ) > 0
+        """
+
+    if sort_dir not in ("asc", "desc"):
+        sort_dir = "asc"
+    if sort_col not in ("artist_id", "artist_name", "song_count"):
+        sort_col = "artist_id"
+    if sort_col == "artist_name":
+        sort_clause = f'{sort_col} collate "C" {sort_dir}'
+    else:
+        sort_clause = f"{sort_col} {sort_dir}"
+    if sort_col != "artist_id":
+        sort_clause = f"{sort_clause}, artist_id asc"
+
+    sql = f"""
+        select
+            a.artist_id,
+            a.artist_name collate "C",
+            count(s.song_id) song_count
+        from r4_artists a
+        join r4_song_artist sa on sa.artist_id = a.artist_id
+        join r4_songs s
+            on s.song_id = sa.song_id and s.song_verified is true
+        where {where_clause}
+        group by a.artist_id, a.artist_name
+        order by {sort_clause}
+        limit 101 offset %(offset)s
+    """  # noqa: S608
+    params = {
+        "offset": 100 * (page - 1),
+        "query": query,
+    }
+    rows = db.q(sql, params)
+    return [Artist(row) for row in cast(list[ArtistDict], cast(object, rows))]
 
 
 def get_category_for_album(db: fort.PostgresDatabase, album_name: str) -> str | None:

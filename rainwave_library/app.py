@@ -150,6 +150,25 @@ def albums_rows() -> str:
     return rainwave_library.components.albums_rows(albums_, page)
 
 
+@app.route("/artists", methods=["GET"])
+@secure
+def artists() -> str:
+    return rainwave_library.components.artists_index()
+
+
+@app.route("/artists/rows", methods=["POST"])
+@secure
+def artists_rows() -> str:
+    q = flask.request.values.get("q")
+    page = int(flask.request.values.get("page", 1))
+    sort_col = flask.request.values.get("sort-col", "artist_id")
+    sort_dir = flask.request.values.get("sort-dir", "asc")
+    artists_ = rainwave_library.models.rainwave.get_artists(
+        flask.g.db, q, page, sort_col, sort_dir
+    )
+    return rainwave_library.components.artists_rows(artists_, page)
+
+
 @app.route("/api/elections")
 def api_elections() -> flask.Response:
     sid = int(flask.request.values.get("sid", 1))
