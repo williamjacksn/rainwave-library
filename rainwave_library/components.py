@@ -1765,8 +1765,8 @@ def suggestion_detail_row(
 
 
 def suggestion_discord_user_form(
-    requester_name: str = "",
-    requester_discord_id: str = "",
+    discord_username: str = "",
+    discord_user_id: str = "",
     result: tuple[str, str] | None = None,
 ) -> str:
     url = flask.url_for("suggestions_requester_discord_id")
@@ -1784,31 +1784,34 @@ def suggestion_discord_user_form(
                 result[1]
             ],
             htpy.div[
-                htpy.label(".form-label.small", for_="bulk-requester-name")[
+                htpy.label(".form-label.small", for_="bulk-discord-username")[
                     "Discord username"
                 ],
                 htpy.input(
-                    "#bulk-requester-name.form-control",
+                    "#bulk-discord-username.form-control",
                     autocomplete="off",
-                    name="requester-name",
+                    name="discord-username",
                     required=True,
                     type="text",
-                    value=requester_name,
+                    value=discord_username,
                 ),
+                htpy.div(".form-text")[
+                    "Matches both requested by and claimed by names."
+                ],
             ],
             htpy.div[
-                htpy.label(".form-label.small", for_="bulk-requester-discord-id")[
+                htpy.label(".form-label.small", for_="bulk-discord-user-id")[
                     "Discord user ID"
                 ],
                 htpy.input(
-                    "#bulk-requester-discord-id.form-control",
+                    "#bulk-discord-user-id.form-control",
                     autocomplete="off",
                     inputmode="numeric",
-                    name="requester-discord-id",
+                    name="discord-user-id",
                     pattern="[0-9]+",
                     required=True,
                     type="text",
-                    value=requester_discord_id,
+                    value=discord_user_id,
                 ),
             ],
             htpy.button(".btn.btn-outline-primary", type="submit")[
@@ -1832,7 +1835,7 @@ def suggestions_index(is_staff: bool) -> str:
                     ".btn.btn-outline-primary",
                     hx_get=flask.url_for("suggestions_requester_discord_id"),
                     hx_swap="outerHTML",
-                    title="Set requester Discord user IDs",
+                    title="Set suggestion Discord user IDs",
                     type="button",
                 )[htpy.i(".bi-discord"), " Match Discord user"]
             ]

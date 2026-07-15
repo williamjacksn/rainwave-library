@@ -536,22 +536,24 @@ def suggestions_requester_discord_id() -> werkzeug.Response | str:
     if flask.request.method == "GET":
         return rainwave_library.components.suggestion_discord_user_form()
 
-    requester_name = flask.request.form.get("requester-name", "")
-    requester_discord_id = flask.request.form.get("requester-discord-id", "")
+    discord_username = flask.request.form.get("discord-username", "")
+    discord_user_id = flask.request.form.get("discord-user-id", "")
     storage_cnx = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         try:
-            updated = rainwave_library.models.suggestions.requester_discord_id_update(
-                storage_cnx,
-                requester_name,
-                requester_discord_id,
+            updated = (
+                rainwave_library.models.suggestions.suggestion_discord_user_update(
+                    storage_cnx,
+                    discord_username,
+                    discord_user_id,
+                )
             )
         except ValueError as error:
             return rainwave_library.components.suggestion_discord_user_form(
-                requester_name=requester_name,
-                requester_discord_id=requester_discord_id,
+                discord_username=discord_username,
+                discord_user_id=discord_user_id,
                 result=("alert-danger", str(error)),
             )
     finally:
@@ -559,8 +561,8 @@ def suggestions_requester_discord_id() -> werkzeug.Response | str:
 
     if updated == 0:
         return rainwave_library.components.suggestion_discord_user_form(
-            requester_name=requester_name,
-            requester_discord_id=requester_discord_id,
+            discord_username=discord_username,
+            discord_user_id=discord_user_id,
             result=(
                 "alert-warning",
                 "No suggestions matched that Discord username.",

@@ -453,17 +453,17 @@ def suggestion_update(
     return True
 
 
-def requester_discord_id_update(
+def suggestion_discord_user_update(
     con: sqlite3.Connection,
-    requester_name: str,
-    requester_discord_id: str,
+    discord_username: str,
+    discord_user_id: str,
 ) -> int:
-    requester_name = requester_name.strip()
-    requester_discord_id = requester_discord_id.strip()
-    if not requester_name:
+    discord_username = discord_username.strip()
+    discord_user_id = discord_user_id.strip()
+    if not discord_username:
         msg = "Discord username is required."
         raise ValueError(msg)
-    if not requester_discord_id.isdigit():
+    if not discord_user_id.isdigit():
         msg = "Discord user ID must contain only digits."
         raise ValueError(msg)
 
@@ -472,13 +472,23 @@ def requester_discord_id_update(
             """
             update suggestions
             set
-                requester_discord_id = :requester_discord_id,
+                requester_discord_id = case
+                    when requester_name = :discord_username collate nocase
+                    then :discord_user_id
+                    else requester_discord_id
+                end,
+                claimed_by_discord_id = case
+                    when claimed_by_name = :discord_username collate nocase
+                    then :discord_user_id
+                    else claimed_by_discord_id
+                end,
                 updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-            where requester_name = :requester_name collate nocase
+            where requester_name = :discord_username collate nocase
+                or claimed_by_name = :discord_username collate nocase
             """,
             {
-                "requester_name": requester_name,
-                "requester_discord_id": requester_discord_id,
+                "discord_username": discord_username,
+                "discord_user_id": discord_user_id,
             },
         )
         updated = cursor.rowcount
@@ -488,9 +498,9 @@ def requester_discord_id_update(
         raise
 
     log.info(
-        "Set requester Discord user ID for %s suggestion(s) matching %s",
+        "Set Discord user ID for %s suggestion(s) matching %s",
         updated,
-        requester_name,
+        discord_username,
     )
     return updated
 
