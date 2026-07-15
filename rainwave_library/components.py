@@ -1911,7 +1911,7 @@ def suggestions_index(is_staff: bool) -> str:
                         ".align-middle.table.table-bordered.table-sm.table-striped"
                     )[
                         htpy.thead[
-                            htpy.tr[
+                            htpy.tr(".text-center")[
                                 htpy.th,
                                 htpy.th(".d-table-cell.d-md-none")["Suggestion"],
                                 [
