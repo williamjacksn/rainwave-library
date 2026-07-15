@@ -158,7 +158,7 @@ def artists() -> str:
 
 @app.route("/artists/<int:artist_id>", methods=["GET", "POST"])
 @secure
-def artists_detail(artist_id: int) -> str:
+def artists_detail(artist_id: int) -> werkzeug.Response | str:
     artist = rainwave_library.models.rainwave.get_artist(flask.g.db, artist_id)
     if artist is None:
         flask.abort(404)
@@ -181,11 +181,28 @@ def artists_detail(artist_id: int) -> str:
                     "See the application log for details.",
                 )
             else:
+                renamed_artist = (
+                    rainwave_library.models.rainwave.get_artist_by_name(
+                        flask.g.db, new_name
+                    )
+                )
+                if renamed_artist is None:
+                    time.sleep(1)
+                    renamed_artist = (
+                        rainwave_library.models.rainwave.get_artist_by_name(
+                            flask.g.db, new_name
+                        )
+                    )
+                if renamed_artist is not None:
+                    return flask.redirect(
+                        flask.url_for(
+                            "artists_detail", artist_id=renamed_artist.id
+                        )
+                    )
                 rename_result = (
-                    "alert-success",
-                    f"Processed {len(songs_)} song files for the artist rename. The "
-                    "displayed database values will update after Rainwave scans the "
-                    "files.",
+                    "alert-warning",
+                    f"Processed {len(songs_)} song files, but Rainwave has not yet "
+                    f"created the artist {new_name!r}. Try reloading this page.",
                 )
     return rainwave_library.components.artists_detail(
         artist, songs_, rename_result=rename_result

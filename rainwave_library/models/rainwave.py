@@ -798,6 +798,25 @@ def get_artist(db: fort.PostgresDatabase, artist_id: int) -> Artist | None:
     return Artist(cast(ArtistDict, cast(object, row)))
 
 
+def get_artist_by_name(db: fort.PostgresDatabase, artist_name: str) -> Artist | None:
+    sql = """
+        select
+            a.artist_id,
+            a.artist_name,
+            count(s.song_id) song_count
+        from r4_artists a
+        left join r4_song_artist sa on sa.artist_id = a.artist_id
+        left join r4_songs s
+            on s.song_id = sa.song_id and s.song_verified is true
+        where a.artist_name = %(artist_name)s
+        group by a.artist_id, a.artist_name
+    """
+    row = db.q_one(sql, {"artist_name": artist_name})
+    if row is None:
+        return None
+    return Artist(cast(ArtistDict, cast(object, row)))
+
+
 def get_artist_songs(db: fort.PostgresDatabase, artist_id: int) -> list[Song]:
     sql = """
         with r as (
