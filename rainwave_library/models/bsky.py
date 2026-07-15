@@ -3,7 +3,6 @@
 import dataclasses
 import datetime
 import logging
-import os
 
 import httpx
 import notch
@@ -55,13 +54,18 @@ class BlueskyClient:
         return self.create_record(record)
 
 
-def get_client_from_env() -> BlueskyClient:
-    return BlueskyClient(os.getenv("BSKY_HANDLE", ""), os.getenv("BSKY_PASSWORD", ""))
+def get_client(handle: str, password: str) -> BlueskyClient:
+    return BlueskyClient(handle, password)
 
 
 def main() -> None:
+    import rainwave_library.app
+
     notch.make_log("bsky")
-    b = get_client_from_env()
+    b = get_client(
+        rainwave_library.app.app.config["BLUESKY_HANDLE"],
+        rainwave_library.app.app.config["BLUESKY_PASSWORD"],
+    )
     print(b.post("Test post"))
 
 

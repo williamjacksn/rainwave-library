@@ -7,9 +7,6 @@ import flask
 import fort
 import htpy
 
-cnx_str = os.getenv("RW_CNX", "")
-cnx = fort.PostgresDatabase(cnx_str, maxconn=5)
-
 art_dir = pathlib.Path("/var/www/rainwave.cc/album_art")
 
 channels: dict[int | str, str] = {
@@ -27,6 +24,10 @@ channels: dict[int | str, str] = {
     "6": "Chill",
     "a": "Fallback",
 }
+
+
+def connection_get(dsn: str) -> fort.PostgresDatabase:
+    return fort.PostgresDatabase(dsn, maxconn=5)
 
 
 def length_display(length: int) -> str:
@@ -538,10 +539,12 @@ class Song:
         return self.data.get("song_url")
 
 
-def calculate_removed_location(filename: os.PathLike) -> pathlib.Path:
-    library_root = pathlib.Path("/icecast")
+def calculate_removed_location(
+    filename: os.PathLike,
+    library_root: os.PathLike,
+) -> pathlib.Path:
     relative = pathlib.Path(filename).relative_to(library_root)
-    return library_root / "removed" / relative
+    return pathlib.Path(library_root) / "removed" / relative
 
 
 def get_album(db: fort.PostgresDatabase, album_id: int) -> Album:

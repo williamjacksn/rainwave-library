@@ -26,21 +26,54 @@ app.wsgi_app = werkzeug.middleware.proxy_fix.ProxyFix(  # ty:ignore[invalid-assi
     app.wsgi_app, x_for=1, x_proto=1, x_port=1
 )
 
-app.secret_key = os.getenv("SECRET_KEY")
-app.config["PREFERRED_URL_SCHEME"] = os.getenv("SCHEME", "https")
 storage_dir = pathlib.Path(os.getenv("STATE_DIRECTORY") or ".local")
 app.config["STORAGE_CNX"] = os.getenv(
     "STORAGE_CNX", str(storage_dir / "rainwave-library.db")
 )
 
 rainwave_library.models.storage.connection_init(app.config["STORAGE_CNX"])
-storage_cnx = rainwave_library.models.storage.connection_get(
-    app.config["STORAGE_CNX"]
-)
+storage_cnx = rainwave_library.models.storage.connection_get(app.config["STORAGE_CNX"])
 try:
     rainwave_library.models.storage.migrate(storage_cnx)
+    app.secret_key = rainwave_library.models.storage.setting_get(
+        storage_cnx, "app/secret-key"
+    )
+    app.config["PREFERRED_URL_SCHEME"] = (
+        rainwave_library.models.storage.setting_get(storage_cnx, "app/url-scheme")
+        or "https"
+    )
+    app.config["BLUESKY_HANDLE"] = (
+        rainwave_library.models.storage.setting_get(storage_cnx, "bluesky/handle") or ""
+    )
+    app.config["BLUESKY_PASSWORD"] = (
+        rainwave_library.models.storage.setting_get(storage_cnx, "bluesky/password")
+        or ""
+    )
+    app.config["DISCORD_GUILD_ID"] = rainwave_library.models.storage.setting_get(
+        storage_cnx, "discord/guild-id"
+    )
+    app.config["DISCORD_STAFF_ROLE_ID"] = rainwave_library.models.storage.setting_get(
+        storage_cnx, "discord/staff-role-id"
+    )
+    app.config["LIBRARY_ROOT"] = pathlib.Path(
+        rainwave_library.models.storage.setting_get(storage_cnx, "library/root")
+        or "/icecast"
+    )
+    app.config["OPENID_CLIENT_ID"] = rainwave_library.models.storage.setting_get(
+        storage_cnx, "openid/client-id"
+    )
+    app.config["OPENID_CLIENT_SECRET"] = rainwave_library.models.storage.setting_get(
+        storage_cnx, "openid/client-secret"
+    )
+    rainwave_connection = rainwave_library.models.storage.setting_get(
+        storage_cnx, "rainwave/connection"
+    )
 finally:
     storage_cnx.close()
+
+app.config["RAINWAVE_DATABASE"] = rainwave_library.models.rainwave.connection_get(
+    rainwave_connection or ""
+)
 
 
 def external_url_for(endpoint: str, *args, **kwargs) -> str:  # noqa: ANN002, ANN003
@@ -73,7 +106,7 @@ def before_request() -> None:
     flask.g.discord_username = flask.session.get("discord_username")
     flask.g.discord_display_name = flask.session.get("discord_display_name")
     flask.g.discord_avatar_url = flask.session.get("discord_avatar_url")
-    flask.g.db = rainwave_library.models.rainwave.cnx
+    flask.g.db = app.config["RAINWAVE_DATABASE"]
 
 
 @app.route("/", methods=["GET"])
@@ -152,15 +185,15 @@ def authorize() -> werkzeug.Response:
         return flask.Response("State mismatch", 401)
     token_endpoint = "https://discord.com/api/v10/oauth2/token"  # noqa: S105
     data = {
-        "client_id": os.getenv("OPENID_CLIENT_ID"),
-        "client_secret": os.getenv("OPENID_CLIENT_SECRET"),
+        "client_id": app.config["OPENID_CLIENT_ID"],
+        "client_secret": app.config["OPENID_CLIENT_SECRET"],
         "code": flask.request.values.get("code"),
         "grant_type": "authorization_code",
         "redirect_uri": external_url_for("authorize"),
     }
     resp = httpx.post(token_endpoint, data=data).json()
     access_token = resp.get("access_token")
-    guild_id = os.getenv("DISCORD_GUILD_ID")
+    guild_id = app.config["DISCORD_GUILD_ID"]
     guild_member_url = f"https://discord.com/api/v10/users/@me/guilds/{guild_id}/member"
     headers = {"Authorization": f"Bearer {access_token}"}
     resp = httpx.get(guild_member_url, headers=headers).json()
@@ -186,7 +219,7 @@ def authorize() -> werkzeug.Response:
     )
     user_roles = resp.get("roles")
     app.logger.debug(f"Sign in attempt from {username} with roles {user_roles}")
-    staff_role = os.getenv("DISCORD_ROLE_ID_STAFF")
+    staff_role = app.config["DISCORD_STAFF_ROLE_ID"]
     app.logger.debug(f"Staff role is {staff_role}")
     if staff_role in user_roles:
         app.logger.debug(f"{username} is staff")
@@ -210,7 +243,9 @@ def authorize() -> werkzeug.Response:
 def bluesky() -> werkzeug.Response | str:
     if flask.request.method == "GET":
         return rainwave_library.components.bluesky_post()
-    b = rainwave_library.models.bsky.get_client_from_env()
+    b = rainwave_library.models.bsky.get_client(
+        app.config["BLUESKY_HANDLE"], app.config["BLUESKY_PASSWORD"]
+    )
     b.post(flask.request.values["body"])
     return flask.redirect(flask.url_for("index"))
 
@@ -316,7 +351,7 @@ def get_ocremix_target_file() -> str:
     first_letter = album[0].lower()
     if first_letter not in string.ascii_lowercase:
         first_letter = "0"
-    library_root = pathlib.Path("/icecast")
+    library_root = app.config["LIBRARY_ROOT"]
     return str(library_root / "ocr-all" / first_letter / album / f"{title}.mp3")
 
 
@@ -374,7 +409,7 @@ def sign_in() -> werkzeug.Response:
     flask.session.update({"state": state})
     redirect_uri = external_url_for("authorize")
     query = {
-        "client_id": os.getenv("OPENID_CLIENT_ID"),
+        "client_id": app.config["OPENID_CLIENT_ID"],
         "prompt": "none",
         "redirect_uri": redirect_uri,
         "response_type": "code",
@@ -453,7 +488,10 @@ def songs_play(song_id: int) -> str:
 def songs_remove(song_id: int) -> werkzeug.Response | str:
     song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
     song_filename = pathlib.Path(song.filename)
-    new_loc = rainwave_library.models.rainwave.calculate_removed_location(song_filename)
+    new_loc = rainwave_library.models.rainwave.calculate_removed_location(
+        song_filename,
+        app.config["LIBRARY_ROOT"],
+    )
 
     if flask.request.method == "GET":
         return rainwave_library.components.songs_remove(song, str(new_loc))

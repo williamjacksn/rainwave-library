@@ -1,4 +1,5 @@
 import logging
+import os
 import sqlite3
 
 log = logging.getLogger(__name__)
@@ -15,6 +16,16 @@ def connection_get(path: str) -> sqlite3.Connection:
     con.row_factory = sqlite3.Row
     con.execute("pragma busy_timeout=5000")
     return con
+
+
+def setting_get(con: sqlite3.Connection, key: str) -> str | None:
+    row = con.execute(
+        "select value from settings where key = :key",
+        {"key": key},
+    ).fetchone()
+    if row is None:
+        return None
+    return row["value"]
 
 
 def user_version_get(con: sqlite3.Connection) -> int:
@@ -39,7 +50,35 @@ def _migration_1(con: sqlite3.Connection) -> None:
     )
 
 
-MIGRATIONS = (_migration_1,)
+def _migration_2(con: sqlite3.Connection) -> None:
+    environment_settings = {
+        "BSKY_HANDLE": "bluesky/handle",
+        "BSKY_PASSWORD": "bluesky/password",
+        "DISCORD_GUILD_ID": "discord/guild-id",
+        "DISCORD_ROLE_ID_STAFF": "discord/staff-role-id",
+        "LIBRARY_ROOT": "library/root",
+        "OPENID_CLIENT_ID": "openid/client-id",
+        "OPENID_CLIENT_SECRET": "openid/client-secret",
+        "RW_CNX": "rainwave/connection",
+        "SCHEME": "app/url-scheme",
+        "SECRET_KEY": "app/secret-key",
+    }
+    settings = [
+        {"key": key, "value": value}
+        for environment_name, key in environment_settings.items()
+        if (value := os.getenv(environment_name)) is not None
+    ]
+    con.executemany(
+        """
+        insert into settings (key, value)
+        values (:key, :value)
+        on conflict (key) do nothing
+        """,
+        settings,
+    )
+
+
+MIGRATIONS = (_migration_1, _migration_2)
 
 
 def migrate(con: sqlite3.Connection) -> None:

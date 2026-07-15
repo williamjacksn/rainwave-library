@@ -1,28 +1,28 @@
 import pathlib
 
+import rainwave_library.app
 import rainwave_library.models
 
-# RW_CNX=postgres://user:pass@server/db python find-orphans.py
-
-cnx = rainwave_library.models.rainwave.cnx
+cnx = rainwave_library.app.app.config["RAINWAVE_DATABASE"]
+library_root = pathlib.Path(rainwave_library.app.app.config["LIBRARY_ROOT"])
 
 known_filenames = rainwave_library.models.rainwave.get_song_filenames(cnx)
 print(f"{len(known_filenames)} known filenames")
 
-for f in rainwave_library.models.mp3.yield_all(pathlib.Path("/icecast")):
+for f in rainwave_library.models.mp3.yield_all(library_root):
     sf = str(f)
     if (
         sf in known_filenames
-        or sf.startswith("/icecast/xmas")
-        or sf.startswith("/icecast/podcast")
-        or sf.startswith("/icecast/~autoremoved")
-        or sf.startswith("/icecast/removed")
-        or sf.startswith("/icecast/~upcoming")
-        or sf.startswith("/icecast/metalgear")
-        or sf.startswith("/icecast/V-Wave Theme")
-        or sf.startswith("/icecast/staging")
-        or sf.startswith("/icecast/~misc")
-        or sf.startswith("/icecast/silence")
+        or sf.startswith(str(library_root / "xmas"))
+        or sf.startswith(str(library_root / "podcast"))
+        or sf.startswith(str(library_root / "~autoremoved"))
+        or sf.startswith(str(library_root / "removed"))
+        or sf.startswith(str(library_root / "~upcoming"))
+        or sf.startswith(str(library_root / "metalgear"))
+        or sf.startswith(str(library_root / "V-Wave Theme"))
+        or sf.startswith(str(library_root / "staging"))
+        or sf.startswith(str(library_root / "~misc"))
+        or sf.startswith(str(library_root / "silence"))
     ):
         continue
     print(str(f))
