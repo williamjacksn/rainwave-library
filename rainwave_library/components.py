@@ -1138,13 +1138,17 @@ def songs_edit_result(alert_class: str, edit_result: str) -> str:
     return str(htpy.p(f".alert.{alert_class}")[edit_result])
 
 
-def settings_index(settings: list[tuple[str, str]]) -> str:
+def settings_index(settings: list[tuple[str, str, bool]]) -> str:
     rows = [
         htpy.tr[
             htpy.td[htpy.code(".user-select-all")[key]],
-            htpy.td(".text-break")[htpy.code(".user-select-all")[value]],
+            htpy.td(".text-break")[
+                htpy.span(".badge.text-bg-secondary")["protected"]
+                if protected
+                else htpy.code(".user-select-all")[value]
+            ],
         ]
-        for key, value in settings
+        for key, value, protected in settings
     ]
     if not rows:
         rows.append(

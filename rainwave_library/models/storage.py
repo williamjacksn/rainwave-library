@@ -28,9 +28,13 @@ def setting_get(con: sqlite3.Connection, key: str) -> str | None:
     return row["value"]
 
 
-def settings_get(con: sqlite3.Connection) -> list[tuple[str, str]]:
-    rows = con.execute("select key, value from settings order by key").fetchall()
-    return [(row["key"], row["value"]) for row in rows]
+def settings_get(con: sqlite3.Connection) -> list[tuple[str, str, bool]]:
+    rows = con.execute(
+        "select key, value, protected from settings order by key"
+    ).fetchall()
+    return [
+        (row["key"], row["value"], bool(row["protected"])) for row in rows
+    ]
 
 
 def user_version_get(con: sqlite3.Connection) -> int:
@@ -83,7 +87,29 @@ def _migration_2(con: sqlite3.Connection) -> None:
     )
 
 
-MIGRATIONS = (_migration_1, _migration_2)
+def _migration_3(con: sqlite3.Connection) -> None:
+    con.execute(
+        """
+        alter table settings
+        add column protected integer not null default 0
+            check (protected in (0, 1))
+        """
+    )
+    con.execute(
+        """
+        update settings
+        set protected = 1
+        where key in (
+            'app/secret-key',
+            'bluesky/password',
+            'openid/client-secret',
+            'rainwave/connection'
+        )
+        """
+    )
+
+
+MIGRATIONS = (_migration_1, _migration_2, _migration_3)
 
 
 def migrate(con: sqlite3.Connection) -> None:
