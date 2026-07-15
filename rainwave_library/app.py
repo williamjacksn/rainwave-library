@@ -106,7 +106,6 @@ def before_request() -> None:
     flask.g.discord_username = flask.session.get("discord_username")
     flask.g.discord_display_name = flask.session.get("discord_display_name")
     flask.g.discord_avatar_url = flask.session.get("discord_avatar_url")
-    flask.g.db = app.config["RAINWAVE_DATABASE"]
 
 
 @app.route("/", methods=["GET"])
@@ -125,27 +124,30 @@ def albums() -> str:
 @app.route("/albums/<int:album_id>", methods=["GET"])
 @secure
 def albums_detail(album_id: int) -> str:
-    album = rainwave_library.models.rainwave.get_album(flask.g.db, album_id)
-    songs_ = rainwave_library.models.rainwave.get_album_songs(flask.g.db, album_id)
+    db = app.config["RAINWAVE_DATABASE"]
+    album = rainwave_library.models.rainwave.get_album(db, album_id)
+    songs_ = rainwave_library.models.rainwave.get_album_songs(db, album_id)
     return rainwave_library.components.albums_detail(album, songs_)
 
 
 @app.route("/albums/missing-art", methods=["GET"])
 @secure
 def albums_missing_art() -> str:
-    albums_ = rainwave_library.models.rainwave.get_albums_missing_art(flask.g.db)
+    db = app.config["RAINWAVE_DATABASE"]
+    albums_ = rainwave_library.models.rainwave.get_albums_missing_art(db)
     return rainwave_library.components.albums_missing_art(albums_)
 
 
 @app.route("/albums/rows", methods=["POST"])
 @secure
 def albums_rows() -> str:
+    db = app.config["RAINWAVE_DATABASE"]
     q = flask.request.values.get("q")
     page = int(flask.request.values.get("page", 1))
     sort_col = flask.request.values.get("sort-col", "album_id")
     sort_dir = flask.request.values.get("sort-dir", "asc")
     albums_ = rainwave_library.models.rainwave.get_albums(
-        flask.g.db, q, page, sort_col, sort_dir
+        db, q, page, sort_col, sort_dir
     )
     return rainwave_library.components.albums_rows(albums_, page)
 
@@ -159,10 +161,11 @@ def artists() -> str:
 @app.route("/artists/<int:artist_id>", methods=["GET", "POST"])
 @secure
 def artists_detail(artist_id: int) -> werkzeug.Response | str:
-    artist = rainwave_library.models.rainwave.get_artist(flask.g.db, artist_id)
+    db = app.config["RAINWAVE_DATABASE"]
+    artist = rainwave_library.models.rainwave.get_artist(db, artist_id)
     if artist is None:
         flask.abort(404)
-    songs_ = rainwave_library.models.rainwave.get_artist_songs(flask.g.db, artist_id)
+    songs_ = rainwave_library.models.rainwave.get_artist_songs(db, artist_id)
     rename_result = None
     if flask.request.method == "POST":
         new_name = flask.request.values.get("artist-name", "").strip()
@@ -182,13 +185,13 @@ def artists_detail(artist_id: int) -> werkzeug.Response | str:
                 )
             else:
                 renamed_artist = rainwave_library.models.rainwave.get_artist_by_name(
-                    flask.g.db, new_name
+                    db, new_name
                 )
                 if renamed_artist is None:
                     time.sleep(1)
                     renamed_artist = (
                         rainwave_library.models.rainwave.get_artist_by_name(
-                            flask.g.db, new_name
+                            db, new_name
                         )
                     )
                 if renamed_artist is not None:
@@ -208,18 +211,20 @@ def artists_detail(artist_id: int) -> werkzeug.Response | str:
 @app.route("/artists/rows", methods=["POST"])
 @secure
 def artists_rows() -> str:
+    db = app.config["RAINWAVE_DATABASE"]
     q = flask.request.values.get("q")
     page = int(flask.request.values.get("page", 1))
     sort_col = flask.request.values.get("sort-col", "artist_id")
     sort_dir = flask.request.values.get("sort-dir", "asc")
     artists_ = rainwave_library.models.rainwave.get_artists(
-        flask.g.db, q, page, sort_col, sort_dir
+        db, q, page, sort_col, sort_dir
     )
     return rainwave_library.components.artists_rows(artists_, page)
 
 
 @app.route("/api/elections")
 def api_elections() -> flask.Response:
+    db = app.config["RAINWAVE_DATABASE"]
     sid = int(flask.request.values.get("sid", 1))
     day = datetime.date.fromisoformat(flask.request.values.get("day", "2024-01-01"))
     return flask.jsonify(
@@ -232,9 +237,7 @@ def api_elections() -> flask.Response:
                     "start_actual": e.get("elec_start_actual"),
                     "songs": e.get("songs"),
                 }
-                for e in rainwave_library.models.rainwave.get_elections(
-                    flask.g.db, sid, day
-                )
+                for e in rainwave_library.models.rainwave.get_elections(db, sid, day)
             ],
         }
     )
@@ -328,7 +331,8 @@ def favicon() -> flask.Response:
 @app.route("/get-ocremix", methods=["GET"])
 @secure
 def get_ocremix() -> str:
-    max_ocr_num = rainwave_library.models.rainwave.get_max_ocr_num(flask.g.db)
+    db = app.config["RAINWAVE_DATABASE"]
+    max_ocr_num = rainwave_library.models.rainwave.get_max_ocr_num(db)
     return rainwave_library.components.get_ocremix_start(max_ocr_num)
 
 
@@ -383,6 +387,7 @@ def get_ocremix_download() -> str:
 @app.route("/get-ocremix/fetch", methods=["POST"])
 @secure
 def get_ocremix_fetch() -> flask.Response | str:
+    db = app.config["RAINWAVE_DATABASE"]
     ocr_id = int(flask.request.values["ocr-id"])
     url = f"https://williamjacksn.github.io/ocremix-data/remix/OCR{ocr_id:05}.json"
     try:
@@ -392,7 +397,7 @@ def get_ocremix_fetch() -> flask.Response | str:
         return flask.make_response("", 204)
     album_name = ocr_info.get("primary_game")
     default_category = rainwave_library.models.rainwave.get_category_for_album(
-        flask.g.db, album_name
+        db, album_name
     )
     if default_category:
         categories = [default_category]
@@ -426,21 +431,24 @@ def get_ocremix_target_file() -> str:
 @app.route("/listeners", methods=["GET"])
 @secure
 def listeners() -> str:
-    ranks = rainwave_library.models.rainwave.get_ranks(flask.g.db)
+    db = app.config["RAINWAVE_DATABASE"]
+    ranks = rainwave_library.models.rainwave.get_ranks(db)
     return rainwave_library.components.listeners_index(ranks)
 
 
 @app.route("/listeners/<int:listener_id>", methods=["GET"])
 @secure
 def listeners_detail(listener_id: int) -> str:
-    listener = rainwave_library.models.rainwave.get_listener(flask.g.db, listener_id)
+    db = app.config["RAINWAVE_DATABASE"]
+    listener = rainwave_library.models.rainwave.get_listener(db, listener_id)
     return rainwave_library.components.listeners_detail(listener)
 
 
 @app.route("/listeners/<int:listener_id>/edit", methods=["GET", "POST"])
 @secure
 def listeners_edit(listener_id: int) -> werkzeug.Response | str:
-    listener = rainwave_library.models.rainwave.get_listener(flask.g.db, listener_id)
+    db = app.config["RAINWAVE_DATABASE"]
+    listener = rainwave_library.models.rainwave.get_listener(db, listener_id)
     if flask.request.method == "GET":
         return rainwave_library.components.listeners_edit(listener)
 
@@ -448,7 +456,7 @@ def listeners_edit(listener_id: int) -> werkzeug.Response | str:
     if not discord_user_id:
         discord_user_id = None
     rainwave_library.models.rainwave.set_discord_user_id(
-        flask.g.db, listener_id, discord_user_id
+        db, listener_id, discord_user_id
     )
     return flask.redirect(flask.url_for("listeners_detail", listener_id=listener_id))
 
@@ -456,12 +464,11 @@ def listeners_edit(listener_id: int) -> werkzeug.Response | str:
 @app.route("/listeners/rows", methods=["POST"])
 @secure
 def listeners_rows() -> str:
+    db = app.config["RAINWAVE_DATABASE"]
     q = flask.request.values.get("q")
     page = int(flask.request.values.get("page", 1))
     ranks = list(map(int, flask.request.values.getlist("ranks")))
-    listeners_ = rainwave_library.models.rainwave.get_listeners(
-        flask.g.db, q, page, ranks
-    )
+    listeners_ = rainwave_library.models.rainwave.get_listeners(db, q, page, ranks)
     return rainwave_library.components.listeners_rows(listeners_, page)
 
 
@@ -519,21 +526,24 @@ def songs() -> str:
 @app.route("/songs/<int:song_id>", methods=["GET"])
 @secure
 def songs_detail(song_id: int) -> str:
-    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    db = app.config["RAINWAVE_DATABASE"]
+    song = rainwave_library.models.rainwave.get_song(db, song_id)
     return rainwave_library.components.songs_detail(song)
 
 
 @app.route("/songs/<int:song_id>/download", methods=["GET"])
 @secure
 def songs_download(song_id: int) -> flask.Response:
-    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    db = app.config["RAINWAVE_DATABASE"]
+    song = rainwave_library.models.rainwave.get_song(db, song_id)
     return flask.send_file(song.filename, as_attachment=True)
 
 
 @app.route("/songs/<int:song_id>/edit", methods=["GET", "POST"])
 @secure
 def songs_edit(song_id: int) -> str:
-    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    db = app.config["RAINWAVE_DATABASE"]
+    song = rainwave_library.models.rainwave.get_song(db, song_id)
     if flask.request.method == "GET":
         return rainwave_library.components.songs_edit(song)
 
@@ -560,14 +570,16 @@ def songs_edit(song_id: int) -> str:
 @app.route("/songs/<int:song_id>/play", methods=["GET"])
 @secure
 def songs_play(song_id: int) -> str:
-    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    db = app.config["RAINWAVE_DATABASE"]
+    song = rainwave_library.models.rainwave.get_song(db, song_id)
     return rainwave_library.components.songs_play(song)
 
 
 @app.route("/songs/<int:song_id>/remove", methods=["GET", "POST"])
 @secure
 def songs_remove(song_id: int) -> werkzeug.Response | str:
-    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    db = app.config["RAINWAVE_DATABASE"]
+    song = rainwave_library.models.rainwave.get_song(db, song_id)
     song_filename = pathlib.Path(song.filename)
     new_loc = rainwave_library.models.rainwave.calculate_removed_location(
         song_filename,
@@ -599,13 +611,15 @@ def songs_remove(song_id: int) -> werkzeug.Response | str:
 @app.route("/songs/<int:song_id>/stream", methods=["GET"])
 @secure
 def stream_song(song_id: int) -> flask.Response:
-    song = rainwave_library.models.rainwave.get_song(flask.g.db, song_id)
+    db = app.config["RAINWAVE_DATABASE"]
+    song = rainwave_library.models.rainwave.get_song(db, song_id)
     return flask.send_file(song.filename)
 
 
 @app.route("/songs/rows", methods=["POST"])
 @secure
 def songs_rows() -> str:
+    db = app.config["RAINWAVE_DATABASE"]
     q = flask.request.values.get("q")
     page = int(flask.request.values.get("page", 1))
     sort_col = flask.request.values.get("sort-col", "song_id")
@@ -617,7 +631,7 @@ def songs_rows() -> str:
         valid_channels = None
     include_unrated = "include-unrated" in flask.request.values
     songs_ = rainwave_library.models.rainwave.get_songs(
-        flask.g.db, q, page, sort_col, sort_dir, valid_channels, include_unrated
+        db, q, page, sort_col, sort_dir, valid_channels, include_unrated
     )
     return rainwave_library.components.songs_rows(songs_, page)
 
@@ -625,6 +639,7 @@ def songs_rows() -> str:
 @app.route("/songs.xlsx", methods=["POST"])
 @secure
 def songs_xlsx() -> flask.Response:
+    db = app.config["RAINWAVE_DATABASE"]
     query = flask.request.values.get("q")
     page = 0
     sort_col = flask.request.values["sort-col"]
@@ -635,7 +650,7 @@ def songs_xlsx() -> flask.Response:
     ] or None
     include_unrated = "include-unrated" in flask.request.values
     data = rainwave_library.models.rainwave.get_songs(
-        flask.g.db, query, page, sort_col, sort_dir, channels, include_unrated
+        db, query, page, sort_col, sort_dir, channels, include_unrated
     )
     headers = [
         "song_id",
