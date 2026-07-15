@@ -134,8 +134,7 @@ def set_tags(filename: str, **kwargs: str) -> str:
     except mutagen.MutagenError as e:
         log.error(e)
         result = str(e)
-    finally:
-        return result
+    return result
 
 
 def yield_all(starting_dir: pathlib.Path) -> typing.Iterator[pathlib.Path]:
