@@ -736,7 +736,6 @@ def suggestion_update(suggestion_id: str) -> str:
                 title=flask.request.form.get("title", ""),
                 kind=flask.request.form.get("kind", ""),
                 status=flask.request.form.get("status", ""),
-                archived="archived" in flask.request.form,
                 description=flask.request.form.get("description", ""),
                 requester_name=optional_value("requester-name"),
                 requester_discord_id=optional_value("requester-discord-id"),

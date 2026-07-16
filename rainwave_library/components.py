@@ -1383,7 +1383,7 @@ def _suggestion_edit_form(
                     value=suggestion.title,
                 ),
             ],
-            htpy.div(".col-12.col-md-4")[
+            htpy.div(".col-12.col-md-6")[
                 htpy.label(".form-label", for_="kind")["Kind"],
                 htpy.select("#kind.form-select", name="kind")[
                     [
@@ -1395,7 +1395,7 @@ def _suggestion_edit_form(
                     ]
                 ],
             ],
-            htpy.div(".col-12.col-md-4")[
+            htpy.div(".col-12.col-md-6")[
                 htpy.label(".form-label", for_="status")["Status"],
                 htpy.select("#status.form-select", name="status")[
                     [
@@ -1406,18 +1406,6 @@ def _suggestion_edit_form(
                         for status in Suggestion.statuses
                     ]
                 ],
-            ],
-            htpy.div(".col-12.col-md-4.d-flex.align-items-end")[
-                htpy.div(".form-check.mb-2")[
-                    htpy.input(
-                        "#archived.form-check-input",
-                        checked=suggestion.archived,
-                        name="archived",
-                        type="checkbox",
-                        value="1",
-                    ),
-                    htpy.label(".form-check-label", for_="archived")["Archived"],
-                ]
             ],
             htpy.div(".col-12")[
                 htpy.label(".form-label", for_="description")["Description"],
