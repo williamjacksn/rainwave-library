@@ -1190,7 +1190,6 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
     status_classes = {
         "new": "text-bg-primary",
         "claimed": "text-bg-warning",
-        "processed": "text-bg-info",
         "fulfilled": "text-bg-success",
         "declined": "text-bg-danger",
     }

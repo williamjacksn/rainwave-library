@@ -198,7 +198,23 @@ def _migration_4(con: sqlite3.Connection) -> None:
     )
 
 
-MIGRATIONS = (_migration_1, _migration_2, _migration_3, _migration_4)
+def _migration_5(con: sqlite3.Connection) -> None:
+    con.execute(
+        """
+        update suggestions
+        set status = 'fulfilled'
+        where status = 'processed'
+        """
+    )
+
+
+MIGRATIONS = (
+    _migration_1,
+    _migration_2,
+    _migration_3,
+    _migration_4,
+    _migration_5,
+)
 
 
 def migrate(con: sqlite3.Connection) -> None:

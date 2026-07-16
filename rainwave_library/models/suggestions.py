@@ -56,7 +56,6 @@ class Suggestion:
     statuses: typing.ClassVar[tuple[str, ...]] = (
         "new",
         "claimed",
-        "processed",
         "fulfilled",
         "declined",
     )
@@ -221,9 +220,8 @@ def suggestions_get(
             case s.status
                 when 'new' then 1
                 when 'claimed' then 2
-                when 'processed' then 3
-                when 'fulfilled' then 4
-                when 'declined' then 5
+                when 'fulfilled' then 3
+                when 'declined' then 4
             end,
             s.sort_order,
             s.title collate nocase,
@@ -680,7 +678,7 @@ def _list_info(name: str) -> _ListInfo:
     if name == "Declined":
         return _ListInfo(status="declined")
     if name == "Processed for Chill":
-        return _ListInfo(status="processed", primary_channel_id=6)
+        return _ListInfo(status="fulfilled", primary_channel_id=6)
     return _ListInfo(known=False)
 
 
