@@ -1219,6 +1219,18 @@ def settings_index(settings: list[tuple[str, str, bool]]) -> str:
     return str(_base(content))
 
 
+def _suggestion_status_badge(status: str) -> htpy.Element:
+    status_classes = {
+        "new": "text-bg-primary",
+        "claimed": "text-bg-warning",
+        "fulfilled": "text-bg-success",
+        "declined": "text-bg-danger",
+    }
+    return htpy.span(f".badge.{status_classes.get(status, 'text-bg-light')}")[
+        status.title()
+    ]
+
+
 def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
     editable = flask.session.get("role") == "staff"
     claimable = (
@@ -1229,12 +1241,6 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
     )
     action = "Edit" if editable else "View details for"
     action_title = "Edit suggestion" if editable else "View suggestion details"
-    status_classes = {
-        "new": "text-bg-primary",
-        "claimed": "text-bg-warning",
-        "fulfilled": "text-bg-success",
-        "declined": "text-bg-danger",
-    }
     kind_classes = {
         "removal": "text-bg-danger",
         "cleanup": "text-bg-dark",
@@ -1255,9 +1261,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
         htpy.td(".d-table-cell.d-md-none")[
             htpy.div(".fw-semibold.text-break")[suggestion.title],
             htpy.div(".d-flex.flex-wrap.gap-1.mt-1")[
-                htpy.span(
-                    f".badge.{status_classes.get(suggestion.status, 'text-bg-light')}"
-                )[suggestion.status.title()],
+                _suggestion_status_badge(suggestion.status),
                 suggestion.kind != "addition"
                 and htpy.span(f".badge.{kind_class}")[suggestion.kind],
                 suggestion.archived
@@ -1310,11 +1314,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                 htpy.strong["Requested: "], suggestion.requested_at
             ],
         ],
-        htpy.td(".d-none.d-md-table-cell")[
-            htpy.span(
-                f".badge.{status_classes.get(suggestion.status, 'text-bg-light')}"
-            )[suggestion.status.title()]
-        ],
+        htpy.td(".d-none.d-md-table-cell")[_suggestion_status_badge(suggestion.status)],
         htpy.td(".d-none.d-md-table-cell")[
             [
                 htpy.span(".badge.border.me-1.text-bg-light.text-dark")[
@@ -1582,70 +1582,32 @@ def suggestion_detail_row(
         if suggestion.channel_ids
         else htpy.span(".text-secondary")["—"]
     )
-    trello_link: htpy.Node = (
-        htpy.a(
-            ".text-break",
-            href=suggestion.trello_url,
-            rel="noopener",
-            target="_blank",
-        )[suggestion.trello_url, " ", htpy.i(".bi-box-arrow-up-right")]
-        if suggestion.trello_url
-        else htpy.span(".text-secondary")["—"]
-    )
     summary = _suggestion_detail_table(
         [
             ("ID", htpy.code[suggestion.id]),
-            ("Status", suggestion.status.title()),
+            ("Status", _suggestion_status_badge(suggestion.status)),
             ("Kind", suggestion.kind.title()),
-            ("Archived", "Yes" if suggestion.archived else "No"),
             ("Channels", channel_badges),
+        ]
+    )
+    people_details = _suggestion_detail_table(
+        [
+            ("Suggested by", _suggestion_value(suggestion.requester_name)),
+            ("Claimed by", _suggestion_value(suggestion.claimed_by_name)),
+        ]
+    )
+    timeline_details = _suggestion_detail_table(
+        [
             (
-                "Primary channel",
+                "Requested at",
                 _suggestion_value(
-                    channels.get(
-                        suggestion.primary_channel_id,
-                        str(suggestion.primary_channel_id),
-                    )
-                    if suggestion.primary_channel_id is not None
+                    suggestion.requested_at[:10]
+                    if suggestion.requested_at is not None
                     else None
                 ),
             ),
-            ("Sort order", str(suggestion.sort_order)),
-        ]
-    )
-    request_details = _suggestion_detail_table(
-        [
-            ("Suggested by", _suggestion_value(suggestion.requester_name)),
-            (
-                "Requester Discord ID",
-                _suggestion_value(suggestion.requester_discord_id),
-            ),
-            ("Requested", _suggestion_value(suggestion.requested_at)),
-        ]
-    )
-    resolution_details = _suggestion_detail_table(
-        [
-            ("Claimed by", _suggestion_value(suggestion.claimed_by_name)),
-            (
-                "Claimant Discord ID",
-                _suggestion_value(suggestion.claimed_by_discord_id),
-            ),
-            ("Claimed", _suggestion_value(suggestion.claimed_at)),
-            ("Resolved", _suggestion_value(suggestion.resolved_at)),
-            (
-                "Resolution notes",
-                htpy.div(style="white-space: pre-wrap")[
-                    _suggestion_value(suggestion.resolution_notes)
-                ],
-            ),
-        ]
-    )
-    import_details = _suggestion_detail_table(
-        [
-            ("Created", _suggestion_value(suggestion.created_at)),
-            ("Updated", _suggestion_value(suggestion.updated_at)),
-            ("Trello card ID", _suggestion_value(suggestion.trello_card_id)),
-            ("Trello URL", trello_link),
+            ("Claimed at", _suggestion_value(suggestion.claimed_at)),
+            ("Completed at", _suggestion_value(suggestion.resolved_at)),
         ]
     )
     links: htpy.Node = (
@@ -1751,13 +1713,10 @@ def suggestion_detail_row(
                         htpy.div(".g-3.row")[
                             htpy.div(".col-12.col-xl-6")[htpy.h6["Summary"], summary],
                             htpy.div(".col-12.col-xl-6")[
-                                htpy.h6["Request"], request_details
+                                htpy.h6["Timeline"], timeline_details
                             ],
                             htpy.div(".col-12.col-xl-6")[
-                                htpy.h6["Assignment and resolution"], resolution_details
-                            ],
-                            htpy.div(".col-12.col-xl-6")[
-                                htpy.h6["Import metadata"], import_details
+                                htpy.h6["People"], people_details
                             ],
                         ],
                         htpy.h6(".mt-3")["Description"],
@@ -1766,8 +1725,6 @@ def suggestion_detail_row(
                             style="white-space: pre-wrap",
                         )[_suggestion_value(suggestion.description)],
                     ],
-                    editable and htpy.h6(".mt-4")["Import metadata"],
-                    editable and import_details,
                     htpy.h6(".mt-3")["Links"],
                     links,
                     htpy.h6(".mt-3")["Activity"],
