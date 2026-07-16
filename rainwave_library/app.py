@@ -639,7 +639,7 @@ def suggestions_requester_discord_id() -> werkzeug.Response | str:
 @signed_in
 def suggestions_rows() -> str:
     query = flask.request.values.get("q")
-    status = flask.request.values.get("status")
+    statuses = flask.request.values.getlist("status")
     page = max(int(flask.request.values.get("page", 1)), 1)
     is_staff = flask.session.get("role") == "staff"
     requester_discord_id = (
@@ -662,7 +662,7 @@ def suggestions_rows() -> str:
         suggestions_ = rainwave_library.models.suggestions.suggestions_get(
             storage_cnx,
             query,
-            status,
+            statuses,
             page,
             requester_discord_id,
             claimed_by_discord_id,

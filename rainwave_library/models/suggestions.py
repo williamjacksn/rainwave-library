@@ -157,15 +157,20 @@ def _suggestion_from_row(row: sqlite3.Row) -> Suggestion:
 def suggestions_get(
     con: sqlite3.Connection,
     query: str | None,
-    status: str | None,
+    statuses: typing.Iterable[str] | None,
     page: int,
     requester_discord_id: str | None = None,
     claimed_by_discord_id: str | None = None,
     missing_requester_discord_id: bool = False,
 ) -> list[Suggestion]:
     query = query.strip() if query else None
-    if status not in Suggestion.statuses:
-        status = None
+    valid_statuses = tuple(
+        dict.fromkeys(
+            status for status in statuses or () if status in Suggestion.statuses
+        )
+    )
+    status_parameters: list[str | None] = [*valid_statuses]
+    status_parameters.extend([None] * (len(Suggestion.statuses) - len(valid_statuses)))
     page = max(page, 1)
     rows = con.execute(
         """
@@ -192,7 +197,10 @@ def suggestions_get(
                 where st.suggestion_id = s.suggestion_id
             ) tags
         from suggestions s
-        where (:status is null or s.status = :status)
+        where (
+                :status_0 is null
+                or s.status in (:status_0, :status_1, :status_2, :status_3)
+            )
             and (
                 :requester_discord_id is null
                 or s.requester_discord_id = :requester_discord_id
@@ -234,7 +242,10 @@ def suggestions_get(
             "offset": 100 * (page - 1),
             "query": f"%{query}%" if query else None,
             "requester_discord_id": requester_discord_id,
-            "status": status,
+            "status_0": status_parameters[0],
+            "status_1": status_parameters[1],
+            "status_2": status_parameters[2],
+            "status_3": status_parameters[3],
         },
     ).fetchall()
     return [_suggestion_from_row(row) for row in rows]

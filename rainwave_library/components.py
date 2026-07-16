@@ -1949,18 +1949,38 @@ def suggestions_index(is_staff: bool, your_suggestions_count: int) -> str:
                         type="search",
                     )
                 ],
-                htpy.div(".col-12.col-md-auto")[
-                    htpy.select(
-                        ".form-select",
-                        aria_label="Filter by status",
-                        hx_indicator="#suggestion-filters-indicator",
-                        hx_post=rows_url,
-                        name="status",
-                    )[
-                        htpy.option(value="")["All statuses"],
-                        [
-                            htpy.option(value=status)[status.title()]
-                            for status in Suggestion.statuses
+                htpy.div(".col-auto")[
+                    htpy.div(".dropdown")[
+                        htpy.button(
+                            ".btn.btn-outline-primary.dropdown-toggle",
+                            data_bs_toggle="dropdown",
+                            title="Status selection",
+                            type="button",
+                        )[htpy.i(".bi-flag")],
+                        htpy.div(".dropdown-menu")[
+                            htpy.div(".px-2")[
+                                htpy.h6(".dropdown-header")["STATUS SELECTION"],
+                                [
+                                    htpy.div(".form-check")[
+                                        htpy.input(
+                                            f"#status-{status}.form-check-input",
+                                            checked=True,
+                                            hx_indicator=(
+                                                "#suggestion-filters-indicator"
+                                            ),
+                                            hx_post=rows_url,
+                                            name="status",
+                                            type="checkbox",
+                                            value=status,
+                                        ),
+                                        htpy.label(
+                                            ".form-check-label",
+                                            for_=f"status-{status}",
+                                        )[status.title()],
+                                    ]
+                                    for status in Suggestion.statuses
+                                ],
+                            ]
                         ],
                     ]
                 ],
