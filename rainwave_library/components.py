@@ -1460,37 +1460,8 @@ def _suggestion_edit_form(
                 ),
             ],
         ],
-        htpy.h6(".mt-4")["Assignment and resolution"],
+        htpy.h6(".mt-4")["Resolution"],
         htpy.div(".g-3.row")[
-            htpy.div(".col-12.col-lg-4")[
-                htpy.label(".form-label", for_="claimed-by-name")["Claimed by"],
-                htpy.input(
-                    "#claimed-by-name.form-control",
-                    name="claimed-by-name",
-                    type="text",
-                    value=suggestion.claimed_by_name or "",
-                ),
-            ],
-            htpy.div(".col-12.col-lg-4")[
-                htpy.label(".form-label", for_="claimed-by-discord-id")[
-                    "Claimed by Discord ID"
-                ],
-                htpy.input(
-                    "#claimed-by-discord-id.form-control",
-                    name="claimed-by-discord-id",
-                    type="text",
-                    value=suggestion.claimed_by_discord_id or "",
-                ),
-            ],
-            htpy.div(".col-12.col-lg-4")[
-                htpy.label(".form-label", for_="claimed-at")["Claimed at"],
-                htpy.input(
-                    "#claimed-at.form-control",
-                    name="claimed-at",
-                    type="text",
-                    value=suggestion.claimed_at or "",
-                ),
-            ],
             htpy.div(".col-12.col-lg-4")[
                 htpy.label(".form-label", for_="resolved-at")["Resolved"],
                 htpy.input(
