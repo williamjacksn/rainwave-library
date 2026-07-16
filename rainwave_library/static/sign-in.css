@@ -1,0 +1,24 @@
+:root {
+    --rw-bg: #f5fafc;
+    --rw-orange: #ff7733;
+    --rw-orange-soft: #fff0e8;
+}
+
+.sign-in-body {
+    min-height: 100vh;
+    background: var(--rw-bg);
+    color-scheme: light;
+}
+
+.sign-in-body .container-fluid > .pt-3.row {
+    display: none;
+}
+
+.brand-icon {
+    width: 3.25rem;
+    height: 3.25rem;
+    border: 1px solid #ffd3bd;
+    background: var(--rw-orange-soft);
+    color: var(--rw-orange);
+    font-size: 1.7rem;
+}

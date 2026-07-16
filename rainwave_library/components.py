@@ -22,7 +22,12 @@ def _back_button(href: str, label: str) -> htpy.Renderable:
     ]
 
 
-def _base(content: htpy.Node) -> htpy.Renderable:
+def _base(
+    content: htpy.Node,
+    *,
+    body_class: str | None = None,
+    stylesheets: tuple[str, ...] = (),
+) -> htpy.Renderable:
     return htpy.html(lang="en")[
         htpy.head[
             htpy.title["Rainwave Library"],
@@ -30,8 +35,9 @@ def _base(content: htpy.Node) -> htpy.Renderable:
             _favicon(),
             _bs_stylesheet(),
             _bi_stylesheet(),
+            [htpy.link(href=href, rel="stylesheet") for href in stylesheets],
         ],
-        htpy.body[
+        htpy.body(class_=body_class)[
             htpy.div(".container-fluid")[
                 content,
                 htpy.div(".pt-3.row")[htpy.div(".col")[htpy.hr]],
@@ -910,12 +916,48 @@ def listeners_rows(listeners: list[Listener], page: int) -> str:
 
 
 def sign_in() -> str:
-    content = htpy.div(".pt-3.row")[
-        htpy.div(".col")[
-            htpy.a(".btn.btn-outline-primary", href=flask.url_for("sign_in"))["Sign in"]
+    content = htpy.main(".align-items-center.d-flex.min-vh-100.py-4.sign-in-page")[
+        htpy.div(".container")[
+            htpy.div(".justify-content-center.row")[
+                htpy.div(".col-12.col-lg-5.col-md-7.col-sm-9.col-xl-4")[
+                    htpy.section(".card.rounded-4.shadow-sm", aria_label="Sign in")[
+                        htpy.div(".card-body.p-4.p-sm-5.text-center")[
+                            htpy.div(
+                                ".align-items-center.brand-icon.d-flex.justify-content-center.mb-2.mx-auto.rounded-3",
+                                aria_hidden="true",
+                            )[htpy.i(".bi-boombox-fill")],
+                            htpy.h1(".card-title.fs-2.fw-bold.mb-4")[
+                                "Rainwave Library"
+                            ],
+                            htpy.a(
+                                ".align-items-center.btn.btn-primary.d-flex.fw-bold.gap-2.justify-content-center.py-2.w-100",
+                                href=flask.url_for("sign_in"),
+                            )[
+                                htpy.i(".bi-discord.fs-5"),
+                                htpy.span["Continue with Discord"],
+                            ],
+                            htpy.p(".card-text.mb-0.mt-3.small.text-secondary")[
+                                "You must be a member of the ",
+                                htpy.a(href="https://discord.com/invite/rNCBhSz")[
+                                    markupsafe.Markup(
+                                        "Rainwave&nbsp;Discord&nbsp;server"
+                                    )
+                                ],
+                                " to use this tool.",
+                            ],
+                        ]
+                    ]
+                ]
+            ],
         ]
     ]
-    return str(_base(content))
+    return str(
+        _base(
+            content,
+            body_class="sign-in-body",
+            stylesheets=(flask.url_for("static", filename="sign-in.css"),),
+        )
+    )
 
 
 def songs_detail(song: Song) -> str:
