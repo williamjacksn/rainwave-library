@@ -270,6 +270,33 @@ def suggestion_counts_by_requester(
     return int(row["active_count"]), int(row["complete_count"])
 
 
+def suggestion_user_name_get(
+    con: sqlite3.Connection,
+    discord_user_id: str,
+) -> str | None:
+    row = con.execute(
+        """
+        select name
+        from (
+            select requester_name name, updated_at
+            from suggestions
+            where requester_discord_id = :discord_user_id
+
+            union all
+
+            select claimed_by_name name, updated_at
+            from suggestions
+            where claimed_by_discord_id = :discord_user_id
+        ) names
+        where nullif(trim(name), '') is not null
+        order by updated_at desc
+        limit 1
+        """,
+        {"discord_user_id": discord_user_id},
+    ).fetchone()
+    return str(row["name"]) if row is not None else None
+
+
 def suggestion_get(
     con: sqlite3.Connection, suggestion_id: str
 ) -> SuggestionDetail | None:

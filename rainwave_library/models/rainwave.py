@@ -938,6 +938,26 @@ def get_listener(db: fort.PostgresDatabase, listener_id: int) -> Listener:
     return Listener(cast(ListenerDict, cast(object, row)))
 
 
+def get_listener_name_by_discord_user_id(
+    db: fort.PostgresDatabase,
+    discord_user_id: str,
+) -> str | None:
+    row = db.q_one(
+        """
+        select coalesce(radio_username, username) user_name
+        from phpbb_users
+        where discord_user_id = %(discord_user_id)s
+        order by user_id
+        limit 1
+        """,
+        {"discord_user_id": discord_user_id},
+    )
+    if row is None:
+        return None
+    user_name = row.get("user_name")
+    return str(user_name) if user_name else None
+
+
 def get_listeners(
     db: fort.PostgresDatabase,
     query: str | None = None,

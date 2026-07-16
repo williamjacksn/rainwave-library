@@ -27,6 +27,14 @@ app.wsgi_app = werkzeug.middleware.proxy_fix.ProxyFix(  # ty:ignore[invalid-assi
     app.wsgi_app, x_for=1, x_proto=1, x_port=1
 )
 
+_IDENTITY_SESSION_KEYS = (
+    "discord_id",
+    "discord_username",
+    "discord_display_name",
+    "discord_avatar_url",
+    "role",
+)
+
 storage_dir = pathlib.Path(os.getenv("STATE_DIRECTORY") or ".local")
 app.config["STORAGE_CNX"] = os.getenv(
     "STORAGE_CNX", str(storage_dir / "rainwave-library.db")
@@ -277,7 +285,80 @@ def api_elections() -> flask.Response:
 @app.route("/assume-member", methods=["GET"])
 @secure
 def assume_member() -> werkzeug.Response:
-    flask.session.update({"role": "member"})
+    return flask.redirect(flask.url_for("impersonate_user"))
+
+
+@app.route("/impersonate", methods=["GET", "POST"])
+@secure
+def impersonate_user() -> werkzeug.Response | str:
+    if flask.request.method == "GET":
+        return rainwave_library.components.impersonate_user()
+
+    discord_user_id = flask.request.form.get("discord-user-id", "").strip()
+    if not discord_user_id.isdigit() or not 0 < int(discord_user_id) < 2**64:
+        return rainwave_library.components.impersonate_user(
+            discord_user_id=discord_user_id,
+            error="Enter a valid Discord user ID.",
+        )
+
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        display_name = rainwave_library.models.suggestions.suggestion_user_name_get(
+            storage_cnx,
+            discord_user_id,
+        )
+    finally:
+        storage_cnx.close()
+    if display_name is None:
+        display_name = (
+            rainwave_library.models.rainwave.get_listener_name_by_discord_user_id(
+                app.config["RAINWAVE_DATABASE"],
+                discord_user_id,
+            )
+        )
+    display_name = display_name or f"Discord user {discord_user_id}"
+
+    impersonator = {key: flask.session.get(key) for key in _IDENTITY_SESSION_KEYS}
+    flask.session["impersonator"] = impersonator
+    flask.session.update(
+        {
+            "discord_id": discord_user_id,
+            "discord_username": None,
+            "discord_display_name": display_name,
+            "discord_avatar_url": None,
+            "role": "member",
+        }
+    )
+    app.logger.info(
+        "Staff Discord user %s is impersonating Discord user %s",
+        impersonator["discord_id"],
+        discord_user_id,
+    )
+    return flask.redirect(flask.url_for("index"))
+
+
+@app.route("/impersonate/stop", methods=["POST"])
+@signed_in
+def impersonate_stop() -> werkzeug.Response:
+    impersonator = flask.session.get("impersonator")
+    if not isinstance(impersonator, dict) or impersonator.get("role") != "staff":
+        flask.abort(403)
+
+    impersonated_discord_id = flask.session.get("discord_id")
+    flask.session.pop("impersonator", None)
+    for key in _IDENTITY_SESSION_KEYS:
+        value = impersonator.get(key)
+        if value is None:
+            flask.session.pop(key, None)
+        else:
+            flask.session[key] = value
+    app.logger.info(
+        "Staff Discord user %s stopped impersonating Discord user %s",
+        flask.session.get("discord_id"),
+        impersonated_discord_id,
+    )
     return flask.redirect(flask.url_for("index"))
 
 
@@ -285,6 +366,7 @@ def assume_member() -> werkzeug.Response:
 def authorize() -> werkzeug.Response:
     if flask.session.get("state") != flask.request.values.get("state"):
         return flask.Response("State mismatch", 401)
+    flask.session.pop("impersonator", None)
     token_endpoint = "https://discord.com/api/v10/oauth2/token"  # noqa: S105
     data = {
         "client_id": app.config["OPENID_CLIENT_ID"],
@@ -822,9 +904,8 @@ def sign_in() -> werkzeug.Response:
 
 @app.route("/sign-out", methods=["GET"])
 def sign_out() -> werkzeug.Response:
-    flask.session.pop("discord_id")
-    flask.session.pop("discord_username")
-    flask.session.pop("role")
+    for key in (*_IDENTITY_SESSION_KEYS, "impersonator"):
+        flask.session.pop(key, None)
     return flask.redirect(flask.url_for("index"))
 
 

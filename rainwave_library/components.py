@@ -78,6 +78,7 @@ def _hx_script() -> htpy.Renderable:
 
 def _user_menu() -> htpy.Renderable:
     role = flask.session.get("role")
+    impersonator = flask.session.get("impersonator")
     avatar_url = flask.g.discord_avatar_url
     display_name = flask.g.discord_display_name
     toggle: htpy.Node = (
@@ -98,14 +99,30 @@ def _user_menu() -> htpy.Renderable:
             )[toggle],
             htpy.ul(".dropdown-menu.dropdown-menu-end")[
                 htpy.li[htpy.span(".dropdown-item-text.fw-semibold")[display_name]],
-                htpy.li[htpy.span(".dropdown-item-text.text-secondary")[role]],
+                htpy.li[
+                    htpy.span(".dropdown-item-text.text-secondary")[
+                        "member (impersonating)" if impersonator else role
+                    ]
+                ],
                 htpy.li[htpy.hr(".dropdown-divider")],
                 role == "staff"
                 and htpy.li[
                     htpy.a(
                         ".dropdown-item",
-                        href=flask.url_for("assume_member"),
-                    )["Assume member"]
+                        href=flask.url_for("impersonate_user"),
+                    )[htpy.i(".bi-person-bounding-box.me-2"), "Impersonate user"]
+                ],
+                impersonator
+                and htpy.li[
+                    htpy.form(
+                        action=flask.url_for("impersonate_stop"),
+                        method="post",
+                    )[
+                        htpy.button(
+                            ".dropdown-item.text-danger",
+                            type="submit",
+                        )[htpy.i(".bi-person-x.me-2"), "Stop impersonating"]
+                    ]
                 ],
                 htpy.li[
                     htpy.a(
@@ -958,6 +975,52 @@ def sign_in() -> str:
             stylesheets=(flask.url_for("static", filename="sign-in.css"),),
         )
     )
+
+
+def impersonate_user(discord_user_id: str = "", error: str | None = None) -> str:
+    content = [
+        htpy.div(".g-1.pt-3.row")[
+            _back_button(flask.url_for("index"), "Home"), _user_menu()
+        ],
+        htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Impersonate Discord user"]]],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col-12.col-lg-6.col-xl-4")[
+                htpy.div(".card")[
+                    htpy.div(".card-body")[
+                        error and htpy.div(".alert.alert-danger", role="alert")[error],
+                        htpy.form(method="post")[
+                            htpy.label(".form-label", for_="discord-user-id")[
+                                "Discord user ID"
+                            ],
+                            htpy.input(
+                                "#discord-user-id.form-control",
+                                autocomplete="off",
+                                autofocus=True,
+                                inputmode="numeric",
+                                name="discord-user-id",
+                                pattern="[0-9]+",
+                                required=True,
+                                type="text",
+                                value=discord_user_id,
+                            ),
+                            htpy.div(".form-text")[
+                                "The session will use member permissions until you "
+                                "stop impersonating."
+                            ],
+                            htpy.button(
+                                ".btn.btn-outline-primary.mt-3",
+                                type="submit",
+                            )[
+                                htpy.i(".bi-person-bounding-box"),
+                                " Impersonate user",
+                            ],
+                        ],
+                    ]
+                ]
+            ]
+        ],
+    ]
+    return str(_base(content))
 
 
 def songs_detail(song: Song) -> str:
