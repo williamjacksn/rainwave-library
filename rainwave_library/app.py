@@ -525,8 +525,21 @@ def settings() -> str:
 @app.route("/suggestions", methods=["GET"])
 @signed_in
 def suggestions() -> str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        your_suggestions_count = (
+            rainwave_library.models.suggestions.suggestions_count_by_requester(
+                storage_cnx,
+                str(flask.g.discord_id) if flask.g.discord_id else None,
+            )
+        )
+    finally:
+        storage_cnx.close()
     return rainwave_library.components.suggestions_index(
-        is_staff=flask.session.get("role") == "staff"
+        is_staff=flask.session.get("role") == "staff",
+        your_suggestions_count=your_suggestions_count,
     )
 
 
@@ -628,7 +641,6 @@ def suggestions_rows() -> str:
     query = flask.request.values.get("q")
     status = flask.request.values.get("status")
     page = max(int(flask.request.values.get("page", 1)), 1)
-    include_archived = "include-archived" in flask.request.values
     is_staff = flask.session.get("role") == "staff"
     requester_discord_id = (
         str(flask.g.discord_id or "")
@@ -652,7 +664,6 @@ def suggestions_rows() -> str:
             query,
             status,
             page,
-            include_archived,
             requester_discord_id,
             claimed_by_discord_id,
             missing_requester_discord_id,

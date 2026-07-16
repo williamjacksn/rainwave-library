@@ -160,7 +160,6 @@ def suggestions_get(
     query: str | None,
     status: str | None,
     page: int,
-    include_archived: bool = False,
     requester_discord_id: str | None = None,
     claimed_by_discord_id: str | None = None,
     missing_requester_discord_id: bool = False,
@@ -194,8 +193,7 @@ def suggestions_get(
                 where st.suggestion_id = s.suggestion_id
             ) tags
         from suggestions s
-        where (:include_archived or not s.archived)
-            and (:status is null or s.status = :status)
+        where (:status is null or s.status = :status)
             and (
                 :requester_discord_id is null
                 or s.requester_discord_id = :requester_discord_id
@@ -234,7 +232,6 @@ def suggestions_get(
         """,
         {
             "claimed_by_discord_id": claimed_by_discord_id,
-            "include_archived": int(include_archived),
             "missing_requester_discord_id": int(missing_requester_discord_id),
             "offset": 100 * (page - 1),
             "query": f"%{query}%" if query else None,
@@ -243,6 +240,23 @@ def suggestions_get(
         },
     ).fetchall()
     return [_suggestion_from_row(row) for row in rows]
+
+
+def suggestions_count_by_requester(
+    con: sqlite3.Connection,
+    requester_discord_id: str | None,
+) -> int:
+    if not requester_discord_id:
+        return 0
+    row = con.execute(
+        """
+        select count(*) suggestion_count
+        from suggestions
+        where requester_discord_id = ?
+        """,
+        (requester_discord_id,),
+    ).fetchone()
+    return int(row["suggestion_count"])
 
 
 def suggestion_get(

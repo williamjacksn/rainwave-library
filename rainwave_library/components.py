@@ -1903,7 +1903,7 @@ def suggestion_discord_user_form(
     )
 
 
-def suggestions_index(is_staff: bool) -> str:
+def suggestions_index(is_staff: bool, your_suggestions_count: int) -> str:
     rows_url = flask.url_for("suggestions_rows")
     content = [
         htpy.div(".g-1.pt-3.row")[
@@ -1988,7 +1988,11 @@ def suggestions_index(is_staff: bool) -> str:
                                     htpy.label(
                                         ".form-check-label.text-nowrap",
                                         for_="your-suggestions",
-                                    )["Your suggestions"],
+                                    )[
+                                        "Your suggestions (",
+                                        str(your_suggestions_count),
+                                        ")",
+                                    ],
                                 ],
                                 is_staff
                                 and htpy.div(".form-check")[
@@ -2018,20 +2022,6 @@ def suggestions_index(is_staff: bool) -> str:
                                         ".form-check-label.text-nowrap",
                                         for_="missing-suggested-by-discord-id",
                                     )["Suggested by without Discord ID"],
-                                ],
-                                htpy.div(".form-check")[
-                                    htpy.input(
-                                        "#include-archived.form-check-input",
-                                        hx_indicator="#suggestion-filters-indicator",
-                                        hx_post=rows_url,
-                                        name="include-archived",
-                                        type="checkbox",
-                                        value="1",
-                                    ),
-                                    htpy.label(
-                                        ".form-check-label.text-nowrap",
-                                        for_="include-archived",
-                                    )["Include archived"],
                                 ],
                             ]
                         ],
