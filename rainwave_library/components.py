@@ -2000,48 +2000,74 @@ def suggestions_index(is_staff: bool) -> str:
                     ]
                 ],
                 htpy.div(".col-auto")[
-                    htpy.div(".form-check")[
-                        htpy.input(
-                            "#your-suggestions.form-check-input",
-                            hx_indicator="#suggestion-filters-indicator",
-                            hx_post=rows_url,
-                            name="your-suggestions",
-                            type="checkbox",
-                            value="1",
-                        ),
-                        htpy.label(".form-check-label", for_="your-suggestions")[
-                            "Your suggestions"
-                        ],
-                    ]
-                ],
-                is_staff
-                and htpy.div(".col-auto")[
-                    htpy.div(".form-check")[
-                        htpy.input(
-                            "#your-claims.form-check-input",
-                            hx_indicator="#suggestion-filters-indicator",
-                            hx_post=rows_url,
-                            name="your-claims",
-                            type="checkbox",
-                            value="1",
-                        ),
-                        htpy.label(".form-check-label", for_="your-claims")[
-                            "Your claims"
-                        ],
-                    ]
-                ],
-                htpy.div(".col-auto")[
-                    htpy.div(".form-check")[
-                        htpy.input(
-                            "#include-archived.form-check-input",
-                            hx_indicator="#suggestion-filters-indicator",
-                            hx_post=rows_url,
-                            name="include-archived",
-                            type="checkbox",
-                            value="1",
-                        ),
-                        htpy.label(".form-check-label", for_="include-archived")[
-                            "Include archived"
+                    htpy.div(".dropdown")[
+                        htpy.button(
+                            ".btn.btn-outline-primary.dropdown-toggle",
+                            data_bs_toggle="dropdown",
+                            title="Filter options",
+                            type="button",
+                        )[htpy.i(".bi-list-check")],
+                        htpy.div(".dropdown-menu")[
+                            htpy.div(".px-2")[
+                                htpy.h6(".dropdown-header")["FILTER OPTIONS"],
+                                htpy.div(".form-check")[
+                                    htpy.input(
+                                        "#your-suggestions.form-check-input",
+                                        hx_indicator="#suggestion-filters-indicator",
+                                        hx_post=rows_url,
+                                        name="your-suggestions",
+                                        type="checkbox",
+                                        value="1",
+                                    ),
+                                    htpy.label(
+                                        ".form-check-label.text-nowrap",
+                                        for_="your-suggestions",
+                                    )["Your suggestions"],
+                                ],
+                                is_staff
+                                and htpy.div(".form-check")[
+                                    htpy.input(
+                                        "#your-claims.form-check-input",
+                                        hx_indicator="#suggestion-filters-indicator",
+                                        hx_post=rows_url,
+                                        name="your-claims",
+                                        type="checkbox",
+                                        value="1",
+                                    ),
+                                    htpy.label(
+                                        ".form-check-label.text-nowrap",
+                                        for_="your-claims",
+                                    )["Your claims"],
+                                ],
+                                htpy.div(".form-check")[
+                                    htpy.input(
+                                        "#missing-suggested-by-discord-id.form-check-input",
+                                        hx_indicator="#suggestion-filters-indicator",
+                                        hx_post=rows_url,
+                                        name="missing-suggested-by-discord-id",
+                                        type="checkbox",
+                                        value="1",
+                                    ),
+                                    htpy.label(
+                                        ".form-check-label.text-nowrap",
+                                        for_="missing-suggested-by-discord-id",
+                                    )["Suggested by without Discord ID"],
+                                ],
+                                htpy.div(".form-check")[
+                                    htpy.input(
+                                        "#include-archived.form-check-input",
+                                        hx_indicator="#suggestion-filters-indicator",
+                                        hx_post=rows_url,
+                                        name="include-archived",
+                                        type="checkbox",
+                                        value="1",
+                                    ),
+                                    htpy.label(
+                                        ".form-check-label.text-nowrap",
+                                        for_="include-archived",
+                                    )["Include archived"],
+                                ],
+                            ]
                         ],
                     ]
                 ],

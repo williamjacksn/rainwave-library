@@ -163,6 +163,7 @@ def suggestions_get(
     include_archived: bool = False,
     requester_discord_id: str | None = None,
     claimed_by_discord_id: str | None = None,
+    missing_requester_discord_id: bool = False,
 ) -> list[Suggestion]:
     query = query.strip() if query else None
     if status not in Suggestion.statuses:
@@ -204,6 +205,13 @@ def suggestions_get(
                 or s.claimed_by_discord_id = :claimed_by_discord_id
             )
             and (
+                not :missing_requester_discord_id
+                or (
+                    nullif(trim(s.requester_name), '') is not null
+                    and nullif(trim(s.requester_discord_id), '') is null
+                )
+            )
+            and (
                 :query is null
                 or s.title like :query
                 or s.description like :query
@@ -227,6 +235,7 @@ def suggestions_get(
         {
             "claimed_by_discord_id": claimed_by_discord_id,
             "include_archived": int(include_archived),
+            "missing_requester_discord_id": int(missing_requester_discord_id),
             "offset": 100 * (page - 1),
             "query": f"%{query}%" if query else None,
             "requester_discord_id": requester_discord_id,

@@ -640,6 +640,9 @@ def suggestions_rows() -> str:
         if is_staff and "your-claims" in flask.request.values
         else None
     )
+    missing_requester_discord_id = (
+        "missing-suggested-by-discord-id" in flask.request.values
+    )
     storage_cnx = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
@@ -652,6 +655,7 @@ def suggestions_rows() -> str:
             include_archived,
             requester_discord_id,
             claimed_by_discord_id,
+            missing_requester_discord_id,
         )
     finally:
         storage_cnx.close()
