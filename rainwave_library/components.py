@@ -1966,6 +1966,7 @@ def suggestion_discord_user_form(
 
 def suggestions_index(
     is_staff: bool,
+    claimants: list[str],
     your_suggestions_active_count: int,
     your_suggestions_complete_count: int,
 ) -> str:
@@ -2071,6 +2072,21 @@ def suggestions_index(
                                     for value, label in Suggestion.sort_fields
                                 ],
                             ]
+                        ],
+                    ]
+                ],
+                htpy.div(".col-12.col-sm-auto")[
+                    htpy.select(
+                        ".form-select",
+                        aria_label="Filter by who claimed the suggestion",
+                        hx_indicator="#suggestion-filters-indicator",
+                        hx_post=rows_url,
+                        name="claimed-by",
+                    )[
+                        htpy.option(value="")["All claimants"],
+                        [
+                            htpy.option(value=claimant)[claimant]
+                            for claimant in claimants
                         ],
                     ]
                 ],

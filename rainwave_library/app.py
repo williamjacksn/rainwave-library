@@ -617,10 +617,14 @@ def suggestions() -> str:
                 str(flask.g.discord_id) if flask.g.discord_id else None,
             )
         )
+        claimants = rainwave_library.models.suggestions.suggestion_claimants_get(
+            storage_cnx
+        )
     finally:
         storage_cnx.close()
     return rainwave_library.components.suggestions_index(
         is_staff=flask.session.get("role") == "staff",
+        claimants=claimants,
         your_suggestions_active_count=your_suggestions_active_count,
         your_suggestions_complete_count=your_suggestions_complete_count,
     )
@@ -726,6 +730,7 @@ def suggestions_rows() -> str:
     page = max(int(flask.request.values.get("page", 1)), 1)
     sort_col = flask.request.values.get("sort-col", "status")
     sort_dir = flask.request.values.get("sort-dir", "asc")
+    claimed_by_name = flask.request.values.get("claimed-by") or None
     is_staff = flask.session.get("role") == "staff"
     requester_discord_id = (
         str(flask.g.discord_id or "")
@@ -754,6 +759,7 @@ def suggestions_rows() -> str:
             missing_requester_discord_id,
             sort_col,
             sort_dir,
+            claimed_by_name,
         )
     finally:
         storage_cnx.close()

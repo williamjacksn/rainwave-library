@@ -171,6 +171,7 @@ def suggestions_get(
     missing_requester_discord_id: bool = False,
     sort_col: str = "status",
     sort_dir: str = "asc",
+    claimed_by_name: str | None = None,
 ) -> list[Suggestion]:
     query = query.strip() if query else None
     valid_statuses = tuple(
@@ -248,6 +249,10 @@ def suggestions_get(
                 or s.claimed_by_discord_id = :claimed_by_discord_id
             )
             and (
+                :claimed_by_name is null
+                or s.claimed_by_name = :claimed_by_name collate nocase
+            )
+            and (
                 not :missing_requester_discord_id
                 or (
                     nullif(trim(s.requester_name), '') is not null
@@ -271,6 +276,7 @@ def suggestions_get(
         sql,
         {
             "claimed_by_discord_id": claimed_by_discord_id,
+            "claimed_by_name": claimed_by_name,
             "missing_requester_discord_id": int(missing_requester_discord_id),
             "offset": 100 * (page - 1),
             "query": f"%{query}%" if query else None,
@@ -282,6 +288,19 @@ def suggestions_get(
         },
     ).fetchall()
     return [_suggestion_from_row(row) for row in rows]
+
+
+def suggestion_claimants_get(con: sqlite3.Connection) -> list[str]:
+    rows = con.execute(
+        """
+        select min(claimed_by_name) claimed_by_name
+        from suggestions
+        where nullif(trim(claimed_by_name), '') is not null
+        group by claimed_by_name collate nocase
+        order by claimed_by_name collate nocase
+        """
+    ).fetchall()
+    return [str(row["claimed_by_name"]) for row in rows]
 
 
 def suggestion_counts_by_requester(
