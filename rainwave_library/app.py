@@ -724,6 +724,8 @@ def suggestions_rows() -> str:
     query = flask.request.values.get("q")
     statuses = flask.request.values.getlist("status")
     page = max(int(flask.request.values.get("page", 1)), 1)
+    sort_col = flask.request.values.get("sort-col", "status")
+    sort_dir = flask.request.values.get("sort-dir", "asc")
     is_staff = flask.session.get("role") == "staff"
     requester_discord_id = (
         str(flask.g.discord_id or "")
@@ -750,6 +752,8 @@ def suggestions_rows() -> str:
             requester_discord_id,
             claimed_by_discord_id,
             missing_requester_discord_id,
+            sort_col,
+            sort_dir,
         )
     finally:
         storage_cnx.close()

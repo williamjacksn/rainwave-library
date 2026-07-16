@@ -2020,6 +2020,65 @@ def suggestions_index(
                         htpy.button(
                             ".btn.btn-outline-primary.dropdown-toggle",
                             data_bs_toggle="dropdown",
+                            title="Sort options",
+                            type="button",
+                        )[htpy.i(".bi-sort-alpha-down")],
+                        htpy.div(".dropdown-menu")[
+                            htpy.div(".px-2")[
+                                htpy.h6(".dropdown-header")["SORT OPTIONS"],
+                                [
+                                    htpy.div(".form-check")[
+                                        htpy.input(
+                                            f"#suggestion-sort-dir-{value}.form-check-input",
+                                            checked=value == "asc",
+                                            hx_indicator=(
+                                                "#suggestion-filters-indicator"
+                                            ),
+                                            hx_post=rows_url,
+                                            name="sort-dir",
+                                            type="radio",
+                                            value=value,
+                                        ),
+                                        htpy.label(
+                                            ".form-check-label",
+                                            for_=f"suggestion-sort-dir-{value}",
+                                        )[label],
+                                    ]
+                                    for value, label in (
+                                        ("asc", "Ascending"),
+                                        ("desc", "Descending"),
+                                    )
+                                ],
+                                htpy.hr,
+                                [
+                                    htpy.div(".form-check")[
+                                        htpy.input(
+                                            f"#suggestion-sort-col-{value}.form-check-input",
+                                            checked=value == "status",
+                                            hx_indicator=(
+                                                "#suggestion-filters-indicator"
+                                            ),
+                                            hx_post=rows_url,
+                                            name="sort-col",
+                                            type="radio",
+                                            value=value,
+                                        ),
+                                        htpy.label(
+                                            ".form-check-label.text-nowrap",
+                                            for_=f"suggestion-sort-col-{value}",
+                                        )[label],
+                                    ]
+                                    for value, label in Suggestion.sort_fields
+                                ],
+                            ]
+                        ],
+                    ]
+                ],
+                htpy.div(".col-auto")[
+                    htpy.div(".dropdown")[
+                        htpy.button(
+                            ".btn.btn-outline-primary.dropdown-toggle",
+                            data_bs_toggle="dropdown",
                             title="Status selection",
                             type="button",
                         )[htpy.i(".bi-flag")],
