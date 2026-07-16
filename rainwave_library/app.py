@@ -529,8 +529,8 @@ def suggestions() -> str:
         app.config["STORAGE_CNX"]
     )
     try:
-        your_suggestions_count = (
-            rainwave_library.models.suggestions.suggestions_count_by_requester(
+        your_suggestions_active_count, your_suggestions_complete_count = (
+            rainwave_library.models.suggestions.suggestion_counts_by_requester(
                 storage_cnx,
                 str(flask.g.discord_id) if flask.g.discord_id else None,
             )
@@ -539,7 +539,8 @@ def suggestions() -> str:
         storage_cnx.close()
     return rainwave_library.components.suggestions_index(
         is_staff=flask.session.get("role") == "staff",
-        your_suggestions_count=your_suggestions_count,
+        your_suggestions_active_count=your_suggestions_active_count,
+        your_suggestions_complete_count=your_suggestions_complete_count,
     )
 
 

@@ -1902,7 +1902,11 @@ def suggestion_discord_user_form(
     )
 
 
-def suggestions_index(is_staff: bool, your_suggestions_count: int) -> str:
+def suggestions_index(
+    is_staff: bool,
+    your_suggestions_active_count: int,
+    your_suggestions_complete_count: int,
+) -> str:
     rows_url = flask.url_for("suggestions_rows")
     content = [
         htpy.div(".g-1.pt-3.row")[
@@ -2009,7 +2013,10 @@ def suggestions_index(is_staff: bool, your_suggestions_count: int) -> str:
                                         for_="your-suggestions",
                                     )[
                                         "Your suggestions (",
-                                        str(your_suggestions_count),
+                                        str(your_suggestions_active_count),
+                                        " active, ",
+                                        str(your_suggestions_complete_count),
+                                        " complete",
                                         ")",
                                     ],
                                 ],

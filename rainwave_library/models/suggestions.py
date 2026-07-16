@@ -251,21 +251,23 @@ def suggestions_get(
     return [_suggestion_from_row(row) for row in rows]
 
 
-def suggestions_count_by_requester(
+def suggestion_counts_by_requester(
     con: sqlite3.Connection,
     requester_discord_id: str | None,
-) -> int:
+) -> tuple[int, int]:
     if not requester_discord_id:
-        return 0
+        return 0, 0
     row = con.execute(
         """
-        select count(*) suggestion_count
+        select
+            count(*) filter (where status in ('new', 'claimed')) active_count,
+            count(*) filter (where status in ('fulfilled', 'declined')) complete_count
         from suggestions
         where requester_discord_id = ?
         """,
         (requester_discord_id,),
     ).fetchone()
-    return int(row["suggestion_count"])
+    return int(row["active_count"]), int(row["complete_count"])
 
 
 def suggestion_get(
