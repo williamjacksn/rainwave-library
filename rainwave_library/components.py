@@ -1179,6 +1179,12 @@ def settings_index(settings: list[tuple[str, str, bool]]) -> str:
 
 def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
     editable = flask.session.get("role") == "staff"
+    claimable = (
+        editable
+        and suggestion.status == "new"
+        and not suggestion.claimed_by_name
+        and not suggestion.claimed_by_discord_id
+    )
     action = "Edit" if editable else "View details for"
     action_title = "Edit suggestion" if editable else "View suggestion details"
     status_classes = {
@@ -1203,7 +1209,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                 hx_swap="outerHTML",
                 hx_target="closest tr",
                 title=action_title,
-            )[htpy.i(".bi-pencil" if editable else ".bi-eye")]
+            )[htpy.i(".bi-pencil" if editable else ".bi-eye")],
         ],
         htpy.td(".d-table-cell.d-md-none")[
             htpy.div(".fw-semibold.text-break")[suggestion.title],
@@ -1235,7 +1241,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                     title=f"Discord user {suggestion.requester_discord_id}",
                 ),
             ],
-            suggestion.claimed_by_name
+            (suggestion.claimed_by_name or claimable)
             and htpy.div(".small.mt-1")[
                 htpy.strong["Claimed by: "],
                 suggestion.claimed_by_name,
@@ -1244,6 +1250,19 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                     ".bi-discord.ms-1",
                     title=f"Discord user {suggestion.claimed_by_discord_id}",
                 ),
+                claimable
+                and htpy.button(
+                    ".btn.btn-link.ms-1.p-0.text-decoration-none",
+                    aria_label=f"Claim {suggestion.title}",
+                    hx_disabled_elt="this",
+                    hx_post=flask.url_for(
+                        "suggestion_claim", suggestion_id=suggestion.id
+                    ),
+                    hx_swap="outerHTML",
+                    hx_target="closest tr",
+                    title="Claim suggestion",
+                    type="button",
+                )[htpy.i(".bi-person-check")],
             ],
             suggestion.requested_at
             and htpy.div(".small.mt-1")[
@@ -1290,12 +1309,24 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             ),
         ],
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[
-            suggestion.claimed_by_name or htpy.span(".text-secondary")["—"],
+            suggestion.claimed_by_name
+            or (not claimable and htpy.span(".text-secondary")["—"]),
             suggestion.claimed_by_discord_id
             and htpy.i(
                 ".bi-discord.ms-1",
                 title=f"Discord user {suggestion.claimed_by_discord_id}",
             ),
+            claimable
+            and htpy.button(
+                ".btn.btn-link.p-0.text-decoration-none",
+                aria_label=f"Claim {suggestion.title}",
+                hx_disabled_elt="this",
+                hx_post=flask.url_for("suggestion_claim", suggestion_id=suggestion.id),
+                hx_swap="outerHTML",
+                hx_target="closest tr",
+                title="Claim suggestion",
+                type="button",
+            )[htpy.i(".bi-person-check")],
         ],
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[
             suggestion.requested_at or htpy.span(".text-secondary")["—"]

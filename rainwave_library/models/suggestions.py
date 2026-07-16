@@ -413,6 +413,53 @@ def suggestion_create(
     return suggestion_id
 
 
+def suggestion_claim(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    claimed_by_name: str,
+    claimed_by_discord_id: str,
+) -> bool:
+    claimed_by_name = claimed_by_name.strip()
+    claimed_by_discord_id = claimed_by_discord_id.strip()
+    if not claimed_by_name or not claimed_by_discord_id:
+        msg = "A Discord display name and user ID are required to claim a suggestion."
+        raise ValueError(msg)
+
+    try:
+        cursor = con.execute(
+            """
+            update suggestions
+            set
+                status = 'claimed',
+                claimed_by_name = :claimed_by_name,
+                claimed_by_discord_id = :claimed_by_discord_id,
+                claimed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+                updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            where suggestion_id = :suggestion_id
+                and status = 'new'
+                and nullif(trim(claimed_by_name), '') is null
+                and nullif(trim(claimed_by_discord_id), '') is null
+            """,
+            {
+                "suggestion_id": suggestion_id,
+                "claimed_by_name": claimed_by_name,
+                "claimed_by_discord_id": claimed_by_discord_id,
+            },
+        )
+        claimed = cursor.rowcount == 1
+        if claimed:
+            con.commit()
+        else:
+            con.rollback()
+    except Exception:
+        con.rollback()
+        raise
+
+    if claimed:
+        log.info("Suggestion %s claimed by %s", suggestion_id, claimed_by_name)
+    return claimed
+
+
 def suggestion_update(
     con: sqlite3.Connection,
     suggestion_id: str,

@@ -681,6 +681,34 @@ def suggestion_details(suggestion_id: str) -> str:
     )
 
 
+@app.route("/suggestions/<suggestion_id>/claim", methods=["POST"])
+@secure
+def suggestion_claim(suggestion_id: str) -> str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        claimed = rainwave_library.models.suggestions.suggestion_claim(
+            storage_cnx,
+            suggestion_id,
+            flask.g.discord_display_name or "",
+            str(flask.g.discord_id or ""),
+        )
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+    except ValueError as error:
+        flask.abort(400, str(error))
+    finally:
+        storage_cnx.close()
+
+    if suggestion is None:
+        flask.abort(404)
+    if not claimed:
+        flask.abort(409, "This suggestion is no longer available to claim.")
+    return rainwave_library.components.suggestion_row(suggestion)
+
+
 @app.route("/suggestions/<suggestion_id>", methods=["POST"])
 @secure
 def suggestion_update(suggestion_id: str) -> str:
