@@ -1268,14 +1268,6 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             and htpy.div(".small.mt-1")[
                 htpy.strong["Requested: "], suggestion.requested_at
             ],
-            htpy.div(".small.mt-1")[
-                htpy.strong["Tags: "],
-                [
-                    htpy.span(".badge.me-1.text-bg-secondary")[tag]
-                    for tag in suggestion.tags
-                ]
-                or htpy.span(".text-secondary")["—"],
-            ],
         ],
         htpy.td(".d-none.d-md-table-cell")[
             htpy.span(
@@ -1330,10 +1322,6 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
         ],
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[
             suggestion.requested_at or htpy.span(".text-secondary")["—"]
-        ],
-        htpy.td(".d-none.d-md-table-cell")[
-            [htpy.span(".badge.me-1.text-bg-secondary")[tag] for tag in suggestion.tags]
-            or htpy.span(".text-secondary")["—"]
         ],
     ]
 
@@ -1569,13 +1557,6 @@ def _suggestion_edit_form(
                     value=str(suggestion.sort_order),
                 ),
             ],
-            htpy.div(".col-12")[
-                htpy.label(".form-label", for_="tags")["Tags"],
-                htpy.textarea("#tags.form-control", name="tags", rows=3)[
-                    "\n".join(suggestion.tags)
-                ],
-                htpy.div(".form-text")["Enter one tag per line."],
-            ],
         ],
         htpy.button(".btn.btn-outline-success.mt-3", type="submit")[
             htpy.i(".bi-file-earmark-play"), " Save suggestion"
@@ -1599,13 +1580,6 @@ def suggestion_detail_row(
             ]
         ]
         if suggestion.channel_ids
-        else htpy.span(".text-secondary")["—"]
-    )
-    tag_badges: htpy.Node = (
-        htpy.fragment[
-            [htpy.span(".badge.me-1.text-bg-secondary")[tag] for tag in suggestion.tags]
-        ]
-        if suggestion.tags
         else htpy.span(".text-secondary")["—"]
     )
     trello_link: htpy.Node = (
@@ -1636,7 +1610,6 @@ def suggestion_detail_row(
                     else None
                 ),
             ),
-            ("Tags", tag_badges),
             ("Sort order", str(suggestion.sort_order)),
         ]
     )
@@ -2128,7 +2101,6 @@ def suggestions_index(is_staff: bool) -> str:
                                         "Suggested by",
                                         "Claimed by",
                                         "Suggested at",
-                                        "Tags",
                                     )
                                 ],
                             ]

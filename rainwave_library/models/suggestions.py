@@ -51,7 +51,7 @@ class TrelloImportResult:
 
 @dataclass(frozen=True)
 class Suggestion:
-    colspan: typing.ClassVar[int] = 8
+    colspan: typing.ClassVar[int] = 7
     kinds: typing.ClassVar[tuple[str, ...]] = ("addition", "removal", "cleanup")
     statuses: typing.ClassVar[tuple[str, ...]] = (
         "new",
@@ -480,7 +480,6 @@ def suggestion_update(
     sort_order: float,
     channel_ids: typing.Iterable[int],
     primary_channel_id: int | None,
-    tags: typing.Iterable[str],
 ) -> bool:
     title = title.strip()
     if not title:
@@ -505,10 +504,6 @@ def suggestion_update(
             msg = "Invalid primary Rainwave channel."
             raise ValueError(msg)
         normalized_channel_ids.add(primary_channel_id)
-    normalized_tags = sorted(
-        {tag.strip() for tag in tags if tag.strip()}, key=str.casefold
-    )
-
     try:
         cursor = con.execute(
             """
@@ -570,14 +565,6 @@ def suggestion_update(
                 )
                 for channel_id in sorted(normalized_channel_ids)
             ),
-        )
-        con.execute(
-            "delete from suggestion_tags where suggestion_id = ?",
-            (suggestion_id,),
-        )
-        con.executemany(
-            "insert into suggestion_tags (suggestion_id, tag) values (?, ?)",
-            ((suggestion_id, tag) for tag in normalized_tags),
         )
         con.commit()
     except Exception:

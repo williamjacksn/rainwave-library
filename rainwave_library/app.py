@@ -749,7 +749,6 @@ def suggestion_update(suggestion_id: str) -> str:
                 sort_order=sort_order,
                 channel_ids=channel_ids,
                 primary_channel_id=primary_channel_id,
-                tags=flask.request.form.get("tags", "").splitlines(),
             )
             if not updated:
                 flask.abort(404)
