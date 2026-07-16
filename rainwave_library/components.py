@@ -1786,11 +1786,14 @@ def _suggestion_create_row(
     result: tuple[str, str] | None = None,
 ) -> htpy.Element:
     url = flask.url_for("suggestion_create")
-    rainwave_channels = [
-        (value, label)
-        for value, label in channels.items()
-        if isinstance(value, int) and value in range(1, 7)
-    ]
+    rainwave_channels = sorted(
+        (
+            (value, label)
+            for value, label in channels.items()
+            if isinstance(value, int) and value in {1, 2, 3, 4, 6}
+        ),
+        key=lambda item: item[1].casefold(),
+    )
     return htpy.tr[
         htpy.td(colspan=Suggestion.colspan)[
             htpy.div(".card.my-2")[

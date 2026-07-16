@@ -361,7 +361,7 @@ def suggestion_create(
     if not title:
         msg = "Suggestion title is required."
         raise ValueError(msg)
-    if channel_id not in range(1, 7):
+    if channel_id not in {1, 2, 3, 4, 6}:
         msg = "A valid Rainwave channel is required."
         raise ValueError(msg)
 
