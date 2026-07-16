@@ -1301,6 +1301,9 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             ),
         ],
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[
+            suggestion.requested_at or htpy.span(".text-secondary")["—"]
+        ],
+        htpy.td(".d-none.d-md-table-cell.text-nowrap")[
             suggestion.claimed_by_name
             or (not claimable and htpy.span(".text-secondary")["—"]),
             suggestion.claimed_by_discord_id
@@ -1319,9 +1322,6 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                 title="Claim suggestion",
                 type="button",
             )[htpy.i(".bi-person-check")],
-        ],
-        htpy.td(".d-none.d-md-table-cell.text-nowrap")[
-            suggestion.requested_at or htpy.span(".text-secondary")["—"]
         ],
     ]
 
@@ -2055,14 +2055,16 @@ def suggestions_index(is_staff: bool) -> str:
                                 htpy.th,
                                 htpy.th(".d-table-cell.d-md-none")["Suggestion"],
                                 [
-                                    htpy.th(".d-none.d-md-table-cell")[label]
+                                    htpy.th(".d-none.d-md-table-cell.text-nowrap")[
+                                        label
+                                    ]
                                     for label in (
                                         "Status",
                                         "Channels",
                                         "Suggestion",
                                         "Suggested by",
-                                        "Claimed by",
                                         "Suggested at",
+                                        "Claimed by",
                                     )
                                 ],
                             ]
