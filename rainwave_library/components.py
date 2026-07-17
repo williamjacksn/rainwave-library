@@ -1302,6 +1302,11 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
         and not suggestion.claimed_by_name
         and not suggestion.claimed_by_discord_id
     )
+    releasable = (
+        suggestion.status == "claimed"
+        and bool(suggestion.claimed_by_discord_id)
+        and suggestion.claimed_by_discord_id == str(flask.g.discord_id or "")
+    )
     action = "Edit" if editable else "View details for"
     action_title = "Edit suggestion" if editable else "View suggestion details"
     kind_classes = {
@@ -1349,7 +1354,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                     title=f"Discord user {suggestion.requester_discord_id}",
                 ),
             ],
-            (suggestion.claimed_by_name or claimable)
+            (suggestion.claimed_by_name or claimable or releasable)
             and htpy.div(".small.mt-1")[
                 htpy.strong["Claimed by: "],
                 suggestion.claimed_by_name,
@@ -1371,6 +1376,19 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                     title="Claim suggestion",
                     type="button",
                 )[htpy.i(".bi-person-check")],
+                releasable
+                and htpy.button(
+                    ".btn.btn-link.ms-1.p-0.text-danger.text-decoration-none",
+                    aria_label=f"Release claim on {suggestion.title}",
+                    hx_disabled_elt="this",
+                    hx_post=flask.url_for(
+                        "suggestion_release", suggestion_id=suggestion.id
+                    ),
+                    hx_swap="outerHTML",
+                    hx_target="closest tr",
+                    title="Release claim",
+                    type="button",
+                )[htpy.i(".bi-person-dash")],
             ],
             suggestion.requested_at
             and htpy.div(".small.mt-1")[
@@ -1426,6 +1444,19 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                 title="Claim suggestion",
                 type="button",
             )[htpy.i(".bi-person-check")],
+            releasable
+            and htpy.button(
+                ".btn.btn-link.ms-1.p-0.text-danger.text-decoration-none",
+                aria_label=f"Release claim on {suggestion.title}",
+                hx_disabled_elt="this",
+                hx_post=flask.url_for(
+                    "suggestion_release", suggestion_id=suggestion.id
+                ),
+                hx_swap="outerHTML",
+                hx_target="closest tr",
+                title="Release claim",
+                type="button",
+            )[htpy.i(".bi-person-dash")],
         ],
     ]
 

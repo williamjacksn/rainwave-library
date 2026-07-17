@@ -813,6 +813,33 @@ def suggestion_claim(suggestion_id: str) -> str:
     return rainwave_library.components.suggestion_row(suggestion)
 
 
+@app.route("/suggestions/<suggestion_id>/release", methods=["POST"])
+@signed_in
+def suggestion_release(suggestion_id: str) -> str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        released = rainwave_library.models.suggestions.suggestion_release(
+            storage_cnx,
+            suggestion_id,
+            str(flask.g.discord_id or ""),
+        )
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+    except ValueError as error:
+        flask.abort(400, str(error))
+    finally:
+        storage_cnx.close()
+
+    if suggestion is None:
+        flask.abort(404)
+    if not released:
+        flask.abort(409, "Only the claimant can release this suggestion claim.")
+    return rainwave_library.components.suggestion_row(suggestion)
+
+
 @app.route("/suggestions/<suggestion_id>", methods=["POST"])
 @secure
 def suggestion_update(suggestion_id: str) -> str:

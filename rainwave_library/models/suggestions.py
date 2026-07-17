@@ -564,6 +564,53 @@ def suggestion_claim(
     return claimed
 
 
+def suggestion_release(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    claimed_by_discord_id: str,
+) -> bool:
+    claimed_by_discord_id = claimed_by_discord_id.strip()
+    if not claimed_by_discord_id:
+        msg = "A Discord user ID is required to release a suggestion claim."
+        raise ValueError(msg)
+
+    try:
+        cursor = con.execute(
+            """
+            update suggestions
+            set
+                status = 'new',
+                claimed_by_name = null,
+                claimed_by_discord_id = null,
+                claimed_at = null,
+                updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            where suggestion_id = :suggestion_id
+                and status = 'claimed'
+                and claimed_by_discord_id = :claimed_by_discord_id
+            """,
+            {
+                "suggestion_id": suggestion_id,
+                "claimed_by_discord_id": claimed_by_discord_id,
+            },
+        )
+        released = cursor.rowcount == 1
+        if released:
+            con.commit()
+        else:
+            con.rollback()
+    except Exception:
+        con.rollback()
+        raise
+
+    if released:
+        log.info(
+            "Suggestion %s claim released by Discord user %s",
+            suggestion_id,
+            claimed_by_discord_id,
+        )
+    return released
+
+
 def suggestion_update(
     con: sqlite3.Connection,
     suggestion_id: str,
