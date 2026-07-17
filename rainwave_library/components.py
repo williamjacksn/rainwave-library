@@ -1286,7 +1286,8 @@ def _suggestion_status_badge(status: str) -> htpy.Element:
     status_classes = {
         "new": "text-bg-primary",
         "claimed": "text-bg-warning",
-        "fulfilled": "text-bg-success",
+        "accepted": "text-bg-info",
+        "uploaded": "text-bg-success",
         "declined": "text-bg-danger",
     }
     return htpy.span(f".badge.{status_classes.get(status, 'text-bg-light')}")[

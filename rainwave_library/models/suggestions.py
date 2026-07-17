@@ -62,7 +62,8 @@ class Suggestion:
     statuses: typing.ClassVar[tuple[str, ...]] = (
         "new",
         "claimed",
-        "fulfilled",
+        "accepted",
+        "uploaded",
         "declined",
     )
 
@@ -217,8 +218,9 @@ def suggestions_get(
             case s.status
                 when 'new' then 1
                 when 'claimed' then 2
-                when 'fulfilled' then 3
-                when 'declined' then 4
+                when 'accepted' then 3
+                when 'uploaded' then 4
+                when 'declined' then 5
             end
             """,
             "s.sort_order",
@@ -266,7 +268,9 @@ def suggestions_get(
         from suggestions s
         where (
                 :status_0 is null
-                or s.status in (:status_0, :status_1, :status_2, :status_3)
+                or s.status in (
+                    :status_0, :status_1, :status_2, :status_3, :status_4
+                )
             )
             and (
                 :requester_discord_id is null
@@ -321,6 +325,7 @@ def suggestions_get(
             "status_1": status_parameters[1],
             "status_2": status_parameters[2],
             "status_3": status_parameters[3],
+            "status_4": status_parameters[4],
             **claimed_by_parameters,
         },
     ).fetchall()
@@ -349,8 +354,12 @@ def suggestion_counts_by_requester(
     row = con.execute(
         """
         select
-            count(*) filter (where status in ('new', 'claimed')) active_count,
-            count(*) filter (where status in ('fulfilled', 'declined')) complete_count
+            count(*) filter (
+                where status in ('new', 'claimed', 'accepted')
+            ) active_count,
+            count(*) filter (
+                where status in ('uploaded', 'declined')
+            ) complete_count
         from suggestions
         where requester_discord_id = ?
         """,
@@ -843,11 +852,11 @@ def _list_info(name: str) -> _ListInfo:
             status="claimed", claimed_by_name=name.removesuffix(" - Claimed")
         )
     if name == "Fulfilled":
-        return _ListInfo(status="fulfilled")
+        return _ListInfo(status="uploaded")
     if name == "Declined":
         return _ListInfo(status="declined")
     if name == "Processed for Chill":
-        return _ListInfo(status="fulfilled", primary_channel_id=6)
+        return _ListInfo(status="uploaded", primary_channel_id=6)
     return _ListInfo(known=False)
 
 

@@ -208,12 +208,225 @@ def _migration_5(con: sqlite3.Connection) -> None:
     )
 
 
+def _migration_6(con: sqlite3.Connection) -> None:
+    con.executescript(
+        """
+        create temp table _migration_6_suggestions as
+            select * from suggestions;
+        create temp table _migration_6_suggestion_channels as
+            select * from suggestion_channels;
+        create temp table _migration_6_suggestion_links as
+            select * from suggestion_links;
+        create temp table _migration_6_suggestion_tags as
+            select * from suggestion_tags;
+        create temp table _migration_6_suggestion_activity as
+            select * from suggestion_activity;
+
+        drop table suggestion_activity;
+        drop table suggestion_tags;
+        drop table suggestion_links;
+        drop table suggestion_channels;
+        drop table suggestions;
+
+        create table suggestions (
+            suggestion_id text primary key not null,
+            title text not null,
+            kind text not null default 'addition'
+                check (kind in ('addition', 'removal', 'cleanup')),
+            status text not null default 'new'
+                check (
+                    status in (
+                        'new', 'claimed', 'accepted', 'uploaded', 'declined'
+                    )
+                ),
+            archived integer not null default 0
+                check (archived in (0, 1)),
+            description text not null default '',
+            requester_name text,
+            requester_discord_id text,
+            requested_at text,
+            claimed_by_name text,
+            claimed_by_discord_id text,
+            claimed_at text,
+            resolved_at text,
+            resolution_notes text,
+            sort_order real not null default 0,
+            created_at text not null,
+            updated_at text not null,
+            trello_card_id text unique,
+            trello_url text
+        ) without rowid;
+
+        create index suggestions_status_idx
+            on suggestions (archived, status, sort_order);
+        create index suggestions_claimed_by_idx
+            on suggestions (claimed_by_discord_id, claimed_by_name);
+
+        insert into suggestions (
+            suggestion_id,
+            title,
+            kind,
+            status,
+            archived,
+            description,
+            requester_name,
+            requester_discord_id,
+            requested_at,
+            claimed_by_name,
+            claimed_by_discord_id,
+            claimed_at,
+            resolved_at,
+            resolution_notes,
+            sort_order,
+            created_at,
+            updated_at,
+            trello_card_id,
+            trello_url
+        )
+        select
+            suggestion_id,
+            title,
+            kind,
+            case
+                when status in ('fulfilled', 'processed') then 'uploaded'
+                else status
+            end,
+            archived,
+            description,
+            requester_name,
+            requester_discord_id,
+            requested_at,
+            claimed_by_name,
+            claimed_by_discord_id,
+            claimed_at,
+            resolved_at,
+            resolution_notes,
+            sort_order,
+            created_at,
+            updated_at,
+            trello_card_id,
+            trello_url
+        from _migration_6_suggestions;
+
+        create table suggestion_channels (
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            channel_id integer not null,
+            is_primary integer not null default 0
+                check (is_primary in (0, 1)),
+            primary key (suggestion_id, channel_id)
+        ) without rowid;
+
+        insert into suggestion_channels (suggestion_id, channel_id, is_primary)
+        select suggestion_id, channel_id, is_primary
+        from _migration_6_suggestion_channels;
+
+        create table suggestion_links (
+            link_id text primary key not null,
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            link_type text not null,
+            url text not null,
+            label text,
+            sort_order real not null default 0,
+            trello_attachment_id text unique,
+            unique (suggestion_id, url)
+        ) without rowid;
+
+        create index suggestion_links_suggestion_idx
+            on suggestion_links (suggestion_id, sort_order);
+
+        insert into suggestion_links (
+            link_id,
+            suggestion_id,
+            link_type,
+            url,
+            label,
+            sort_order,
+            trello_attachment_id
+        )
+        select
+            link_id,
+            suggestion_id,
+            link_type,
+            url,
+            label,
+            sort_order,
+            trello_attachment_id
+        from _migration_6_suggestion_links;
+
+        create table suggestion_tags (
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            tag text not null,
+            primary key (suggestion_id, tag)
+        ) without rowid;
+
+        insert into suggestion_tags (suggestion_id, tag)
+        select suggestion_id, tag
+        from _migration_6_suggestion_tags;
+
+        create table suggestion_activity (
+            activity_id text primary key not null,
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            activity_type text not null,
+            actor_name text,
+            actor_discord_id text,
+            body text,
+            old_value text,
+            new_value text,
+            created_at text not null,
+            trello_action_id text unique,
+            trello_member_id text
+        ) without rowid;
+
+        create index suggestion_activity_suggestion_idx
+            on suggestion_activity (suggestion_id, created_at);
+
+        insert into suggestion_activity (
+            activity_id,
+            suggestion_id,
+            activity_type,
+            actor_name,
+            actor_discord_id,
+            body,
+            old_value,
+            new_value,
+            created_at,
+            trello_action_id,
+            trello_member_id
+        )
+        select
+            activity_id,
+            suggestion_id,
+            activity_type,
+            actor_name,
+            actor_discord_id,
+            body,
+            old_value,
+            new_value,
+            created_at,
+            trello_action_id,
+            trello_member_id
+        from _migration_6_suggestion_activity;
+
+        drop table _migration_6_suggestion_activity;
+        drop table _migration_6_suggestion_tags;
+        drop table _migration_6_suggestion_links;
+        drop table _migration_6_suggestion_channels;
+        drop table _migration_6_suggestions;
+        """
+    )
+
+
 MIGRATIONS = (
     _migration_1,
     _migration_2,
     _migration_3,
     _migration_4,
     _migration_5,
+    _migration_6,
 )
 
 
