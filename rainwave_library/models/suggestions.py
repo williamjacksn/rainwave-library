@@ -172,6 +172,7 @@ def suggestions_get(
     sort_col: str = "requested_at",
     sort_dir: str = "desc",
     claimed_by_name: str | None = None,
+    primary_channel_id: int | None = None,
 ) -> list[Suggestion]:
     query = query.strip() if query else None
     valid_statuses = tuple(
@@ -253,6 +254,16 @@ def suggestions_get(
                 or s.claimed_by_name = :claimed_by_name collate nocase
             )
             and (
+                :primary_channel_id is null
+                or exists (
+                    select 1
+                    from suggestion_channels primary_channel
+                    where primary_channel.suggestion_id = s.suggestion_id
+                        and primary_channel.channel_id = :primary_channel_id
+                        and primary_channel.is_primary
+                )
+            )
+            and (
                 not :missing_requester_discord_id
                 or (
                     nullif(trim(s.requester_name), '') is not null
@@ -279,6 +290,7 @@ def suggestions_get(
             "claimed_by_name": claimed_by_name,
             "missing_requester_discord_id": int(missing_requester_discord_id),
             "offset": 100 * (page - 1),
+            "primary_channel_id": primary_channel_id,
             "query": f"%{query}%" if query else None,
             "requester_discord_id": requester_discord_id,
             "status_0": status_parameters[0],

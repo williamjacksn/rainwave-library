@@ -2002,6 +2002,14 @@ def suggestions_index(
     your_suggestions_complete_count: int,
 ) -> str:
     rows_url = flask.url_for("suggestions_rows")
+    primary_channels = sorted(
+        (
+            (channel_id, label)
+            for channel_id, label in channels.items()
+            if isinstance(channel_id, int) and channel_id in {1, 2, 3, 4, 6}
+        ),
+        key=lambda channel: channel[1].casefold(),
+    )
     content = [
         htpy.div(".g-1.pt-3.row")[
             _back_button(flask.url_for("index"), "Home"), _user_menu()
@@ -2118,6 +2126,21 @@ def suggestions_index(
                         [
                             htpy.option(value=claimant)[claimant]
                             for claimant in claimants
+                        ],
+                    ]
+                ],
+                htpy.div(".col-12.col-sm-auto")[
+                    htpy.select(
+                        ".form-select",
+                        aria_label="Filter by primary channel",
+                        hx_indicator="#suggestion-filters-indicator",
+                        hx_post=rows_url,
+                        name="primary-channel",
+                    )[
+                        htpy.option(value="")["All primary channels"],
+                        [
+                            htpy.option(value=channel_id)[label]
+                            for channel_id, label in primary_channels
                         ],
                     ]
                 ],
