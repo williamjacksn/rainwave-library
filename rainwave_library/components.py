@@ -1932,60 +1932,6 @@ def suggestion_create_row(
     return str(_suggestion_create_row(title, description, channel_id, result))
 
 
-def suggestion_discord_user_form(
-    discord_username: str = "",
-    discord_user_id: str = "",
-    result: tuple[str, str] | None = None,
-) -> str:
-    url = flask.url_for("suggestions_requester_discord_id")
-    return str(
-        htpy.form(
-            ".align-items-end.d-flex.flex-wrap.gap-2",
-            action=url,
-            hx_disabled_elt="button",
-            hx_post=url,
-            hx_swap="outerHTML",
-            method="post",
-        )[
-            result
-            and htpy.div(f".alert.{result[0]}.mb-0.py-2.w-100", role="alert")[
-                result[1]
-            ],
-            htpy.div[
-                htpy.label(".form-label.small", for_="bulk-discord-username")[
-                    "Discord username"
-                ],
-                htpy.input(
-                    "#bulk-discord-username.form-control",
-                    autocomplete="off",
-                    name="discord-username",
-                    required=True,
-                    type="text",
-                    value=discord_username,
-                ),
-            ],
-            htpy.div[
-                htpy.label(".form-label.small", for_="bulk-discord-user-id")[
-                    "Discord user ID"
-                ],
-                htpy.input(
-                    "#bulk-discord-user-id.form-control",
-                    autocomplete="off",
-                    inputmode="numeric",
-                    name="discord-user-id",
-                    pattern="[0-9]+",
-                    required=True,
-                    type="text",
-                    value=discord_user_id,
-                ),
-            ],
-            htpy.button(".btn.btn-outline-primary", type="submit")[
-                htpy.i(".bi-discord"), " Update suggestions"
-            ],
-        ]
-    )
-
-
 def suggestions_index(
     is_staff: bool,
     claimants: list[str],
@@ -2015,16 +1961,6 @@ def suggestions_index(
                     hx_target="#suggestion-create",
                     type="button",
                 )[htpy.i(".bi-plus-lg"), " New suggestion"]
-            ],
-            is_staff
-            and htpy.div(".col-auto")[
-                htpy.button(
-                    ".btn.btn-outline-primary.mb-1",
-                    hx_get=flask.url_for("suggestions_requester_discord_id"),
-                    hx_swap="outerHTML",
-                    title="Set suggestion Discord user IDs",
-                    type="button",
-                )[htpy.i(".bi-discord"), " Match Discord user"]
             ],
         ],
         htpy.form(
