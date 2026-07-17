@@ -2274,7 +2274,7 @@ def suggestions_index(
                                     for label in (
                                         "Status",
                                         "Channels",
-                                        "Suggestion",
+                                        "Suggestion title",
                                         "Suggested by",
                                         "Suggested at",
                                         "Claimed by",
