@@ -2246,20 +2246,6 @@ def suggestions_index(
                                         for_="your-claims",
                                     )["Your claims"],
                                 ],
-                                htpy.div(".form-check")[
-                                    htpy.input(
-                                        "#missing-suggested-by-discord-id.form-check-input",
-                                        hx_indicator="#suggestion-filters-indicator",
-                                        hx_post=rows_url,
-                                        name="missing-suggested-by-discord-id",
-                                        type="checkbox",
-                                        value="1",
-                                    ),
-                                    htpy.label(
-                                        ".form-check-label.text-nowrap",
-                                        for_="missing-suggested-by-discord-id",
-                                    )["Suggested by without Discord ID"],
-                                ],
                             ]
                         ],
                     ]

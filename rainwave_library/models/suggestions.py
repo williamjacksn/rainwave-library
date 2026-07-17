@@ -168,7 +168,6 @@ def suggestions_get(
     page: int,
     requester_discord_id: str | None = None,
     claimed_by_discord_id: str | None = None,
-    missing_requester_discord_id: bool = False,
     sort_col: str = "requested_at",
     sort_dir: str = "desc",
     claimed_by_name: str | None = None,
@@ -278,13 +277,6 @@ def suggestions_get(
                 )
             )
             and (
-                not :missing_requester_discord_id
-                or (
-                    nullif(trim(s.requester_name), '') is not null
-                    and nullif(trim(s.requester_discord_id), '') is null
-                )
-            )
-            and (
                 :query is null
                 or s.title like :query
                 or s.description like :query
@@ -307,7 +299,6 @@ def suggestions_get(
             "channel_4": channel_parameters[4],
             "claimed_by_discord_id": claimed_by_discord_id,
             "claimed_by_name": claimed_by_name,
-            "missing_requester_discord_id": int(missing_requester_discord_id),
             "offset": 100 * (page - 1),
             "query": f"%{query}%" if query else None,
             "requester_discord_id": requester_discord_id,
