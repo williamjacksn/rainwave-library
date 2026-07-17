@@ -1552,8 +1552,7 @@ def _suggestion_edit_form(
                 )[suggestion.description],
             ],
         ],
-        htpy.h6(".mt-4")["Request"],
-        htpy.div(".g-3.row")[
+        htpy.div(".g-3.mt-4.row")[
             htpy.div(".col-12.col-lg-4")[
                 htpy.label(".form-label", for_="requester-name")["Suggested by"],
                 htpy.input(
@@ -1604,8 +1603,7 @@ def _suggestion_edit_form(
                 )[suggestion.resolution_notes or ""],
             ],
         ],
-        htpy.h6(".mt-4")["Organization"],
-        htpy.div(".g-3.row")[
+        htpy.div(".g-3.mt-4.row")[
             htpy.div(".col-12.col-lg-7")[
                 htpy.div(".form-label")["Channels"],
                 htpy.div(".d-flex.flex-wrap.gap-3")[
