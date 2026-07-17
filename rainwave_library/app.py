@@ -852,7 +852,6 @@ def suggestion_update(suggestion_id: str) -> str:
 
     result: tuple[str, str]
     try:
-        sort_order = float(flask.request.form.get("sort-order", "0"))
         channel_ids = [
             int(channel_id)
             for channel_id in flask.request.form.getlist("channels")
@@ -876,7 +875,6 @@ def suggestion_update(suggestion_id: str) -> str:
                 requested_at=optional_value("requested-at"),
                 resolved_at=optional_value("resolved-at"),
                 resolution_notes=optional_value("resolution-notes"),
-                sort_order=sort_order,
                 channel_ids=channel_ids,
                 primary_channel_id=primary_channel_id,
             )

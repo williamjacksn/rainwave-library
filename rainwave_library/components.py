@@ -1605,7 +1605,7 @@ def _suggestion_edit_form(
         ],
         htpy.h6(".mt-4")["Organization"],
         htpy.div(".g-3.row")[
-            htpy.div(".col-12.col-lg-5")[
+            htpy.div(".col-12.col-lg-7")[
                 htpy.div(".form-label")["Channels"],
                 htpy.div(".d-flex.flex-wrap.gap-3")[
                     [
@@ -1625,7 +1625,7 @@ def _suggestion_edit_form(
                     ]
                 ],
             ],
-            htpy.div(".col-12.col-lg-3")[
+            htpy.div(".col-12.col-lg-5")[
                 htpy.label(".form-label", for_="primary-channel")["Primary channel"],
                 htpy.select("#primary-channel.form-select", name="primary-channel")[
                     htpy.option(value="")["None"],
@@ -1640,16 +1640,6 @@ def _suggestion_edit_form(
                 htpy.div(".form-text")[
                     "The primary channel is automatically included above."
                 ],
-            ],
-            htpy.div(".col-12.col-lg-4")[
-                htpy.label(".form-label", for_="sort-order")["Sort order"],
-                htpy.input(
-                    "#sort-order.form-control",
-                    name="sort-order",
-                    step="any",
-                    type="number",
-                    value=str(suggestion.sort_order),
-                ),
             ],
         ],
         htpy.button(".btn.btn-outline-success.mt-3", type="submit")[

@@ -1,6 +1,5 @@
 import datetime
 import logging
-import math
 import re
 import secrets
 import sqlite3
@@ -645,7 +644,6 @@ def suggestion_update(
     requested_at: str | None,
     resolved_at: str | None,
     resolution_notes: str | None,
-    sort_order: float,
     channel_ids: typing.Iterable[int],
     primary_channel_id: int | None,
 ) -> bool:
@@ -659,10 +657,6 @@ def suggestion_update(
     if status not in Suggestion.statuses:
         msg = "Invalid suggestion status."
         raise ValueError(msg)
-    if not math.isfinite(sort_order):
-        msg = "Sort order must be a finite number."
-        raise ValueError(msg)
-
     normalized_channel_ids = set(channel_ids)
     if any(channel_id not in range(1, 7) for channel_id in normalized_channel_ids):
         msg = "Invalid Rainwave channel."
@@ -686,7 +680,6 @@ def suggestion_update(
                 requested_at = :requested_at,
                 resolved_at = :resolved_at,
                 resolution_notes = :resolution_notes,
-                sort_order = :sort_order,
                 updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
             where suggestion_id = :suggestion_id
             """,
@@ -701,7 +694,6 @@ def suggestion_update(
                 "requested_at": requested_at,
                 "resolved_at": resolved_at,
                 "resolution_notes": resolution_notes,
-                "sort_order": sort_order,
             },
         )
         if cursor.rowcount == 0:
