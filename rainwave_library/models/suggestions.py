@@ -169,8 +169,8 @@ def suggestions_get(
     requester_discord_id: str | None = None,
     claimed_by_discord_id: str | None = None,
     missing_requester_discord_id: bool = False,
-    sort_col: str = "status",
-    sort_dir: str = "asc",
+    sort_col: str = "requested_at",
+    sort_dir: str = "desc",
     claimed_by_name: str | None = None,
 ) -> list[Suggestion]:
     query = query.strip() if query else None
@@ -182,7 +182,7 @@ def suggestions_get(
     status_parameters: list[str | None] = [*valid_statuses]
     status_parameters.extend([None] * (len(Suggestion.statuses) - len(valid_statuses)))
     if sort_dir not in ("asc", "desc"):
-        sort_dir = "asc"
+        sort_dir = "desc"
     sort_expressions = {
         "status": (
             """
@@ -207,7 +207,7 @@ def suggestions_get(
             "s.title collate nocase",
         ),
     }
-    expressions = sort_expressions.get(sort_col, sort_expressions["status"])
+    expressions = sort_expressions.get(sort_col, sort_expressions["requested_at"])
     sort_clause = ", ".join(
         f"{expression.strip()} {sort_dir}" for expression in expressions
     )

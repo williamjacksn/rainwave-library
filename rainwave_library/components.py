@@ -2031,7 +2031,7 @@ def suggestions_index(
                                     htpy.div(".form-check")[
                                         htpy.input(
                                             f"#suggestion-sort-dir-{value}.form-check-input",
-                                            checked=value == "asc",
+                                            checked=value == "desc",
                                             hx_indicator=(
                                                 "#suggestion-filters-indicator"
                                             ),
@@ -2055,7 +2055,7 @@ def suggestions_index(
                                     htpy.div(".form-check")[
                                         htpy.input(
                                             f"#suggestion-sort-col-{value}.form-check-input",
-                                            checked=value == "status",
+                                            checked=value == "requested_at",
                                             hx_indicator=(
                                                 "#suggestion-filters-indicator"
                                             ),
