@@ -730,7 +730,7 @@ def suggestions_rows() -> str:
     page = max(int(flask.request.values.get("page", 1)), 1)
     sort_col = flask.request.values.get("sort-col", "requested_at")
     sort_dir = flask.request.values.get("sort-dir", "desc")
-    claimed_by_name = flask.request.values.get("claimed-by") or None
+    claimed_by_names = flask.request.values.getlist("claimed-by")
     input_channels = flask.request.values.getlist("channels")
     channel_ids = [
         int(channel_id)
@@ -761,7 +761,7 @@ def suggestions_rows() -> str:
             claimed_by_discord_id,
             sort_col,
             sort_dir,
-            claimed_by_name,
+            claimed_by_names,
             channel_ids,
         )
     finally:

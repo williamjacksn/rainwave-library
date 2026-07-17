@@ -2104,18 +2104,37 @@ def suggestions_index(
                         ],
                     ]
                 ],
-                htpy.div(".col-12.col-sm-auto")[
-                    htpy.select(
-                        ".form-select",
-                        aria_label="Filter by who claimed the suggestion",
-                        hx_indicator="#suggestion-filters-indicator",
-                        hx_post=rows_url,
-                        name="claimed-by",
-                    )[
-                        htpy.option(value="")["All claimants"],
-                        [
-                            htpy.option(value=claimant)[claimant]
-                            for claimant in claimants
+                htpy.div(".col-auto")[
+                    htpy.div(".dropdown")[
+                        htpy.button(
+                            ".btn.btn-outline-primary.dropdown-toggle",
+                            data_bs_toggle="dropdown",
+                            title="Claimant selection",
+                            type="button",
+                        )[htpy.i(".bi-person-check")],
+                        htpy.div(".dropdown-menu")[
+                            htpy.div(".px-2")[
+                                htpy.h6(".dropdown-header")["CLAIMED BY"],
+                                [
+                                    htpy.div(".form-check")[
+                                        htpy.input(
+                                            f"#suggestion-claimant-{index}.form-check-input",
+                                            hx_indicator=(
+                                                "#suggestion-filters-indicator"
+                                            ),
+                                            hx_post=rows_url,
+                                            name="claimed-by",
+                                            type="checkbox",
+                                            value=claimant,
+                                        ),
+                                        htpy.label(
+                                            ".form-check-label.text-nowrap",
+                                            for_=f"suggestion-claimant-{index}",
+                                        )[claimant],
+                                    ]
+                                    for index, claimant in enumerate(claimants)
+                                ],
+                            ]
                         ],
                     ]
                 ],

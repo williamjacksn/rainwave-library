@@ -169,7 +169,7 @@ def suggestions_get(
     claimed_by_discord_id: str | None = None,
     sort_col: str = "requested_at",
     sort_dir: str = "desc",
-    claimed_by_name: str | None = None,
+    claimed_by_names: typing.Iterable[str] | None = None,
     channel_ids: typing.Iterable[int] | None = None,
 ) -> list[Suggestion]:
     query = query.strip() if query else None
@@ -189,6 +189,17 @@ def suggestions_get(
     )
     channel_parameters: list[int | None] = [*valid_channel_ids]
     channel_parameters.extend([None] * (5 - len(valid_channel_ids)))
+    valid_claimed_by_names = tuple(
+        dict.fromkeys(name.strip() for name in claimed_by_names or () if name.strip())
+    )
+    claimed_by_parameters = {
+        f"claimed_by_name_{index}": name
+        for index, name in enumerate(valid_claimed_by_names)
+    }
+    claimed_by_clause = ""
+    if claimed_by_parameters:
+        placeholders = ", ".join(f":{name}" for name in claimed_by_parameters)
+        claimed_by_clause = f"and s.claimed_by_name collate nocase in ({placeholders})"
     if sort_dir not in ("asc", "desc"):
         sort_dir = "desc"
     sort_expressions = {
@@ -256,10 +267,7 @@ def suggestions_get(
                 :claimed_by_discord_id is null
                 or s.claimed_by_discord_id = :claimed_by_discord_id
             )
-            and (
-                :claimed_by_name is null
-                or s.claimed_by_name = :claimed_by_name collate nocase
-            )
+            {claimed_by_clause}
             and (
                 :channel_0 is null
                 or exists (
@@ -297,7 +305,6 @@ def suggestions_get(
             "channel_3": channel_parameters[3],
             "channel_4": channel_parameters[4],
             "claimed_by_discord_id": claimed_by_discord_id,
-            "claimed_by_name": claimed_by_name,
             "offset": 100 * (page - 1),
             "query": f"%{query}%" if query else None,
             "requester_discord_id": requester_discord_id,
@@ -305,6 +312,7 @@ def suggestions_get(
             "status_1": status_parameters[1],
             "status_2": status_parameters[2],
             "status_3": status_parameters[3],
+            **claimed_by_parameters,
         },
     ).fetchall()
     return [_suggestion_from_row(row) for row in rows]
