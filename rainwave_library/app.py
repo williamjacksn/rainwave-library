@@ -731,12 +731,12 @@ def suggestions_rows() -> str:
     sort_col = flask.request.values.get("sort-col", "requested_at")
     sort_dir = flask.request.values.get("sort-dir", "desc")
     claimed_by_name = flask.request.values.get("claimed-by") or None
-    primary_channel = flask.request.values.get("primary-channel", "")
-    primary_channel_id = (
-        int(primary_channel)
-        if primary_channel.isdigit() and int(primary_channel) in {1, 2, 3, 4, 6}
-        else None
-    )
+    input_channels = flask.request.values.getlist("channels")
+    channel_ids = [
+        int(channel_id)
+        for channel_id in input_channels
+        if channel_id.isdigit() and int(channel_id) in {1, 2, 3, 4, 6}
+    ]
     is_staff = flask.session.get("role") == "staff"
     requester_discord_id = (
         str(flask.g.discord_id or "")
@@ -766,7 +766,7 @@ def suggestions_rows() -> str:
             sort_col,
             sort_dir,
             claimed_by_name,
-            primary_channel_id,
+            channel_ids,
         )
     finally:
         storage_cnx.close()

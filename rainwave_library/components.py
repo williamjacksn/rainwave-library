@@ -2002,7 +2002,7 @@ def suggestions_index(
     your_suggestions_complete_count: int,
 ) -> str:
     rows_url = flask.url_for("suggestions_rows")
-    primary_channels = sorted(
+    rainwave_channels = sorted(
         (
             (channel_id, label)
             for channel_id, label in channels.items()
@@ -2129,18 +2129,38 @@ def suggestions_index(
                         ],
                     ]
                 ],
-                htpy.div(".col-12.col-sm-auto")[
-                    htpy.select(
-                        ".form-select",
-                        aria_label="Filter by primary channel",
-                        hx_indicator="#suggestion-filters-indicator",
-                        hx_post=rows_url,
-                        name="primary-channel",
-                    )[
-                        htpy.option(value="")["All primary channels"],
-                        [
-                            htpy.option(value=channel_id)[label]
-                            for channel_id, label in primary_channels
+                htpy.div(".col-auto")[
+                    htpy.div(".dropdown")[
+                        htpy.button(
+                            ".btn.btn-outline-primary.dropdown-toggle",
+                            data_bs_toggle="dropdown",
+                            title="Channel selection",
+                            type="button",
+                        )[htpy.i(".bi-broadcast-pin")],
+                        htpy.div(".dropdown-menu")[
+                            htpy.div(".px-2")[
+                                htpy.h6(".dropdown-header")["CHANNEL SELECTION"],
+                                [
+                                    htpy.div(".form-check")[
+                                        htpy.input(
+                                            f"#suggestion-channel-{channel_id}.form-check-input",
+                                            checked=True,
+                                            hx_indicator=(
+                                                "#suggestion-filters-indicator"
+                                            ),
+                                            hx_post=rows_url,
+                                            name="channels",
+                                            type="checkbox",
+                                            value=channel_id,
+                                        ),
+                                        htpy.label(
+                                            ".form-check-label.text-nowrap",
+                                            for_=f"suggestion-channel-{channel_id}",
+                                        )[label],
+                                    ]
+                                    for channel_id, label in rainwave_channels
+                                ],
+                            ]
                         ],
                     ]
                 ],

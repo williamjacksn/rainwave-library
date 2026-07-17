@@ -172,7 +172,7 @@ def suggestions_get(
     sort_col: str = "requested_at",
     sort_dir: str = "desc",
     claimed_by_name: str | None = None,
-    primary_channel_id: int | None = None,
+    channel_ids: typing.Iterable[int] | None = None,
 ) -> list[Suggestion]:
     query = query.strip() if query else None
     valid_statuses = tuple(
@@ -182,6 +182,15 @@ def suggestions_get(
     )
     status_parameters: list[str | None] = [*valid_statuses]
     status_parameters.extend([None] * (len(Suggestion.statuses) - len(valid_statuses)))
+    valid_channel_ids = tuple(
+        dict.fromkeys(
+            channel_id
+            for channel_id in channel_ids or ()
+            if channel_id in {1, 2, 3, 4, 6}
+        )
+    )
+    channel_parameters: list[int | None] = [*valid_channel_ids]
+    channel_parameters.extend([None] * (5 - len(valid_channel_ids)))
     if sort_dir not in ("asc", "desc"):
         sort_dir = "desc"
     sort_expressions = {
@@ -254,13 +263,18 @@ def suggestions_get(
                 or s.claimed_by_name = :claimed_by_name collate nocase
             )
             and (
-                :primary_channel_id is null
+                :channel_0 is null
                 or exists (
                     select 1
-                    from suggestion_channels primary_channel
-                    where primary_channel.suggestion_id = s.suggestion_id
-                        and primary_channel.channel_id = :primary_channel_id
-                        and primary_channel.is_primary
+                    from suggestion_channels filtered_channel
+                    where filtered_channel.suggestion_id = s.suggestion_id
+                        and filtered_channel.channel_id in (
+                            :channel_0,
+                            :channel_1,
+                            :channel_2,
+                            :channel_3,
+                            :channel_4
+                        )
                 )
             )
             and (
@@ -286,11 +300,15 @@ def suggestions_get(
     rows = con.execute(
         sql,
         {
+            "channel_0": channel_parameters[0],
+            "channel_1": channel_parameters[1],
+            "channel_2": channel_parameters[2],
+            "channel_3": channel_parameters[3],
+            "channel_4": channel_parameters[4],
             "claimed_by_discord_id": claimed_by_discord_id,
             "claimed_by_name": claimed_by_name,
             "missing_requester_discord_id": int(missing_requester_discord_id),
             "offset": 100 * (page - 1),
-            "primary_channel_id": primary_channel_id,
             "query": f"%{query}%" if query else None,
             "requester_discord_id": requester_discord_id,
             "status_0": status_parameters[0],
