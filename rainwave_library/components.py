@@ -2115,6 +2115,20 @@ def suggestions_index(
                         htpy.div(".dropdown-menu")[
                             htpy.div(".px-2")[
                                 htpy.h6(".dropdown-header")["CLAIMED BY"],
+                                htpy.div(".form-check")[
+                                    htpy.input(
+                                        "#suggestion-claimant-unclaimed.form-check-input",
+                                        hx_indicator="#suggestion-filters-indicator",
+                                        hx_post=rows_url,
+                                        name="claimed-by",
+                                        type="checkbox",
+                                        value="",
+                                    ),
+                                    htpy.label(
+                                        ".form-check-label.text-nowrap",
+                                        for_="suggestion-claimant-unclaimed",
+                                    )["(unclaimed)"],
+                                ],
                                 [
                                     htpy.div(".form-check")[
                                         htpy.input(

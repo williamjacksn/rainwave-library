@@ -189,17 +189,26 @@ def suggestions_get(
     )
     channel_parameters: list[int | None] = [*valid_channel_ids]
     channel_parameters.extend([None] * (5 - len(valid_channel_ids)))
+    claimed_by_filters = tuple(name.strip() for name in claimed_by_names or ())
+    include_unclaimed = "" in claimed_by_filters
     valid_claimed_by_names = tuple(
-        dict.fromkeys(name.strip() for name in claimed_by_names or () if name.strip())
+        dict.fromkeys(name for name in claimed_by_filters if name)
     )
     claimed_by_parameters = {
         f"claimed_by_name_{index}": name
         for index, name in enumerate(valid_claimed_by_names)
     }
-    claimed_by_clause = ""
+    claimed_by_conditions = []
     if claimed_by_parameters:
         placeholders = ", ".join(f":{name}" for name in claimed_by_parameters)
-        claimed_by_clause = f"and s.claimed_by_name collate nocase in ({placeholders})"
+        claimed_by_conditions.append(
+            f"s.claimed_by_name collate nocase in ({placeholders})"
+        )
+    if include_unclaimed:
+        claimed_by_conditions.append("nullif(trim(s.claimed_by_name), '') is null")
+    claimed_by_clause = (
+        f"and ({' or '.join(claimed_by_conditions)})" if claimed_by_conditions else ""
+    )
     if sort_dir not in ("asc", "desc"):
         sort_dir = "desc"
     sort_expressions = {
