@@ -708,6 +708,15 @@ def get_albums(
     return [Album(r) for r in cast(list[AlbumDict], cast(object, rows))]
 
 
+def song_count(db: fort.PostgresDatabase) -> int:
+    sql = """
+        select count(*) song_count
+        from r4_songs
+        where song_verified is true
+    """
+    return db.q_val(sql) or 0
+
+
 def get_albums_missing_art(db: fort.PostgresDatabase) -> list[Album]:
     sql = """
         select album_id, album_name

@@ -1865,6 +1865,8 @@ def _suggestion_create_row(
     channel_id: int | None = None,
     links: tuple[tuple[str, str], ...] = (),
     result: tuple[str, str] | None = None,
+    song_count: int = 0,
+    song_count_as_of: str = "",
 ) -> htpy.Element:
     url = flask.url_for("suggestion_create")
     rainwave_channels = sorted(
@@ -1891,6 +1893,42 @@ def _suggestion_create_row(
                     htpy.h5(".mb-0")["New suggestion"],
                 ],
                 htpy.div(".card-body")[
+                    htpy.div(".text-secondary.small")[
+                        htpy.p[
+                            "Rainwave is an online radio station run by "
+                            "volunteers. The extensive Rainwave music library "
+                            "includes:"
+                        ],
+                        htpy.ul[
+                            htpy.li[
+                                "original video game soundtracks, both modern "
+                                "and classic"
+                            ],
+                            htpy.li[
+                                "original chiptune music not featured in video "
+                                "games"
+                            ],
+                            htpy.li[
+                                "covers and remixes of video game music from a "
+                                "wide variety of sources, including OverClocked "
+                                "ReMix"
+                            ],
+                        ],
+                        htpy.p[
+                            "While the Rainwave music library is substantial "
+                            f"(over {song_count:,} songs as of "
+                            f"{song_count_as_of}), we understand that we may "
+                            "not have your favorite soundtrack or music from "
+                            "recently released games."
+                        ],
+                        htpy.p[
+                            "You are welcome to make suggestions for new music "
+                            "to be added to the Rainwave music library. "
+                            "However, as volunteers who maintain the site and "
+                            "library, we cannot guarantee that new music will "
+                            "be added."
+                        ],
+                    ],
                     htpy.form(
                         action=url,
                         hx_disabled_elt="button",
@@ -1986,9 +2024,19 @@ def suggestion_create_row(
     channel_id: int | None = None,
     links: tuple[tuple[str, str], ...] = (),
     result: tuple[str, str] | None = None,
+    song_count: int = 0,
+    song_count_as_of: str = "",
 ) -> str:
     return str(
-        _suggestion_create_row(title, description, channel_id, links, result)
+        _suggestion_create_row(
+            title,
+            description,
+            channel_id,
+            links,
+            result,
+            song_count,
+            song_count_as_of,
+        )
     )
 
 

@@ -631,13 +631,24 @@ def suggestions() -> str:
     )
 
 
+def _suggestion_notice() -> dict[str, int | str]:
+    db = app.config["RAINWAVE_DATABASE"]
+    count = rainwave_library.models.rainwave.song_count(db)
+    return {
+        "song_count": count // 1000 * 1000,
+        "song_count_as_of": datetime.date.today().strftime("%B %Y"),
+    }
+
+
 @app.route("/suggestions/create", methods=["GET", "POST"])
 @signed_in
 def suggestion_create() -> werkzeug.Response | str:
     if flask.request.method == "GET":
         if "close" in flask.request.args:
             return ""
-        return rainwave_library.components.suggestion_create_row()
+        return rainwave_library.components.suggestion_create_row(
+            **_suggestion_notice()
+        )
 
     title = flask.request.form.get("title", "")
     description = flask.request.form.get("description", "")
@@ -676,6 +687,7 @@ def suggestion_create() -> werkzeug.Response | str:
                 channel_id=channel_id or None,
                 links=entered_links,
                 result=("alert-danger", str(error)),
+                **_suggestion_notice(),
             )
     finally:
         storage_cnx.close()
