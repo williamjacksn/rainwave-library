@@ -382,6 +382,8 @@ def authorize() -> werkzeug.Response:
     guild_member_url = f"https://discord.com/api/v10/users/@me/guilds/{guild_id}/member"
     headers = {"Authorization": f"Bearer {access_token}"}
     resp = httpx.get(guild_member_url, headers=headers).json()
+    if "roles" not in resp:
+        return flask.redirect(flask.url_for("index"))
     user = resp.get("user", {})
     user_id = user.get("id")
     username = user.get("username")
@@ -646,9 +648,7 @@ def suggestion_create() -> werkzeug.Response | str:
     if flask.request.method == "GET":
         if "close" in flask.request.args:
             return ""
-        return rainwave_library.components.suggestion_create_row(
-            **_suggestion_notice()
-        )
+        return rainwave_library.components.suggestion_create_row(**_suggestion_notice())
 
     title = flask.request.form.get("title", "")
     description = flask.request.form.get("description", "")
