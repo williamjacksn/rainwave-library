@@ -1315,7 +1315,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
         "cleanup": "text-bg-dark",
     }
     kind_class = kind_classes.get(suggestion.kind, "text-bg-secondary")
-    return htpy.tr(class_={"text-secondary": suggestion.archived})[
+    return htpy.tr()[
         htpy.td(".text-center.text-nowrap")[
             htpy.a(
                 ".text-decoration-none",
@@ -1333,8 +1333,6 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                 _suggestion_status_badge(suggestion.status),
                 suggestion.kind != "addition"
                 and htpy.span(f".badge.{kind_class}")[suggestion.kind],
-                suggestion.archived
-                and htpy.span(".badge.text-bg-secondary")["archived"],
             ],
             htpy.div(".small.mt-2")[
                 htpy.strong["Channels: "],
@@ -1354,6 +1352,10 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                     ".bi-discord.ms-1",
                     title=f"Discord user {suggestion.requester_discord_id}",
                 ),
+            ],
+            suggestion.requested_at
+            and htpy.div(".small.mt-1")[
+                htpy.strong["Suggested at: "], suggestion.requested_at[:10]
             ],
             (suggestion.claimed_by_name or claimable or releasable)
             and htpy.div(".small.mt-1")[
@@ -1391,10 +1393,6 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                     type="button",
                 )[htpy.i(".bi-person-dash")],
             ],
-            suggestion.requested_at
-            and htpy.div(".small.mt-1")[
-                htpy.strong["Requested: "], suggestion.requested_at
-            ],
         ],
         htpy.td(".d-none.d-md-table-cell")[_suggestion_status_badge(suggestion.status)],
         htpy.td(".d-none.d-md-table-cell")[
@@ -1411,8 +1409,6 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             htpy.div(".d-flex.flex-wrap.gap-1.mt-1")[
                 suggestion.kind != "addition"
                 and htpy.span(f".badge.{kind_class}")[suggestion.kind],
-                suggestion.archived
-                and htpy.span(".badge.text-bg-secondary")["archived"],
             ],
         ],
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[
@@ -1424,7 +1420,9 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             ),
         ],
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[
-            suggestion.requested_at or htpy.span(".text-secondary")["—"]
+            suggestion.requested_at[:10]
+            if suggestion.requested_at
+            else htpy.span(".text-secondary")["—"]
         ],
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[
             suggestion.claimed_by_name
@@ -1879,140 +1877,145 @@ def _suggestion_create_row(
     )
     return htpy.tr[
         htpy.td(colspan=Suggestion.colspan)[
-            htpy.div(".card.my-2")[
-                htpy.div(".align-items-center.card-header.d-flex.gap-2")[
-                    htpy.button(
-                        ".btn.btn-outline-secondary.btn-sm",
-                        aria_label="Close new suggestion form",
-                        hx_get=flask.url_for("suggestion_create", close=1),
-                        hx_swap="innerHTML",
-                        hx_target="closest tbody",
-                        title="Close new suggestion form",
-                        type="button",
-                    )[htpy.i(".bi-x-lg")],
-                    htpy.h5(".mb-0")["New suggestion"],
-                ],
-                htpy.div(".card-body")[
-                    htpy.div(".text-secondary.small")[
-                        htpy.p[
-                            "Rainwave is an online radio station run by "
-                            "volunteers. The extensive Rainwave music library "
-                            "includes:"
+            htpy.div(".row")[
+                htpy.div(".col-12.col-md-10.mx-auto")[
+                    htpy.div(".card.my-2")[
+                        htpy.div(".align-items-center.card-header.d-flex.gap-2")[
+                            htpy.button(
+                                ".btn.btn-outline-secondary.btn-sm",
+                                aria_label="Close new suggestion form",
+                                hx_get=flask.url_for("suggestion_create", close=1),
+                                hx_swap="innerHTML",
+                                hx_target="closest tbody",
+                                title="Close new suggestion form",
+                                type="button",
+                            )[htpy.i(".bi-x-lg")],
+                            htpy.h5(".mb-0")["New suggestion"],
                         ],
-                        htpy.ul[
-                            htpy.li[
-                                "original video game soundtracks, both modern "
-                                "and classic"
-                            ],
-                            htpy.li[
-                                "original chiptune music not featured in video "
-                                "games"
-                            ],
-                            htpy.li[
-                                "covers and remixes of video game music from a "
-                                "wide variety of sources, including OverClocked "
-                                "ReMix"
-                            ],
-                        ],
-                        htpy.p[
-                            "While the Rainwave music library is substantial "
-                            f"(over {song_count:,} songs as of "
-                            f"{song_count_as_of}), we understand that we may "
-                            "not have your favorite soundtrack or music from "
-                            "recently released games."
-                        ],
-                        htpy.p[
-                            "You are welcome to make suggestions for new music "
-                            "to be added to the Rainwave music library. "
-                            "However, as volunteers who maintain the site and "
-                            "library, we cannot guarantee that new music will "
-                            "be added."
-                        ],
-                    ],
-                    htpy.form(
-                        action=url,
-                        hx_disabled_elt="button",
-                        hx_post=url,
-                        hx_swap="outerHTML",
-                        hx_target="closest tr",
-                        method="post",
-                    )[
-                        result
-                        and htpy.div(f".alert.{result[0]}.py-2", role="alert")[
-                            result[1]
-                        ],
-                        htpy.div(".align-items-end.g-2.row")[
-                            htpy.div(".col-12.col-lg-4")[
-                                htpy.label(".form-label", for_="new-suggestion-title")[
-                                    "Title"
+                        htpy.div(".card-body")[
+                            htpy.div(".text-secondary.small")[
+                                htpy.p[
+                                    "Rainwave is an online radio station run by "
+                                    "volunteers. The extensive Rainwave music library "
+                                    "includes:"
                                 ],
-                                htpy.input(
-                                    "#new-suggestion-title.form-control",
-                                    name="title",
-                                    required=True,
-                                    type="text",
-                                    value=title,
-                                ),
-                            ],
-                            htpy.div(".col-12.col-sm-5.col-lg-2")[
-                                htpy.label(
-                                    ".form-label", for_="new-suggestion-channel"
-                                )["Channel"],
-                                htpy.select(
-                                    "#new-suggestion-channel.form-select",
-                                    name="channel",
-                                    required=True,
-                                )[
-                                    htpy.option(
-                                        disabled=True,
-                                        selected=channel_id is None,
-                                        value="",
-                                    )["Choose a channel"],
-                                    [
-                                        htpy.option(
-                                            selected=value == channel_id,
-                                            value=value,
-                                        )[label]
-                                        for value, label in rainwave_channels
+                                htpy.ul[
+                                    htpy.li[
+                                        "original video game soundtracks, both modern "
+                                        "and classic"
+                                    ],
+                                    htpy.li[
+                                        "original chiptune music not featured in video "
+                                        "games"
+                                    ],
+                                    htpy.li[
+                                        "covers and remixes of video game music "
+                                        "from a wide variety of sources, "
+                                        "including OverClocked ReMix"
                                     ],
                                 ],
+                                htpy.p[
+                                    "While the Rainwave music library is substantial "
+                                    f"(over {song_count:,} songs as of "
+                                    f"{song_count_as_of}), we understand that we may "
+                                    "not have your favorite soundtrack or music from "
+                                    "recently released games."
+                                ],
+                                htpy.p[
+                                    "You are welcome to make suggestions for new music "
+                                    "to be added to the Rainwave music library. "
+                                    "However, as volunteers who maintain the site and "
+                                    "library, we cannot guarantee that new music will "
+                                    "be added."
+                                ],
                             ],
-                            htpy.div(".col-12.col-lg")[
-                                htpy.label(
-                                    ".form-label", for_="new-suggestion-description"
-                                )["Details"],
-                                htpy.textarea(
-                                    "#new-suggestion-description.form-control",
-                                    name="description",
-                                    rows=2,
-                                )[description],
-                            ],
-                        ],
-                        htpy.div(".mt-3")[
-                            htpy.label(".form-label")["Links"],
-                            htpy.div(
-                                "#new-suggestion-links.d-flex.flex-column.gap-2"
+                            htpy.form(
+                                action=url,
+                                hx_disabled_elt="button",
+                                hx_post=url,
+                                hx_swap="outerHTML",
+                                hx_target="closest tr",
+                                method="post",
                             )[
-                                [
-                                    _suggestion_link_fields(url, label)
-                                    for url, label in links
-                                ]
+                                result
+                                and htpy.div(f".alert.{result[0]}.py-2", role="alert")[
+                                    result[1]
+                                ],
+                                htpy.div(".align-items-end.g-2.row")[
+                                    htpy.div(".col-12.col-lg-4")[
+                                        htpy.label(
+                                            ".form-label", for_="new-suggestion-title"
+                                        )["Title"],
+                                        htpy.input(
+                                            "#new-suggestion-title.form-control",
+                                            name="title",
+                                            required=True,
+                                            type="text",
+                                            value=title,
+                                        ),
+                                    ],
+                                    htpy.div(".col-12.col-sm-5.col-lg-2")[
+                                        htpy.label(
+                                            ".form-label", for_="new-suggestion-channel"
+                                        )["Channel"],
+                                        htpy.select(
+                                            "#new-suggestion-channel.form-select",
+                                            name="channel",
+                                            required=True,
+                                        )[
+                                            htpy.option(
+                                                disabled=True,
+                                                selected=channel_id is None,
+                                                value="",
+                                            )["Choose a channel"],
+                                            [
+                                                htpy.option(
+                                                    selected=value == channel_id,
+                                                    value=value,
+                                                )[label]
+                                                for value, label in rainwave_channels
+                                            ],
+                                        ],
+                                    ],
+                                    htpy.div(".col-12.col-lg")[
+                                        htpy.label(
+                                            ".form-label",
+                                            for_="new-suggestion-description",
+                                        )["Details"],
+                                        htpy.textarea(
+                                            "#new-suggestion-description.form-control",
+                                            name="description",
+                                            rows=2,
+                                        )[description],
+                                    ],
+                                ],
+                                htpy.div(".mt-3")[
+                                    htpy.label(".form-label")["Links"],
+                                    htpy.div(
+                                        "#new-suggestion-links.d-flex.flex-column.gap-2"
+                                    )[
+                                        [
+                                            _suggestion_link_fields(url, label)
+                                            for url, label in links
+                                        ]
+                                    ],
+                                    htpy.button(
+                                        ".btn.btn-outline-secondary.btn-sm.mt-2",
+                                        hx_get=flask.url_for("suggestion_link_row"),
+                                        hx_swap="beforeend",
+                                        hx_target="#new-suggestion-links",
+                                        type="button",
+                                    )[htpy.i(".bi-plus-lg"), " Add link"],
+                                ],
+                                htpy.div(".mt-3")[
+                                    htpy.button(
+                                        ".btn.btn-outline-success", type="submit"
+                                    )[htpy.i(".bi-plus-lg"), " Add suggestion"]
+                                ],
                             ],
-                            htpy.button(
-                                ".btn.btn-outline-secondary.btn-sm.mt-2",
-                                hx_get=flask.url_for("suggestion_link_row"),
-                                hx_swap="beforeend",
-                                hx_target="#new-suggestion-links",
-                                type="button",
-                            )[htpy.i(".bi-plus-lg"), " Add link"],
                         ],
-                        htpy.div(".mt-3")[
-                            htpy.button(".btn.btn-outline-success", type="submit")[
-                                htpy.i(".bi-plus-lg"), " Add suggestion"
-                            ]
-                        ],
-                    ],
-                ],
+                    ]
+                ]
             ]
         ]
     ]

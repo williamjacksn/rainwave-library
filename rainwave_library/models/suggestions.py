@@ -71,7 +71,6 @@ class Suggestion:
     title: str
     kind: str
     status: str
-    archived: bool
     description: str
     requester_name: str | None
     requester_discord_id: str | None
@@ -141,7 +140,6 @@ def _suggestion_from_row(row: sqlite3.Row) -> Suggestion:
         title=row["title"],
         kind=row["kind"],
         status=row["status"],
-        archived=bool(row["archived"]),
         description=row["description"],
         requester_name=row["requester_name"],
         requester_discord_id=row["requester_discord_id"],
@@ -248,7 +246,6 @@ def suggestions_get(
             s.title,
             s.kind,
             s.status,
-            s.archived,
             s.description,
             s.requester_name,
             s.requester_discord_id,
@@ -304,7 +301,6 @@ def suggestions_get(
                 or coalesce(s.claimed_by_name, '') like :query
             )
         order by
-            s.archived,
             {sort_clause},
             s.suggestion_id
         limit 101 offset :offset
@@ -475,7 +471,6 @@ def suggestion_get(
         title=suggestion.title,
         kind=suggestion.kind,
         status=suggestion.status,
-        archived=suggestion.archived,
         description=suggestion.description,
         requester_name=suggestion.requester_name,
         requested_at=suggestion.requested_at,
@@ -929,7 +924,6 @@ def _suggestion_upsert(
             title,
             kind,
             status,
-            archived,
             description,
             requester_name,
             requested_at,
@@ -944,7 +938,6 @@ def _suggestion_upsert(
             :title,
             :kind,
             :status,
-            :archived,
             :description,
             :requester_name,
             :requested_at,
@@ -959,7 +952,6 @@ def _suggestion_upsert(
             title = excluded.title,
             kind = excluded.kind,
             status = excluded.status,
-            archived = excluded.archived,
             description = excluded.description,
             requester_name = coalesce(
                 suggestions.requester_name, excluded.requester_name
@@ -975,7 +967,6 @@ def _suggestion_upsert(
             "title": str(card.get("name") or "Untitled suggestion"),
             "kind": kind,
             "status": list_info.status,
-            "archived": int(bool(card.get("closed"))),
             "description": description,
             "requester_name": _requester_name_get(description),
             "requested_at": _requested_at_get(description),
