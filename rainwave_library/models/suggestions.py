@@ -134,6 +134,54 @@ def id_new() -> str:
     return secrets.token_urlsafe(16)
 
 
+def _activity_insert(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    *,
+    activity_type: str,
+    actor_name: str | None = None,
+    actor_discord_id: str | None = None,
+    body: str | None = None,
+    old_value: str | None = None,
+    new_value: str | None = None,
+) -> None:
+    con.execute(
+        """
+        insert into suggestion_activity (
+            activity_id,
+            suggestion_id,
+            activity_type,
+            actor_name,
+            actor_discord_id,
+            body,
+            old_value,
+            new_value,
+            created_at
+        ) values (
+            :activity_id,
+            :suggestion_id,
+            :activity_type,
+            :actor_name,
+            :actor_discord_id,
+            :body,
+            :old_value,
+            :new_value,
+            strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+        )
+        """,
+        {
+            "activity_id": id_new(),
+            "suggestion_id": suggestion_id,
+            "activity_type": activity_type,
+            "actor_name": actor_name,
+            "actor_discord_id": actor_discord_id,
+            "body": body,
+            "old_value": old_value,
+            "new_value": new_value,
+        },
+    )
+
+
 def _suggestion_from_row(row: sqlite3.Row) -> Suggestion:
     return Suggestion(
         id=row["suggestion_id"],
@@ -570,6 +618,13 @@ def suggestion_create(
                     sort_order,
                 ),
             )
+        _activity_insert(
+            con,
+            suggestion_id,
+            activity_type="created",
+            actor_name=requester_name,
+            actor_discord_id=requester_discord_id,
+        )
         con.commit()
     except Exception:
         con.rollback()
@@ -688,6 +743,8 @@ def suggestion_update(
     resolution_notes: str | None,
     channel_ids: typing.Iterable[int],
     primary_channel_id: int | None,
+    actor_name: str | None = None,
+    actor_discord_id: str | None = None,
 ) -> bool:
     title = title.strip()
     if not title:
@@ -709,6 +766,27 @@ def suggestion_update(
             raise ValueError(msg)
         normalized_channel_ids.add(primary_channel_id)
     try:
+        existing = con.execute(
+            """
+            select
+                title,
+                kind,
+                status,
+                description,
+                requester_name,
+                requester_discord_id,
+                requested_at,
+                resolved_at,
+                resolution_notes
+            from suggestions
+            where suggestion_id = ?
+            """,
+            (suggestion_id,),
+        ).fetchone()
+        if existing is None:
+            con.rollback()
+            return False
+
         cursor = con.execute(
             """
             update suggestions
@@ -741,6 +819,38 @@ def suggestion_update(
         if cursor.rowcount == 0:
             con.rollback()
             return False
+
+        changes: tuple[tuple[str, str | None, str | None], ...] = (
+            ("title", existing["title"], title),
+            ("kind", existing["kind"], kind),
+            ("status", existing["status"], status),
+            ("description", existing["description"], description),
+            ("requester-name", existing["requester_name"], requester_name),
+            (
+                "requester-discord-id",
+                existing["requester_discord_id"],
+                requester_discord_id,
+            ),
+            ("requested-at", existing["requested_at"], requested_at),
+            ("resolved-at", existing["resolved_at"], resolved_at),
+            (
+                "resolution-notes",
+                existing["resolution_notes"],
+                resolution_notes,
+            ),
+        )
+        for slug, old_value, new_value in changes:
+            if (old_value or None) == (new_value or None):
+                continue
+            _activity_insert(
+                con,
+                suggestion_id,
+                activity_type=f"updated-{slug}",
+                actor_name=actor_name,
+                actor_discord_id=actor_discord_id,
+                old_value=old_value,
+                new_value=new_value,
+            )
 
         con.execute(
             "delete from suggestion_channels where suggestion_id = ?",

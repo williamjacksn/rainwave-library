@@ -863,6 +863,10 @@ def suggestion_update(suggestion_id: str) -> str:
                 resolution_notes=optional_value("resolution-notes"),
                 channel_ids=channel_ids,
                 primary_channel_id=primary_channel_id,
+                actor_name=flask.g.discord_display_name,
+                actor_discord_id=(
+                    str(flask.g.discord_id) if flask.g.discord_id else None
+                ),
             )
             if not updated:
                 flask.abort(404)

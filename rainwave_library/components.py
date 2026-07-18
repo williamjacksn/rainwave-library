@@ -1680,7 +1680,7 @@ def suggestion_detail_row(
     timeline_details = _suggestion_detail_table(
         [
             (
-                "Requested at",
+                "Suggested at",
                 _suggestion_value(
                     suggestion.requested_at[:10]
                     if suggestion.requested_at is not None
@@ -1712,8 +1712,6 @@ def suggestion_detail_row(
                         link.label and [link.url, htpy.br],
                         "ID: ",
                         htpy.code[link.id],
-                        " · Sort order: ",
-                        str(link.sort_order),
                         link.trello_attachment_id
                         and [
                             " · Trello attachment: ",
