@@ -1552,7 +1552,7 @@ def _suggestion_edit_form(
                 )[suggestion.description],
             ],
         ],
-        htpy.div(".g-3.mt-4.row")[
+        htpy.div(".g-3.row")[
             htpy.div(".col-12.col-lg-4")[
                 htpy.label(".form-label", for_="requester-name")["Suggested by"],
                 htpy.input(
@@ -1819,10 +1819,51 @@ def suggestion_detail_row(
     return str(content)
 
 
+def _suggestion_link_fields(url: str = "", label: str = "") -> htpy.Element:
+    return htpy.div(".align-items-center.g-2.row.suggestion-link-fields")[
+        htpy.div(".col-12.col-sm-5")[
+            htpy.input(
+                ".form-control",
+                aria_label="Link URL",
+                name="link-url",
+                placeholder="https://example.com",
+                type="url",
+                value=url,
+            ),
+        ],
+        htpy.div(".col")[
+            htpy.input(
+                ".form-control",
+                aria_label="Link label",
+                name="link-label",
+                placeholder="Label",
+                type="text",
+                value=label,
+            ),
+        ],
+        htpy.div(".col-auto")[
+            htpy.button(
+                ".btn.btn-outline-danger",
+                aria_label="Remove link",
+                hx_get=flask.url_for("suggestion_link_row", close=1),
+                hx_swap="outerHTML",
+                hx_target="closest .suggestion-link-fields",
+                title="Remove link",
+                type="button",
+            )[htpy.i(".bi-x-lg")],
+        ],
+    ]
+
+
+def suggestion_link_fields() -> str:
+    return str(_suggestion_link_fields())
+
+
 def _suggestion_create_row(
     title: str = "",
     description: str = "",
     channel_id: int | None = None,
+    links: tuple[tuple[str, str], ...] = (),
     result: tuple[str, str] | None = None,
 ) -> htpy.Element:
     url = flask.url_for("suggestion_create")
@@ -1901,18 +1942,36 @@ def _suggestion_create_row(
                             htpy.div(".col-12.col-lg")[
                                 htpy.label(
                                     ".form-label", for_="new-suggestion-description"
-                                )["Details or links"],
+                                )["Details"],
                                 htpy.textarea(
                                     "#new-suggestion-description.form-control",
                                     name="description",
                                     rows=2,
                                 )[description],
                             ],
-                            htpy.div(".col-auto")[
-                                htpy.button(".btn.btn-outline-success", type="submit")[
-                                    htpy.i(".bi-plus-lg"), " Add suggestion"
+                        ],
+                        htpy.div(".mt-3")[
+                            htpy.label(".form-label")["Links"],
+                            htpy.div(
+                                "#new-suggestion-links.d-flex.flex-column.gap-2"
+                            )[
+                                [
+                                    _suggestion_link_fields(url, label)
+                                    for url, label in links
                                 ]
                             ],
+                            htpy.button(
+                                ".btn.btn-outline-secondary.btn-sm.mt-2",
+                                hx_get=flask.url_for("suggestion_link_row"),
+                                hx_swap="beforeend",
+                                hx_target="#new-suggestion-links",
+                                type="button",
+                            )[htpy.i(".bi-plus-lg"), " Add link"],
+                        ],
+                        htpy.div(".mt-3")[
+                            htpy.button(".btn.btn-outline-success", type="submit")[
+                                htpy.i(".bi-plus-lg"), " Add suggestion"
+                            ]
                         ],
                     ],
                 ],
@@ -1925,9 +1984,12 @@ def suggestion_create_row(
     title: str = "",
     description: str = "",
     channel_id: int | None = None,
+    links: tuple[tuple[str, str], ...] = (),
     result: tuple[str, str] | None = None,
 ) -> str:
-    return str(_suggestion_create_row(title, description, channel_id, result))
+    return str(
+        _suggestion_create_row(title, description, channel_id, links, result)
+    )
 
 
 def suggestions_index(

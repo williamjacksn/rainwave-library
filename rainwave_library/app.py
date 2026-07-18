@@ -1,6 +1,7 @@
 import datetime
 import functools
 import io
+import itertools
 import json
 import os
 import pathlib
@@ -642,6 +643,16 @@ def suggestion_create() -> werkzeug.Response | str:
     description = flask.request.form.get("description", "")
     channel = flask.request.form.get("channel", "")
     channel_id = int(channel) if channel.isdigit() else 0
+    link_pairs = [
+        (url.strip(), label.strip())
+        for url, label in itertools.zip_longest(
+            flask.request.form.getlist("link-url"),
+            flask.request.form.getlist("link-label"),
+            fillvalue="",
+        )
+    ]
+    entered_links = tuple(pair for pair in link_pairs if pair[0] or pair[1])
+    links = [pair for pair in link_pairs if pair[0]]
     storage_cnx = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
@@ -656,12 +667,14 @@ def suggestion_create() -> werkzeug.Response | str:
                 requester_discord_id=(
                     str(flask.g.discord_id) if flask.g.discord_id else None
                 ),
+                links=links,
             )
         except ValueError as error:
             return rainwave_library.components.suggestion_create_row(
                 title=title,
                 description=description,
                 channel_id=channel_id or None,
+                links=entered_links,
                 result=("alert-danger", str(error)),
             )
     finally:
@@ -673,6 +686,14 @@ def suggestion_create() -> werkzeug.Response | str:
         response.headers["HX-Redirect"] = redirect_url
         return response
     return flask.redirect(redirect_url)
+
+
+@app.route("/suggestions/link-row", methods=["GET"])
+@signed_in
+def suggestion_link_row() -> str:
+    if "close" in flask.request.args:
+        return ""
+    return rainwave_library.components.suggestion_link_fields()
 
 
 @app.route("/suggestions/rows", methods=["POST"])

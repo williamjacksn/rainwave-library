@@ -506,6 +506,7 @@ def suggestion_create(
     channel_id: int,
     requester_name: str | None,
     requester_discord_id: str | None,
+    links: typing.Iterable[tuple[str, str]] = (),
 ) -> str:
     title = title.strip()
     if not title:
@@ -554,6 +555,26 @@ def suggestion_create(
             """,
             (suggestion_id, channel_id),
         )
+        for sort_order, (url, label) in enumerate(links):
+            url = url.strip()
+            if not url:
+                continue
+            con.execute(
+                """
+                insert into suggestion_links (
+                    link_id, suggestion_id, link_type, url, label, sort_order
+                ) values (?, ?, ?, ?, ?, ?)
+                on conflict (suggestion_id, url) do nothing
+                """,
+                (
+                    id_new(),
+                    suggestion_id,
+                    _link_type_get(url),
+                    url,
+                    label.strip() or None,
+                    sort_order,
+                ),
+            )
         con.commit()
     except Exception:
         con.rollback()
