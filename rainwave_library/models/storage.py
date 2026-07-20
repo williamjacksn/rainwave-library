@@ -420,6 +420,24 @@ def _migration_6(con: sqlite3.Connection) -> None:
     )
 
 
+def _migration_7(con: sqlite3.Connection) -> None:
+    con.executescript(
+        """
+        update suggestion_activity
+        set activity_type = 'updated-suggested-by-name'
+        where activity_type = 'updated-requester-name';
+
+        update suggestion_activity
+        set activity_type = 'updated-suggested-by-discord-id'
+        where activity_type = 'updated-requester-discord-id';
+
+        update suggestion_activity
+        set activity_type = 'updated-suggested-at'
+        where activity_type = 'updated-requested-at';
+        """
+    )
+
+
 MIGRATIONS = (
     _migration_1,
     _migration_2,
@@ -427,6 +445,7 @@ MIGRATIONS = (
     _migration_4,
     _migration_5,
     _migration_6,
+    _migration_7,
 )
 
 

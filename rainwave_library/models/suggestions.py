@@ -825,13 +825,13 @@ def suggestion_update(
             ("kind", existing["kind"], kind),
             ("status", existing["status"], status),
             ("description", existing["description"], description),
-            ("requester-name", existing["requester_name"], requester_name),
+            ("suggested-by-name", existing["requester_name"], requester_name),
             (
-                "requester-discord-id",
+                "suggested-by-discord-id",
                 existing["requester_discord_id"],
                 requester_discord_id,
             ),
-            ("requested-at", existing["requested_at"], requested_at),
+            ("suggested-at", existing["requested_at"], requested_at),
             ("resolved-at", existing["resolved_at"], resolved_at),
             (
                 "resolution-notes",
