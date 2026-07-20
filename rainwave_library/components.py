@@ -1806,7 +1806,7 @@ def suggestion_detail_row(
                         htpy.span[
                             _suggestion_activity_actor(activity),
                             " ",
-                            activity.type.replace("-", " ").title(),
+                            activity.type.replace("-", " "),
                         ],
                         htpy.span(".small.text-secondary")[activity.created_at],
                     ],
