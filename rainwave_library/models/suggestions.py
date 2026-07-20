@@ -765,8 +765,6 @@ def suggestion_update(
     requester_name: str | None,
     requester_discord_id: str | None,
     requested_at: str | None,
-    resolved_at: str | None,
-    resolution_notes: str | None,
     channel_ids: typing.Iterable[int],
     primary_channel_id: int | None,
     actor_name: str | None = None,
@@ -801,9 +799,7 @@ def suggestion_update(
                 description,
                 requester_name,
                 requester_discord_id,
-                requested_at,
-                resolved_at,
-                resolution_notes
+                requested_at
             from suggestions
             where suggestion_id = ?
             """,
@@ -824,8 +820,6 @@ def suggestion_update(
                 requester_name = :requester_name,
                 requester_discord_id = :requester_discord_id,
                 requested_at = :requested_at,
-                resolved_at = :resolved_at,
-                resolution_notes = :resolution_notes,
                 updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
             where suggestion_id = :suggestion_id
             """,
@@ -838,8 +832,6 @@ def suggestion_update(
                 "requester_name": requester_name,
                 "requester_discord_id": requester_discord_id,
                 "requested_at": requested_at,
-                "resolved_at": resolved_at,
-                "resolution_notes": resolution_notes,
             },
         )
         if cursor.rowcount == 0:
@@ -858,12 +850,6 @@ def suggestion_update(
                 requester_discord_id,
             ),
             ("suggested-at", existing["requested_at"], requested_at),
-            ("resolved-at", existing["resolved_at"], resolved_at),
-            (
-                "resolution-notes",
-                existing["resolution_notes"],
-                resolution_notes,
-            ),
         )
         for slug, old_value, new_value in changes:
             if (old_value or None) == (new_value or None):

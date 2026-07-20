@@ -1467,9 +1467,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             ]
             or htpy.span(".text-secondary")["—"]
         ],
-        htpy.td(".d-none.d-md-table-cell")[
-            htpy.div(".fw-semibold")[suggestion.title],
-        ],
+        htpy.td(".d-none.d-md-table-cell")[htpy.div(".fw-semibold")[suggestion.title],],
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[kind_label],
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[
             suggestion.requester_name or htpy.span(".text-secondary")["—"],
@@ -1639,26 +1637,6 @@ def _suggestion_edit_form(
                     type="text",
                     value=suggestion.requested_at or "",
                 ),
-            ],
-        ],
-        htpy.h6(".mt-4")["Resolution"],
-        htpy.div(".g-3.row")[
-            htpy.div(".col-12.col-lg-4")[
-                htpy.label(".form-label", for_="resolved-at")["Resolved"],
-                htpy.input(
-                    "#resolved-at.form-control",
-                    name="resolved-at",
-                    type="text",
-                    value=suggestion.resolved_at or "",
-                ),
-            ],
-            htpy.div(".col-12.col-lg-8")[
-                htpy.label(".form-label", for_="resolution-notes")["Resolution notes"],
-                htpy.textarea(
-                    "#resolution-notes.form-control",
-                    name="resolution-notes",
-                    rows=2,
-                )[suggestion.resolution_notes or ""],
             ],
         ],
         htpy.div(".g-3.mt-4.row")[
@@ -2431,7 +2409,7 @@ def suggestions_index(
                         )[htpy.i(".bi-broadcast-pin")],
                         htpy.div(".dropdown-menu")[
                             htpy.div(".px-2")[
-                                htpy.h6(".dropdown-header")["CHANNEL SELECTION"],
+                                htpy.h6(".dropdown-header")["CHANNEL"],
                                 [
                                     htpy.div(".form-check")[
                                         htpy.input(
@@ -2466,7 +2444,7 @@ def suggestions_index(
                         )[htpy.i(".bi-flag")],
                         htpy.div(".dropdown-menu")[
                             htpy.div(".px-2")[
-                                htpy.h6(".dropdown-header")["STATUS SELECTION"],
+                                htpy.h6(".dropdown-header")["STATUS"],
                                 [
                                     htpy.div(".form-check")[
                                         htpy.input(
@@ -2501,9 +2479,7 @@ def suggestions_index(
                         )[htpy.i(".bi-tags")],
                         htpy.div(".dropdown-menu")[
                             htpy.div(".px-2")[
-                                htpy.h6(".dropdown-header")[
-                                    "SUGGESTION TYPE SELECTION"
-                                ],
+                                htpy.h6(".dropdown-header")["SUGGESTION TYPE"],
                                 [
                                     htpy.div(".form-check")[
                                         htpy.input(

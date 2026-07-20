@@ -957,8 +957,6 @@ def suggestion_update(suggestion_id: str) -> str:
                 requester_name=optional_value("requester-name"),
                 requester_discord_id=optional_value("requester-discord-id"),
                 requested_at=optional_value("requested-at"),
-                resolved_at=optional_value("resolved-at"),
-                resolution_notes=optional_value("resolution-notes"),
                 channel_ids=channel_ids,
                 primary_channel_id=primary_channel_id,
                 actor_name=flask.g.discord_display_name,
