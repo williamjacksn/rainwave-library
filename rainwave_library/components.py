@@ -15,6 +15,7 @@ from rainwave_library.models.suggestions import (
     Suggestion,
     SuggestionActivity,
     SuggestionDetail,
+    SuggestionLink,
 )
 
 
@@ -1824,6 +1825,128 @@ def suggestion_activity_block(suggestion: SuggestionDetail) -> str:
     return str(_suggestion_activity_block(suggestion))
 
 
+def _suggestion_link_item(link: SuggestionLink) -> htpy.Element:
+    return htpy.div(".list-group-item")[
+        htpy.div(".align-items-start.d-flex.gap-2.justify-content-between")[
+            htpy.a(
+                ".text-break",
+                href=link.url,
+                rel="noopener",
+                target="_blank",
+            )[
+                link.label or link.url,
+                " ",
+                htpy.i(".bi-box-arrow-up-right"),
+            ],
+            htpy.span(".badge.text-bg-secondary")[link.type],
+        ],
+        htpy.div(".small.text-secondary")[
+            link.label and [link.url, htpy.br],
+            "ID: ",
+            htpy.code[link.id],
+            link.trello_attachment_id
+            and [
+                " · Trello attachment: ",
+                htpy.code[link.trello_attachment_id],
+            ],
+        ],
+    ]
+
+
+def _suggestion_link_button(suggestion_id: str) -> htpy.Element:
+    return htpy.button(
+        ".btn.btn-outline-primary.btn-sm",
+        hx_get=flask.url_for("suggestion_link", suggestion_id=suggestion_id),
+        hx_swap="innerHTML",
+        hx_target=f"#suggestion-add-link-{suggestion_id}",
+        type="button",
+    )[htpy.i(".bi-link-45deg"), " Add a link"]
+
+
+def suggestion_link_button(suggestion_id: str) -> str:
+    return str(_suggestion_link_button(suggestion_id))
+
+
+def _suggestion_link_form(
+    suggestion_id: str,
+    url: str = "",
+    label: str = "",
+    error: str | None = None,
+) -> htpy.Element:
+    post_url = flask.url_for("suggestion_link", suggestion_id=suggestion_id)
+    return htpy.form(
+        hx_disabled_elt="button",
+        hx_post=post_url,
+        hx_swap="outerHTML",
+        hx_target=f"#suggestion-links-{suggestion_id}",
+    )[
+        error and htpy.div(".alert.alert-danger.py-2", role="alert")[error],
+        htpy.div(".g-2.row")[
+            htpy.div(".col-12.col-sm-6")[
+                htpy.input(
+                    ".form-control",
+                    aria_label="Link URL",
+                    name="url",
+                    placeholder="https://example.com",
+                    required=True,
+                    type="url",
+                    value=url,
+                ),
+            ],
+            htpy.div(".col")[
+                htpy.input(
+                    ".form-control",
+                    aria_label="Link label",
+                    name="label",
+                    placeholder="Label",
+                    type="text",
+                    value=label,
+                ),
+            ],
+        ],
+        htpy.div(".d-flex.gap-2.mt-2")[
+            htpy.button(".btn.btn-outline-success.btn-sm", type="submit")[
+                htpy.i(".bi-plus-lg"), " Save link"
+            ],
+            htpy.button(
+                ".btn.btn-outline-secondary.btn-sm",
+                hx_get=flask.url_for(
+                    "suggestion_link", suggestion_id=suggestion_id, close=1
+                ),
+                hx_swap="innerHTML",
+                hx_target=f"#suggestion-add-link-{suggestion_id}",
+                type="button",
+            )["Cancel"],
+        ],
+    ]
+
+
+def suggestion_link_form(
+    suggestion_id: str,
+    url: str = "",
+    label: str = "",
+    error: str | None = None,
+) -> str:
+    return str(_suggestion_link_form(suggestion_id, url, label, error))
+
+
+def _suggestion_links_block(suggestion: SuggestionDetail) -> htpy.Element:
+    return htpy.div(id=f"suggestion-links-{suggestion.id}")[
+        htpy.div(".mb-3", id=f"suggestion-add-link-{suggestion.id}")[
+            _suggestion_link_button(suggestion.id)
+        ],
+        htpy.div(".list-group")[
+            [_suggestion_link_item(link) for link in suggestion.links]
+        ]
+        if suggestion.links
+        else htpy.p(".text-secondary")["No links."],
+    ]
+
+
+def suggestion_links_block(suggestion: SuggestionDetail) -> str:
+    return str(_suggestion_links_block(suggestion))
+
+
 def suggestion_detail_row(
     suggestion: SuggestionDetail,
     *,
@@ -1870,40 +1993,6 @@ def suggestion_detail_row(
             ("Completed at", _suggestion_value(suggestion.resolved_at)),
         ]
     )
-    links: htpy.Node = (
-        htpy.div(".list-group")[
-            [
-                htpy.div(".list-group-item")[
-                    htpy.div(".align-items-start.d-flex.gap-2.justify-content-between")[
-                        htpy.a(
-                            ".text-break",
-                            href=link.url,
-                            rel="noopener",
-                            target="_blank",
-                        )[
-                            link.label or link.url,
-                            " ",
-                            htpy.i(".bi-box-arrow-up-right"),
-                        ],
-                        htpy.span(".badge.text-bg-secondary")[link.type],
-                    ],
-                    htpy.div(".small.text-secondary")[
-                        link.label and [link.url, htpy.br],
-                        "ID: ",
-                        htpy.code[link.id],
-                        link.trello_attachment_id
-                        and [
-                            " · Trello attachment: ",
-                            htpy.code[link.trello_attachment_id],
-                        ],
-                    ],
-                ]
-                for link in suggestion.links
-            ]
-        ]
-        if suggestion.links
-        else htpy.p(".text-secondary")["No links."]
-    )
     content = htpy.tr[
         htpy.td(colspan=Suggestion.colspan)[
             htpy.div(".card.my-2")[
@@ -1941,7 +2030,7 @@ def suggestion_detail_row(
                         )[_suggestion_value(suggestion.description)],
                     ],
                     htpy.h6(".mt-3")["Links"],
-                    links,
+                    _suggestion_links_block(suggestion),
                     htpy.h6(".mt-3")["Activity"],
                     _suggestion_activity_block(suggestion),
                 ],

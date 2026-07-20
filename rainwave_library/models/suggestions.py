@@ -915,6 +915,73 @@ def suggestion_comment_add(
     return True
 
 
+def suggestion_link_add(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    *,
+    url: str,
+    label: str,
+    actor_name: str | None = None,
+    actor_discord_id: str | None = None,
+) -> bool:
+    url = url.strip()
+    if not url:
+        msg = "A link URL is required."
+        raise ValueError(msg)
+    exists = con.execute(
+        "select 1 from suggestions where suggestion_id = ?",
+        (suggestion_id,),
+    ).fetchone()
+    if exists is None:
+        return False
+    duplicate = con.execute(
+        "select 1 from suggestion_links where suggestion_id = ? and url = ?",
+        (suggestion_id, url),
+    ).fetchone()
+    if duplicate is not None:
+        msg = "This link has already been added."
+        raise ValueError(msg)
+    next_sort_order = con.execute(
+        """
+        select coalesce(max(sort_order), -1) + 1 next_sort_order
+        from suggestion_links
+        where suggestion_id = ?
+        """,
+        (suggestion_id,),
+    ).fetchone()["next_sort_order"]
+    try:
+        _activity_insert(
+            con,
+            suggestion_id,
+            activity_type="added-link",
+            actor_name=actor_name,
+            actor_discord_id=actor_discord_id,
+            new_value=url,
+        )
+        con.execute(
+            """
+            insert into suggestion_links (
+                link_id, suggestion_id, link_type, url, label, sort_order
+            ) values (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                id_new(),
+                suggestion_id,
+                _link_type_get(url),
+                url,
+                label.strip() or None,
+                next_sort_order,
+            ),
+        )
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+
+    log.info("Added link to suggestion %s", suggestion_id)
+    return True
+
+
 def _json_list(
     client: httpx.Client,
     url: str,
