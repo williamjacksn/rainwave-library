@@ -721,6 +721,7 @@ def suggestions_rows() -> str:
     sort_col = flask.request.values.get("sort-col", "requested_at")
     sort_dir = flask.request.values.get("sort-dir", "desc")
     claimed_by_names = flask.request.values.getlist("claimed-by")
+    kinds = flask.request.values.getlist("kinds")
     input_channels = flask.request.values.getlist("channels")
     channel_ids = [
         int(channel_id)
@@ -753,6 +754,7 @@ def suggestions_rows() -> str:
             sort_dir,
             claimed_by_names,
             channel_ids,
+            kinds,
         )
     finally:
         storage_cnx.close()

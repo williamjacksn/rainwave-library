@@ -50,8 +50,20 @@ class TrelloImportResult:
 
 @dataclass(frozen=True)
 class Suggestion:
-    colspan: typing.ClassVar[int] = 7
-    kinds: typing.ClassVar[tuple[str, ...]] = ("addition", "removal", "cleanup")
+    colspan: typing.ClassVar[int] = 8
+    kinds: typing.ClassVar[tuple[str, ...]] = (
+        "new-album",
+        "add-to-existing-album",
+        "metadata-update",
+        "removal",
+    )
+    kind_labels: typing.ClassVar[dict[str, str]] = {
+        "new-album": "New album",
+        "add-to-existing-album": "Add to existing album",
+        "metadata-update": "Metadata update",
+        "removal": "Removal",
+    }
+    default_kind: typing.ClassVar[str] = "new-album"
     sort_fields: typing.ClassVar[tuple[tuple[str, str], ...]] = (
         ("status", "Status"),
         ("title", "Suggestion"),
@@ -122,7 +134,7 @@ class SuggestionDetail(Suggestion):
 
 @dataclass(frozen=True)
 class _ListInfo:
-    kind: str = "addition"
+    kind: str = "new-album"
     status: str = "new"
     claimed_by_name: str | None = None
     primary_channel_id: int | None = None
@@ -218,6 +230,7 @@ def suggestions_get(
     sort_dir: str = "desc",
     claimed_by_names: typing.Iterable[str] | None = None,
     channel_ids: typing.Iterable[int] | None = None,
+    kinds: typing.Iterable[str] | None = None,
 ) -> list[Suggestion]:
     query = query.strip() if query else None
     valid_statuses = tuple(
@@ -227,6 +240,11 @@ def suggestions_get(
     )
     status_parameters: list[str | None] = [*valid_statuses]
     status_parameters.extend([None] * (len(Suggestion.statuses) - len(valid_statuses)))
+    valid_kinds = tuple(
+        dict.fromkeys(kind for kind in kinds or () if kind in Suggestion.kinds)
+    )
+    kind_parameters: list[str | None] = [*valid_kinds]
+    kind_parameters.extend([None] * (len(Suggestion.kinds) - len(valid_kinds)))
     valid_channel_ids = tuple(
         dict.fromkeys(
             channel_id
@@ -318,6 +336,10 @@ def suggestions_get(
                 )
             )
             and (
+                :kind_0 is null
+                or s.kind in (:kind_0, :kind_1, :kind_2, :kind_3)
+            )
+            and (
                 :requester_discord_id is null
                 or s.requester_discord_id = :requester_discord_id
             )
@@ -370,6 +392,10 @@ def suggestions_get(
             "status_2": status_parameters[2],
             "status_3": status_parameters[3],
             "status_4": status_parameters[4],
+            "kind_0": kind_parameters[0],
+            "kind_1": kind_parameters[1],
+            "kind_2": kind_parameters[2],
+            "kind_3": kind_parameters[3],
             **claimed_by_parameters,
         },
     ).fetchall()
@@ -751,7 +777,7 @@ def suggestion_update(
         msg = "Suggestion title is required."
         raise ValueError(msg)
     if kind not in Suggestion.kinds:
-        msg = "Invalid suggestion kind."
+        msg = "Invalid suggestion type."
         raise ValueError(msg)
     if status not in Suggestion.statuses:
         msg = "Invalid suggestion status."
@@ -1232,7 +1258,9 @@ def _trello_import(
                 if isinstance(label, dict) and label.get("name")
             ]
             kind = (
-                "cleanup" if "Playlist Error / Clean-up" in labels else list_info.kind
+                "metadata-update"
+                if "Playlist Error / Clean-up" in labels
+                else list_info.kind
             )
             suggestion_id = _suggestion_upsert(con, card, list_info, kind)
             suggestion_ids[str(card["id"])] = suggestion_id

@@ -1375,11 +1375,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
     )
     action = "Edit" if editable else "View details for"
     action_title = "Edit suggestion" if editable else "View suggestion details"
-    kind_classes = {
-        "removal": "text-bg-danger",
-        "cleanup": "text-bg-dark",
-    }
-    kind_class = kind_classes.get(suggestion.kind, "text-bg-secondary")
+    kind_label = Suggestion.kind_labels.get(suggestion.kind, suggestion.kind)
     return htpy.tr()[
         htpy.td(".text-center.text-nowrap")[
             htpy.a(
@@ -1396,8 +1392,10 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             htpy.div(".fw-semibold.text-break")[suggestion.title],
             htpy.div(".d-flex.flex-wrap.gap-1.mt-1")[
                 _suggestion_status_badge(suggestion.status),
-                suggestion.kind != "addition"
-                and htpy.span(f".badge.{kind_class}")[suggestion.kind],
+            ],
+            htpy.div(".small.mt-2")[
+                htpy.strong["Type: "],
+                kind_label,
             ],
             htpy.div(".small.mt-2")[
                 htpy.strong["Channels: "],
@@ -1471,11 +1469,8 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
         ],
         htpy.td(".d-none.d-md-table-cell")[
             htpy.div(".fw-semibold")[suggestion.title],
-            htpy.div(".d-flex.flex-wrap.gap-1.mt-1")[
-                suggestion.kind != "addition"
-                and htpy.span(f".badge.{kind_class}")[suggestion.kind],
-            ],
         ],
+        htpy.td(".d-none.d-md-table-cell.text-nowrap")[kind_label],
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[
             suggestion.requester_name or htpy.span(".text-secondary")["—"],
             suggestion.requester_discord_id
@@ -1583,13 +1578,13 @@ def _suggestion_edit_form(
                 ),
             ],
             htpy.div(".col-12.col-md-6")[
-                htpy.label(".form-label", for_="kind")["Kind"],
+                htpy.label(".form-label", for_="kind")["Suggestion type"],
                 htpy.select("#kind.form-select", name="kind")[
                     [
                         htpy.option(
                             selected=kind == suggestion.kind,
                             value=kind,
-                        )[kind.title()]
+                        )[Suggestion.kind_labels[kind]]
                         for kind in Suggestion.kinds
                     ]
                 ],
@@ -1969,7 +1964,10 @@ def suggestion_detail_row(
         [
             ("ID", htpy.code[suggestion.id]),
             ("Status", _suggestion_status_badge(suggestion.status)),
-            ("Kind", suggestion.kind.title()),
+            (
+                "Suggestion type",
+                Suggestion.kind_labels.get(suggestion.kind, suggestion.kind),
+            ),
             ("Channels", channel_badges),
         ]
     )
@@ -2498,6 +2496,43 @@ def suggestions_index(
                         htpy.button(
                             ".btn.btn-outline-primary.dropdown-toggle",
                             data_bs_toggle="dropdown",
+                            title="Suggestion type selection",
+                            type="button",
+                        )[htpy.i(".bi-tags")],
+                        htpy.div(".dropdown-menu")[
+                            htpy.div(".px-2")[
+                                htpy.h6(".dropdown-header")[
+                                    "SUGGESTION TYPE SELECTION"
+                                ],
+                                [
+                                    htpy.div(".form-check")[
+                                        htpy.input(
+                                            f"#suggestion-kind-{kind}.form-check-input",
+                                            checked=True,
+                                            hx_indicator=(
+                                                "#suggestion-filters-indicator"
+                                            ),
+                                            hx_post=rows_url,
+                                            name="kinds",
+                                            type="checkbox",
+                                            value=kind,
+                                        ),
+                                        htpy.label(
+                                            ".form-check-label.text-nowrap",
+                                            for_=f"suggestion-kind-{kind}",
+                                        )[label],
+                                    ]
+                                    for kind, label in Suggestion.kind_labels.items()
+                                ],
+                            ]
+                        ],
+                    ]
+                ],
+                htpy.div(".col-auto")[
+                    htpy.div(".dropdown")[
+                        htpy.button(
+                            ".btn.btn-outline-primary.dropdown-toggle",
+                            data_bs_toggle="dropdown",
                             title="Filter options",
                             type="button",
                         )[htpy.i(".bi-list-check")],
@@ -2569,6 +2604,7 @@ def suggestions_index(
                                         "Status",
                                         "Channels",
                                         "Suggestion title",
+                                        "Suggestion type",
                                         "Suggested by",
                                         "Suggested at",
                                         "Claimed by",
