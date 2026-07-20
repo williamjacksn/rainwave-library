@@ -1704,7 +1704,7 @@ def _suggestion_edit_form(
                 ],
             ],
         ],
-        htpy.button(".btn.btn-outline-success.mt-3", type="submit")[
+        htpy.button(".btn.btn-outline-success.btn-sm.mt-3", type="submit")[
             htpy.i(".bi-file-earmark-play"), " Save suggestion"
         ],
     ]
