@@ -1718,6 +1718,112 @@ def _suggestion_activity_actor(activity: SuggestionActivity) -> htpy.Element:
     return htpy.strong[name]
 
 
+def _suggestion_activity_item(activity: SuggestionActivity) -> htpy.Element:
+    return htpy.div(".list-group-item")[
+        htpy.div(".d-flex.flex-wrap.gap-2.justify-content-between")[
+            htpy.span[
+                _suggestion_activity_actor(activity),
+                " ",
+                activity.type.replace("-", " "),
+            ],
+            htpy.span(".small.text-secondary")[
+                activity.created_at,
+                " · ",
+                htpy.code[activity.id],
+            ],
+        ],
+        activity.body
+        and htpy.div(".mt-2", style="white-space: pre-wrap")[activity.body],
+        (activity.old_value is not None or activity.new_value is not None)
+        and htpy.div(".mt-2")[
+            _suggestion_value(activity.old_value),
+            " → ",
+            _suggestion_value(activity.new_value),
+        ],
+        activity.trello_action_id
+        and htpy.div(".small.text-secondary")[
+            "Trello action: ",
+            htpy.code[activity.trello_action_id],
+        ],
+    ]
+
+
+def _suggestion_comment_button(suggestion_id: str) -> htpy.Element:
+    return htpy.button(
+        ".btn.btn-outline-primary.btn-sm",
+        hx_get=flask.url_for("suggestion_comment", suggestion_id=suggestion_id),
+        hx_swap="innerHTML",
+        hx_target=f"#suggestion-comment-{suggestion_id}",
+        type="button",
+    )[htpy.i(".bi-chat-left-text"), " Add a comment"]
+
+
+def suggestion_comment_button(suggestion_id: str) -> str:
+    return str(_suggestion_comment_button(suggestion_id))
+
+
+def _suggestion_comment_form(
+    suggestion_id: str,
+    body: str = "",
+    error: str | None = None,
+) -> htpy.Element:
+    url = flask.url_for("suggestion_comment", suggestion_id=suggestion_id)
+    return htpy.form(
+        hx_disabled_elt="button",
+        hx_post=url,
+        hx_swap="outerHTML",
+        hx_target=f"#suggestion-activity-{suggestion_id}",
+    )[
+        error and htpy.div(".alert.alert-danger.py-2", role="alert")[error],
+        htpy.textarea(
+            ".form-control",
+            aria_label="Comment",
+            name="body",
+            required=True,
+            rows=3,
+        )[body],
+        htpy.div(".d-flex.gap-2.mt-2")[
+            htpy.button(".btn.btn-outline-success.btn-sm", type="submit")[
+                htpy.i(".bi-send"), " Save comment"
+            ],
+            htpy.button(
+                ".btn.btn-outline-secondary.btn-sm",
+                hx_get=flask.url_for(
+                    "suggestion_comment", suggestion_id=suggestion_id, close=1
+                ),
+                hx_swap="innerHTML",
+                hx_target=f"#suggestion-comment-{suggestion_id}",
+                type="button",
+            )["Cancel"],
+        ],
+    ]
+
+
+def suggestion_comment_form(
+    suggestion_id: str,
+    body: str = "",
+    error: str | None = None,
+) -> str:
+    return str(_suggestion_comment_form(suggestion_id, body, error))
+
+
+def _suggestion_activity_block(suggestion: SuggestionDetail) -> htpy.Element:
+    return htpy.div(id=f"suggestion-activity-{suggestion.id}")[
+        htpy.div(".mb-3", id=f"suggestion-comment-{suggestion.id}")[
+            _suggestion_comment_button(suggestion.id)
+        ],
+        htpy.div(".list-group")[
+            [_suggestion_activity_item(activity) for activity in suggestion.activities]
+        ]
+        if suggestion.activities
+        else htpy.p(".text-secondary")["No activity."],
+    ]
+
+
+def suggestion_activity_block(suggestion: SuggestionDetail) -> str:
+    return str(_suggestion_activity_block(suggestion))
+
+
 def suggestion_detail_row(
     suggestion: SuggestionDetail,
     *,
@@ -1798,42 +1904,6 @@ def suggestion_detail_row(
         if suggestion.links
         else htpy.p(".text-secondary")["No links."]
     )
-    activities: htpy.Node = (
-        htpy.div(".list-group")[
-            [
-                htpy.div(".list-group-item")[
-                    htpy.div(".d-flex.flex-wrap.gap-2.justify-content-between")[
-                        htpy.span[
-                            _suggestion_activity_actor(activity),
-                            " ",
-                            activity.type.replace("-", " "),
-                        ],
-                        htpy.span(".small.text-secondary")[
-                            activity.created_at,
-                            " · ",
-                            htpy.code[activity.id],
-                        ],
-                    ],
-                    activity.body
-                    and htpy.div(".mt-2", style="white-space: pre-wrap")[activity.body],
-                    (activity.old_value is not None or activity.new_value is not None)
-                    and htpy.div(".mt-2")[
-                        _suggestion_value(activity.old_value),
-                        " → ",
-                        _suggestion_value(activity.new_value),
-                    ],
-                    activity.trello_action_id
-                    and htpy.div(".small.text-secondary")[
-                        "Trello action: ",
-                        htpy.code[activity.trello_action_id],
-                    ],
-                ]
-                for activity in suggestion.activities
-            ]
-        ]
-        if suggestion.activities
-        else htpy.p(".text-secondary")["No activity."]
-    )
     content = htpy.tr[
         htpy.td(colspan=Suggestion.colspan)[
             htpy.div(".card.my-2")[
@@ -1873,7 +1943,7 @@ def suggestion_detail_row(
                     htpy.h6(".mt-3")["Links"],
                     links,
                     htpy.h6(".mt-3")["Activity"],
-                    activities,
+                    _suggestion_activity_block(suggestion),
                 ],
             ]
         ]

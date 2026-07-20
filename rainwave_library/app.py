@@ -778,6 +778,51 @@ def suggestion_details(suggestion_id: str) -> str:
     )
 
 
+@app.route("/suggestions/<suggestion_id>/comment", methods=["GET", "POST"])
+@signed_in
+def suggestion_comment(suggestion_id: str) -> werkzeug.Response | str:
+    if flask.request.method == "GET":
+        if "close" in flask.request.args:
+            return rainwave_library.components.suggestion_comment_button(suggestion_id)
+        return rainwave_library.components.suggestion_comment_form(suggestion_id)
+
+    body = flask.request.form.get("body", "")
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        try:
+            added = rainwave_library.models.suggestions.suggestion_comment_add(
+                storage_cnx,
+                suggestion_id,
+                actor_name=flask.g.discord_display_name,
+                actor_discord_id=(
+                    str(flask.g.discord_id) if flask.g.discord_id else None
+                ),
+                body=body,
+            )
+        except ValueError as error:
+            response = flask.make_response(
+                rainwave_library.components.suggestion_comment_form(
+                    suggestion_id, body=body, error=str(error)
+                )
+            )
+            response.headers["HX-Retarget"] = f"#suggestion-comment-{suggestion_id}"
+            response.headers["HX-Reswap"] = "innerHTML"
+            return response
+        if not added:
+            flask.abort(404)
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+    finally:
+        storage_cnx.close()
+
+    if suggestion is None:
+        flask.abort(404)
+    return rainwave_library.components.suggestion_activity_block(suggestion)
+
+
 @app.route("/suggestions/<suggestion_id>/claim", methods=["POST"])
 @secure
 def suggestion_claim(suggestion_id: str) -> str:

@@ -509,7 +509,7 @@ def suggestion_get(
             select *
             from suggestion_activity
             where suggestion_id = ?
-            order by created_at, activity_id
+            order by created_at desc, activity_id desc
             """,
             (suggestion_id,),
         ).fetchall()
@@ -876,6 +876,42 @@ def suggestion_update(
         raise
 
     log.info("Updated suggestion %s", suggestion_id)
+    return True
+
+
+def suggestion_comment_add(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    *,
+    actor_name: str | None,
+    actor_discord_id: str | None,
+    body: str,
+) -> bool:
+    body = body.strip()
+    if not body:
+        msg = "A comment cannot be empty."
+        raise ValueError(msg)
+    exists = con.execute(
+        "select 1 from suggestions where suggestion_id = ?",
+        (suggestion_id,),
+    ).fetchone()
+    if exists is None:
+        return False
+    try:
+        _activity_insert(
+            con,
+            suggestion_id,
+            activity_type="comment",
+            actor_name=actor_name,
+            actor_discord_id=actor_discord_id,
+            body=body,
+        )
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+
+    log.info("Added comment to suggestion %s", suggestion_id)
     return True
 
 
