@@ -2449,7 +2449,7 @@ def suggestions_index(
                                     htpy.div(".form-check")[
                                         htpy.input(
                                             f"#status-{status}.form-check-input",
-                                            checked=True,
+                                            checked=status in ("new", "claimed"),
                                             hx_indicator=(
                                                 "#suggestion-filters-indicator"
                                             ),
