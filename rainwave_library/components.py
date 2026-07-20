@@ -1808,7 +1808,11 @@ def suggestion_detail_row(
                             " ",
                             activity.type.replace("-", " "),
                         ],
-                        htpy.span(".small.text-secondary")[activity.created_at],
+                        htpy.span(".small.text-secondary")[
+                            activity.created_at,
+                            " · ",
+                            htpy.code[activity.id],
+                        ],
                     ],
                     activity.body
                     and htpy.div(".mt-2", style="white-space: pre-wrap")[activity.body],
@@ -1818,14 +1822,10 @@ def suggestion_detail_row(
                         " → ",
                         _suggestion_value(activity.new_value),
                     ],
-                    htpy.div(".small.text-secondary")[
-                        "ID: ",
-                        htpy.code[activity.id],
-                        activity.trello_action_id
-                        and [
-                            " · Trello action: ",
-                            htpy.code[activity.trello_action_id],
-                        ],
+                    activity.trello_action_id
+                    and htpy.div(".small.text-secondary")[
+                        "Trello action: ",
+                        htpy.code[activity.trello_action_id],
                     ],
                 ]
                 for activity in suggestion.activities
