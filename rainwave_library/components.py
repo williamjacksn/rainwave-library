@@ -11,7 +11,11 @@ from rainwave_library.models.rainwave import (
     channels,
     length_display,
 )
-from rainwave_library.models.suggestions import Suggestion, SuggestionDetail
+from rainwave_library.models.suggestions import (
+    Suggestion,
+    SuggestionActivity,
+    SuggestionDetail,
+)
 
 
 def _back_button(href: str, label: str) -> htpy.Renderable:
@@ -1705,6 +1709,15 @@ def _suggestion_edit_form(
     ]
 
 
+def _suggestion_activity_actor(activity: SuggestionActivity) -> htpy.Element:
+    name = activity.actor_name or "—"
+    if activity.actor_discord_id:
+        return htpy.strong(title=f"Discord user {activity.actor_discord_id}")[name]
+    if activity.trello_member_id:
+        return htpy.strong(title=f"Trello member {activity.trello_member_id}")[name]
+    return htpy.strong[name]
+
+
 def suggestion_detail_row(
     suggestion: SuggestionDetail,
     *,
@@ -1790,19 +1803,12 @@ def suggestion_detail_row(
             [
                 htpy.div(".list-group-item")[
                     htpy.div(".d-flex.flex-wrap.gap-2.justify-content-between")[
-                        htpy.strong[activity.type.replace("-", " ").title()],
-                        htpy.span(".small.text-secondary")[activity.created_at],
-                    ],
-                    htpy.div(".small.text-secondary")[
-                        "Actor: ",
-                        activity.actor_name or "—",
-                        activity.actor_discord_id
-                        and [" · Discord: ", htpy.code[activity.actor_discord_id]],
-                        activity.trello_member_id
-                        and [
-                            " · Trello member: ",
-                            htpy.code[activity.trello_member_id],
+                        htpy.span[
+                            _suggestion_activity_actor(activity),
+                            " ",
+                            activity.type.replace("-", " ").title(),
                         ],
+                        htpy.span(".small.text-secondary")[activity.created_at],
                     ],
                     activity.body
                     and htpy.div(".mt-2", style="white-space: pre-wrap")[activity.body],
