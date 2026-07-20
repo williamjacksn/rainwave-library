@@ -830,6 +830,66 @@ def listeners_index(ranks: list[dict]) -> str:
                         htpy.button(
                             ".btn.btn-outline-primary.dropdown-toggle",
                             data_bs_toggle="dropdown",
+                            title="Sort options",
+                            type="button",
+                        )[htpy.i(".bi-sort-alpha-down")],
+                        htpy.div(".dropdown-menu")[
+                            htpy.div(".px-2")[
+                                htpy.h6(".dropdown-header")["SORT OPTIONS"],
+                                [
+                                    htpy.div(".form-check")[
+                                        htpy.input(
+                                            f"#sort-dir-{k}.form-check-input",
+                                            checked=(k == "asc"),
+                                            hx_indicator="#filters-indicator",
+                                            hx_post=flask.url_for("listeners_rows"),
+                                            name="sort-dir",
+                                            type="radio",
+                                            value=k,
+                                        ),
+                                        htpy.label(
+                                            ".form-check-label", for_=f"sort-dir-{k}"
+                                        )[label],
+                                    ]
+                                    for k, label in [
+                                        ("asc", "Ascending"),
+                                        ("desc", "Descending"),
+                                    ]
+                                ],
+                                htpy.hr,
+                                [
+                                    htpy.div(".form-check")[
+                                        htpy.input(
+                                            f"#sort-col-{i}.form-check-input",
+                                            checked=(i == "id"),
+                                            hx_indicator="#filters-indicator",
+                                            hx_post=flask.url_for("listeners_rows"),
+                                            name="sort-col",
+                                            type="radio",
+                                            value=c,
+                                        ),
+                                        htpy.label(
+                                            ".form-check-label", for_=f"sort-col-{i}"
+                                        )[label],
+                                    ]
+                                    for i, c, label in [
+                                        ("id", "user_id", "ID"),
+                                        ("name", "user_name", "User name"),
+                                        ("group", "group_name", "Group"),
+                                        ("rank", "rank_title", "Rank"),
+                                        ("ratings", "rating_count", "Ratings"),
+                                        ("active", "radio_last_active", "Last active"),
+                                    ]
+                                ],
+                            ]
+                        ],
+                    ]
+                ],
+                htpy.div(".col-auto")[
+                    htpy.div(".dropdown")[
+                        htpy.button(
+                            ".btn.btn-outline-primary.dropdown-toggle",
+                            data_bs_toggle="dropdown",
                             title="Rank selection",
                             type="button",
                         )[htpy.i(".bi-person-badge")],

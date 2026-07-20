@@ -584,7 +584,11 @@ def listeners_rows() -> str:
     q = flask.request.values.get("q")
     page = int(flask.request.values.get("page", 1))
     ranks = list(map(int, flask.request.values.getlist("ranks")))
-    listeners_ = rainwave_library.models.rainwave.get_listeners(db, q, page, ranks)
+    sort_col = flask.request.values.get("sort-col", "user_id")
+    sort_dir = flask.request.values.get("sort-dir", "asc")
+    listeners_ = rainwave_library.models.rainwave.get_listeners(
+        db, q, page, ranks, sort_col, sort_dir
+    )
     return rainwave_library.components.listeners_rows(listeners_, page)
 
 

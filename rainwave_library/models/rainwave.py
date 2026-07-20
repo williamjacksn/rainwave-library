@@ -972,6 +972,8 @@ def get_listeners(
     query: str | None = None,
     page: int = 1,
     ranks: list[int] | None = None,
+    sort_col: str = "user_id",
+    sort_dir: str = "asc",
 ) -> list[Listener]:
     where_clause = "u.user_type <> 2 and u.user_id > 1"
     if query:
@@ -987,6 +989,23 @@ def get_listeners(
             {where_clause}
             and u.user_rank = any(%(ranks)s)
         """
+    if sort_dir not in ("asc", "desc"):
+        sort_dir = "asc"
+    if sort_col not in (
+        "group_name",
+        "radio_last_active",
+        "rank_title",
+        "rating_count",
+        "user_id",
+        "user_name",
+    ):
+        sort_col = "user_id"
+    if sort_col in ("group_name", "rank_title", "user_name"):
+        sort_clause = f'{sort_col} collate "C" {sort_dir}'
+    else:
+        sort_clause = f"{sort_col} {sort_dir}"
+    if sort_col != "user_id":
+        sort_clause = f"{sort_clause}, user_id asc"
     sql = f"""
         with c as (
             select user_id, count(*) rating_count
@@ -1023,7 +1042,7 @@ def get_listeners(
         left join phpbb_ranks r on r.rank_id = u.user_rank
         left join c on c.user_id = u.user_id
         where {where_clause}
-        order by u.user_id
+        order by {sort_clause}
         limit 101 offset %(offset)s
     """  # noqa: S608
     params = {
