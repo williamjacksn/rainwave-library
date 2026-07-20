@@ -1000,10 +1000,7 @@ def get_listeners(
         "user_name",
     ):
         sort_col = "user_id"
-    if sort_col in ("group_name", "rank_title", "user_name"):
-        sort_clause = f'{sort_col} collate "C" {sort_dir}'
-    else:
-        sort_clause = f"{sort_col} {sort_dir}"
+    sort_clause = f"{sort_col} {sort_dir}"
     if sort_col != "user_id":
         sort_clause = f"{sort_clause}, user_id asc"
     sql = f"""
