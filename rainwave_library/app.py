@@ -634,6 +634,7 @@ def suggestions() -> str:
         claimants=claimants,
         your_suggestions_active_count=your_suggestions_active_count,
         your_suggestions_complete_count=your_suggestions_complete_count,
+        **_suggestion_notice(),
     )
 
 
@@ -646,14 +647,50 @@ def _suggestion_notice() -> dict[str, int | str]:
     }
 
 
-@app.route("/suggestions/create", methods=["GET", "POST"])
+@app.route("/suggestions/wizard", methods=["POST"])
+@signed_in
+def suggestion_wizard() -> str:
+    step = flask.request.form.get("step", "1")
+    channel = flask.request.form.get("channel", "")
+    channel_id = (
+        int(channel) if channel.isdigit() and int(channel) in {1, 2, 3, 4, 6} else None
+    )
+    kind = flask.request.form.get("kind", "")
+    if kind not in rainwave_library.models.suggestions.Suggestion.kinds:
+        kind = None
+    if step == "2":
+        if channel_id is None or kind is None:
+            return rainwave_library.components.suggestion_wizard_body(
+                1,
+                channel_id=channel_id,
+                kind=kind,
+                result=("alert-danger", "Choose a channel and a suggestion type."),
+                **_suggestion_notice(),
+            )
+        storage_cnx = rainwave_library.models.storage.connection_get(
+            app.config["STORAGE_CNX"]
+        )
+        try:
+            open_count = (
+                rainwave_library.models.suggestions.suggestion_open_count_for_channel(
+                    storage_cnx,
+                    str(flask.g.discord_id) if flask.g.discord_id else None,
+                    channel_id,
+                )
+            )
+        finally:
+            storage_cnx.close()
+        return rainwave_library.components.suggestion_wizard_body(
+            2, channel_id=channel_id, kind=kind, open_count=open_count
+        )
+    return rainwave_library.components.suggestion_wizard_body(
+        1, channel_id=channel_id, kind=kind, **_suggestion_notice()
+    )
+
+
+@app.route("/suggestions/create", methods=["POST"])
 @signed_in
 def suggestion_create() -> werkzeug.Response | str:
-    if flask.request.method == "GET":
-        if "close" in flask.request.args:
-            return ""
-        return rainwave_library.components.suggestion_create_row(**_suggestion_notice())
-
     title = flask.request.form.get("title", "")
     description = flask.request.form.get("description", "")
     channel = flask.request.form.get("channel", "")
@@ -685,13 +722,12 @@ def suggestion_create() -> werkzeug.Response | str:
                 links=links,
             )
         except ValueError as error:
-            return rainwave_library.components.suggestion_create_row(
+            return rainwave_library.components.suggestion_create_form(
                 title=title,
                 description=description,
                 channel_id=channel_id or None,
                 links=entered_links,
                 result=("alert-danger", str(error)),
-                **_suggestion_notice(),
             )
     finally:
         storage_cnx.close()

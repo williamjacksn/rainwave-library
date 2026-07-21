@@ -438,6 +438,34 @@ def suggestion_counts_by_requester(
     return int(row["active_count"]), int(row["complete_count"])
 
 
+def suggestion_open_count_for_channel(
+    con: sqlite3.Connection,
+    requester_discord_id: str | None,
+    channel_id: int,
+) -> int:
+    if not requester_discord_id:
+        return 0
+    row = con.execute(
+        """
+        select count(*) open_count
+        from suggestions s
+        where s.requester_discord_id = :requester_discord_id
+            and s.status in ('new', 'claimed', 'accepted')
+            and exists (
+                select 1
+                from suggestion_channels sc
+                where sc.suggestion_id = s.suggestion_id
+                    and sc.channel_id = :channel_id
+            )
+        """,
+        {
+            "requester_discord_id": requester_discord_id,
+            "channel_id": channel_id,
+        },
+    ).fetchone()
+    return int(row["open_count"])
+
+
 def suggestion_user_name_get(
     con: sqlite3.Connection,
     discord_user_id: str,
