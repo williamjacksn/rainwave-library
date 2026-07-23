@@ -638,7 +638,12 @@ def suggestions() -> str:
     )
 
 
-def _suggestion_notice() -> dict[str, int | str]:
+class _SuggestionNotice(typing.TypedDict):
+    song_count: int
+    song_count_as_of: str
+
+
+def _suggestion_notice() -> _SuggestionNotice:
     db = app.config["RAINWAVE_DATABASE"]
     count = rainwave_library.models.rainwave.song_count(db)
     return {
@@ -658,13 +663,15 @@ def suggestion_wizard() -> str:
     kind = flask.request.form.get("kind", "")
     if kind not in rainwave_library.models.suggestions.Suggestion.kinds:
         kind = None
-    if step == "2":
+    title = flask.request.form.get("title", "")
+    if step in {"2", "3"}:
         if channel_id is None or kind is None:
             return rainwave_library.components.suggestion_wizard_body(
                 1,
                 channel_id=channel_id,
                 kind=kind,
                 result=("alert-danger", "Choose a channel and a suggestion type."),
+                title=title,
                 **_suggestion_notice(),
             )
         storage_cnx = rainwave_library.models.storage.connection_get(
@@ -680,11 +687,19 @@ def suggestion_wizard() -> str:
             )
         finally:
             storage_cnx.close()
+        if step == "3" and open_count <= 5:
+            return rainwave_library.components.suggestion_wizard_body(
+                3, channel_id=channel_id, kind=kind, title=title
+            )
         return rainwave_library.components.suggestion_wizard_body(
-            2, channel_id=channel_id, kind=kind, open_count=open_count
+            2,
+            channel_id=channel_id,
+            kind=kind,
+            open_count=open_count,
+            title=title,
         )
     return rainwave_library.components.suggestion_wizard_body(
-        1, channel_id=channel_id, kind=kind, **_suggestion_notice()
+        1, channel_id=channel_id, kind=kind, title=title, **_suggestion_notice()
     )
 
 
