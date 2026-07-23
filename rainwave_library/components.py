@@ -1965,8 +1965,22 @@ def suggestion_detail_row(
                     else None
                 ),
             ),
-            ("Claimed at", _suggestion_value(suggestion.claimed_at)),
-            ("Completed at", _suggestion_value(suggestion.resolved_at)),
+            (
+                "Claimed at",
+                _suggestion_value(
+                    suggestion.claimed_at[:10]
+                    if suggestion.claimed_at is not None
+                    else None
+                ),
+            ),
+            (
+                "Completed at",
+                _suggestion_value(
+                    suggestion.resolved_at[:10]
+                    if suggestion.resolved_at is not None
+                    else None
+                ),
+            ),
         ]
     )
     content = htpy.tr[
