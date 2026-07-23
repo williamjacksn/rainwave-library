@@ -1607,8 +1607,6 @@ def _suggestion_edit_form(
                     rows=6,
                 )[suggestion.description],
             ],
-        ],
-        htpy.div(".g-3.row")[
             htpy.div(".col-12.col-lg-4")[
                 htpy.label(".form-label", for_="requester-name")["Suggested by"],
                 htpy.input(
