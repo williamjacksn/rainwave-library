@@ -1,4 +1,4 @@
-### create-record
+### bsky-create-record
 POST https://bsky.social/xrpc/com.atproto.repo.createRecord
 Authorization: Bearer {{ access-token }}
 Content-Type: application/json
@@ -12,7 +12,7 @@ Content-Type: application/json
   "repo": "{{ bsky-handle }}"
 }
 
-### create-session
+### bsky-create-session
 POST https://bsky.social/xrpc/com.atproto.server.createSession
 Content-Type: application/json
 
@@ -21,4 +21,6 @@ Content-Type: application/json
   "password": "{{ bsky-password }}"
 }
 
-> {% client.global.set('access-token', response.body['accessJwt']) %}
+> {%
+    client.global.set('access-token', response.body['accessJwt'])
+%}
