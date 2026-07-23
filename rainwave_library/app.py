@@ -1003,6 +1003,27 @@ def suggestion_description(suggestion_id: str) -> str:
     )
 
 
+@app.route("/suggestions/<suggestion_id>/activity", methods=["GET"])
+@signed_in
+def suggestion_activity(suggestion_id: str) -> str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+    finally:
+        storage_cnx.close()
+
+    if suggestion is None:
+        flask.abort(404)
+    return rainwave_library.components.suggestion_activity_block(
+        suggestion,
+        comments_only=flask.request.args.get("comments_only") == "1",
+    )
+
+
 @app.route("/suggestions/<suggestion_id>/comment", methods=["GET", "POST"])
 @signed_in
 def suggestion_comment(suggestion_id: str) -> werkzeug.Response | str:

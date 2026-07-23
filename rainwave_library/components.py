@@ -1820,21 +1820,61 @@ def suggestion_comment_form(
     return str(_suggestion_comment_form(suggestion_id, body, error))
 
 
-def _suggestion_activity_block(suggestion: SuggestionDetail) -> htpy.Element:
+def _suggestion_activity_block(
+    suggestion: SuggestionDetail,
+    *,
+    comments_only: bool = False,
+) -> htpy.Element:
+    activity_url = flask.url_for(
+        "suggestion_activity",
+        suggestion_id=suggestion.id,
+        comments_only="1",
+    )
+    if comments_only:
+        activity_url = flask.url_for(
+            "suggestion_activity",
+            suggestion_id=suggestion.id,
+        )
+    activities = (
+        tuple(
+            activity for activity in suggestion.activities if activity.type == "comment"
+        )
+        if comments_only
+        else suggestion.activities
+    )
     return htpy.div(id=f"suggestion-activity-{suggestion.id}")[
-        htpy.div(".mb-3", id=f"suggestion-comment-{suggestion.id}")[
-            _suggestion_comment_button(suggestion.id)
+        htpy.div(".d-flex.flex-wrap.gap-2.mb-3")[
+            htpy.div(id=f"suggestion-comment-{suggestion.id}")[
+                _suggestion_comment_button(suggestion.id)
+            ],
+            htpy.button(
+                ".btn.btn-outline-primary.btn-sm",
+                hx_disabled_elt="this",
+                hx_get=activity_url,
+                hx_swap="outerHTML",
+                hx_target=f"#suggestion-activity-{suggestion.id}",
+                type="button",
+            )[
+                htpy.i(".bi-chat-square-text"),
+                " Show all activity" if comments_only else " Show only comments",
+            ],
         ],
         htpy.div(".list-group")[
-            [_suggestion_activity_item(activity) for activity in suggestion.activities]
+            [_suggestion_activity_item(activity) for activity in activities]
         ]
-        if suggestion.activities
-        else htpy.p(".text-secondary")["No activity."],
+        if activities
+        else htpy.p(".text-secondary")[
+            "No comments." if comments_only else "No activity."
+        ],
     ]
 
 
-def suggestion_activity_block(suggestion: SuggestionDetail) -> str:
-    return str(_suggestion_activity_block(suggestion))
+def suggestion_activity_block(
+    suggestion: SuggestionDetail,
+    *,
+    comments_only: bool = False,
+) -> str:
+    return str(_suggestion_activity_block(suggestion, comments_only=comments_only))
 
 
 def _suggestion_link_item(
