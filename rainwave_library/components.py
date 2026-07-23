@@ -1582,7 +1582,13 @@ def _suggestion_edit_form(
         and htpy.div(f".alert.{edit_result[0]}", role="alert")[edit_result[1]],
         htpy.div(".g-3.row")[
             htpy.div(".col-12.small.text-secondary")[
-                "Suggestion ID: ", htpy.code[suggestion.id]
+                "Suggestion ID: ",
+                htpy.a(
+                    href=flask.url_for(
+                        "suggestion_page",
+                        suggestion_id=suggestion.id,
+                    )
+                )[htpy.code[suggestion.id]],
             ],
             htpy.div(".col-12")[
                 htpy.label(".form-label", for_="title")["Title"],
@@ -2150,6 +2156,125 @@ def suggestion_description_form(
             error=error,
         )
     )
+
+
+def _suggestion_files_card(
+    suggestion_id: str,
+    staged_files: tuple[tuple[str, int], ...],
+    result: tuple[str, str] | None = None,
+) -> htpy.Element:
+    upload_url = flask.url_for(
+        "suggestion_files_upload",
+        suggestion_id=suggestion_id,
+    )
+    return htpy.div(".card", id="suggestion-files-card")[
+        htpy.div(".card-header")[htpy.h5(".mb-0")["Files"]],
+        htpy.div(".card-body")[
+            result and htpy.div(f".alert.{result[0]}.py-2", role="alert")[result[1]],
+            htpy.form(
+                action=upload_url,
+                enctype="multipart/form-data",
+                hx_disabled_elt="button",
+                hx_encoding="multipart/form-data",
+                hx_post=upload_url,
+                hx_swap="outerHTML",
+                hx_target="#suggestion-files-card",
+                method="post",
+            )[
+                htpy.div(".align-items-end.g-2.row")[
+                    htpy.div(".col")[
+                        htpy.label(".form-label", for_="suggestion-files")[
+                            "Upload files"
+                        ],
+                        htpy.input(
+                            "#suggestion-files.form-control",
+                            multiple=True,
+                            name="files",
+                            required=True,
+                            type="file",
+                        ),
+                    ],
+                    htpy.div(".col-auto")[
+                        htpy.button(".btn.btn-primary", type="submit")[
+                            htpy.i(".bi-upload"), " Upload"
+                        ]
+                    ],
+                ]
+            ],
+            htpy.div(".list-group.list-group-flush.mt-3")[
+                [
+                    htpy.div(
+                        ".d-flex.gap-3.justify-content-between.list-group-item.px-0"
+                    )[
+                        htpy.code(".text-break")[path],
+                        htpy.span(".small.text-nowrap.text-secondary")[
+                            f"{size:,} bytes"
+                        ],
+                    ]
+                    for path, size in staged_files
+                ]
+            ]
+            if staged_files
+            else htpy.p(".mb-0.mt-3.text-secondary")["No staged files."],
+        ],
+    ]
+
+
+def suggestion_files_card(
+    suggestion_id: str,
+    staged_files: tuple[tuple[str, int], ...],
+    result: tuple[str, str] | None = None,
+) -> str:
+    return str(_suggestion_files_card(suggestion_id, staged_files, result))
+
+
+def suggestion_page(
+    suggestion: SuggestionDetail,
+    staged_files: tuple[tuple[str, int], ...] = (),
+) -> str:
+    channel_badges: htpy.Node = (
+        htpy.fragment[
+            [
+                htpy.span(".badge.border.me-1.text-bg-light.text-dark")[
+                    channels.get(channel_id, str(channel_id))
+                ]
+                for channel_id in suggestion.channel_ids
+            ]
+        ]
+        if suggestion.channel_ids
+        else htpy.span(".text-secondary")["—"]
+    )
+    summary = _suggestion_detail_table(
+        [
+            ("Suggestion ID", htpy.code[suggestion.id]),
+            ("Status", _suggestion_status_badge(suggestion.status)),
+            (
+                "Suggestion type",
+                Suggestion.kind_labels.get(suggestion.kind, suggestion.kind),
+            ),
+            ("Channels", channel_badges),
+            ("Suggested by", _suggestion_value(suggestion.requester_name)),
+        ]
+    )
+    content = [
+        htpy.div(".g-1.pt-3.row")[
+            _back_button(flask.url_for("suggestions"), "Music suggestions"),
+            _user_menu(),
+        ],
+        htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Suggestion details"]]],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.div(".card")[
+                    htpy.div(".card-header")[htpy.h5(".mb-0")[suggestion.title]],
+                    htpy.div(".card-body")[summary],
+                ]
+            ]
+        ],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[_suggestion_files_card(suggestion.id, staged_files)]
+        ],
+    ]
+    return str(_base(content))
 
 
 def suggestion_detail_row(

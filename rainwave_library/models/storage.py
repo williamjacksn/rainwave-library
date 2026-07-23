@@ -1,8 +1,101 @@
 import logging
 import os
+import pathlib
+import shutil
 import sqlite3
+import typing
 
 log = logging.getLogger(__name__)
+
+
+def suggestion_staging_files_get(
+    library_root: pathlib.Path,
+    suggestion_id: str,
+) -> tuple[tuple[str, int], ...]:
+    staging_root = (library_root / "staging").resolve()
+    suggestion_root = (staging_root / suggestion_id).resolve()
+    if suggestion_root == staging_root or not suggestion_root.is_relative_to(
+        staging_root
+    ):
+        msg = "Invalid suggestion staging directory."
+        raise ValueError(msg)
+    if not suggestion_root.is_dir():
+        return ()
+
+    files = []
+    for path in suggestion_root.rglob("*"):
+        try:
+            if not path.is_file():
+                continue
+            files.append(
+                (
+                    path.relative_to(suggestion_root).as_posix(),
+                    path.stat().st_size,
+                )
+            )
+        except OSError:
+            continue
+    return tuple(sorted(files, key=lambda file: file[0].casefold()))
+
+
+def suggestion_staging_files_upload(
+    library_root: pathlib.Path,
+    suggestion_id: str,
+    uploads: typing.Iterable[tuple[str, typing.IO[bytes]]],
+) -> tuple[str, ...]:
+    normalized_uploads = []
+    for original_name, stream in uploads:
+        filename = pathlib.PurePosixPath(original_name.replace("\\", "/")).name.strip()
+        if (
+            not filename
+            or filename in {".", ".."}
+            or any(ord(character) < 32 for character in filename)
+        ):
+            msg = "Every uploaded file must have a valid filename."
+            raise ValueError(msg)
+        if len(filename.encode()) > 255:
+            msg = f"The filename {filename!r} is too long."
+            raise ValueError(msg)
+        normalized_uploads.append((filename, stream))
+    if not normalized_uploads:
+        msg = "Choose at least one file to upload."
+        raise ValueError(msg)
+
+    normalized_names = [filename.casefold() for filename, _ in normalized_uploads]
+    if len(normalized_names) != len(set(normalized_names)):
+        msg = "The upload contains duplicate filenames."
+        raise ValueError(msg)
+
+    staging_root = (library_root / "staging").resolve()
+    suggestion_root = (staging_root / suggestion_id).resolve()
+    if suggestion_root == staging_root or not suggestion_root.is_relative_to(
+        staging_root
+    ):
+        msg = "Invalid suggestion staging directory."
+        raise ValueError(msg)
+    suggestion_root.mkdir(parents=True, exist_ok=True)
+
+    destinations = [suggestion_root / filename for filename, _ in normalized_uploads]
+    existing_names = {path.name.casefold() for path in suggestion_root.iterdir()}
+    if any(
+        destination.name.casefold() in existing_names for destination in destinations
+    ):
+        msg = "A file with that name already exists in the suggestion folder."
+        raise ValueError(msg)
+
+    created: list[pathlib.Path] = []
+    try:
+        for destination, (_, stream) in zip(
+            destinations, normalized_uploads, strict=True
+        ):
+            with destination.open("xb") as target:
+                created.append(destination)
+                shutil.copyfileobj(stream, target)
+    except Exception:
+        for destination in created:
+            destination.unlink(missing_ok=True)
+        raise
+    return tuple(destination.name for destination in destinations)
 
 
 def connection_init(path: str) -> None:

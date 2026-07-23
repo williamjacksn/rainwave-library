@@ -1018,6 +1018,81 @@ def suggestions_rows() -> str:
     return rainwave_library.components.suggestions_rows(suggestions_, page)
 
 
+@app.route("/suggestions/<suggestion_id>", methods=["GET"])
+@secure
+def suggestion_page(suggestion_id: str) -> str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+    finally:
+        storage_cnx.close()
+    if suggestion is None:
+        flask.abort(404)
+    staged_files = rainwave_library.models.storage.suggestion_staging_files_get(
+        app.config["LIBRARY_ROOT"],
+        suggestion_id,
+    )
+    return rainwave_library.components.suggestion_page(suggestion, staged_files)
+
+
+@app.route("/suggestions/<suggestion_id>/files", methods=["POST"])
+@secure
+def suggestion_files_upload(suggestion_id: str) -> str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+    finally:
+        storage_cnx.close()
+    if suggestion is None:
+        flask.abort(404)
+
+    uploads = [
+        (upload.filename or "", upload.stream)
+        for upload in flask.request.files.getlist("files")
+    ]
+    try:
+        uploaded_names = (
+            rainwave_library.models.storage.suggestion_staging_files_upload(
+                app.config["LIBRARY_ROOT"],
+                suggestion_id,
+                uploads,
+            )
+        )
+        result = (
+            "alert-success",
+            f"Uploaded {len(uploaded_names)} "
+            f"file{'' if len(uploaded_names) == 1 else 's'}.",
+        )
+        app.logger.info(
+            "Uploaded %d files for suggestion %s",
+            len(uploaded_names),
+            suggestion_id,
+        )
+    except ValueError as error:
+        result = ("alert-danger", str(error))
+    except OSError:
+        app.logger.exception("Could not upload files for suggestion %s", suggestion_id)
+        result = ("alert-danger", "The files could not be uploaded.")
+
+    staged_files = rainwave_library.models.storage.suggestion_staging_files_get(
+        app.config["LIBRARY_ROOT"],
+        suggestion_id,
+    )
+    return rainwave_library.components.suggestion_files_card(
+        suggestion_id,
+        staged_files,
+        result,
+    )
+
+
 @app.route("/suggestions/<suggestion_id>/details", methods=["GET"])
 @signed_in
 def suggestion_details(suggestion_id: str) -> str:
