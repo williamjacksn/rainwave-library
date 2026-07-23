@@ -947,6 +947,62 @@ def suggestion_details(suggestion_id: str) -> str:
     )
 
 
+@app.route("/suggestions/<suggestion_id>/description", methods=["GET", "POST"])
+@signed_in
+def suggestion_description(suggestion_id: str) -> str:
+    requester_discord_id = str(flask.g.discord_id or "")
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+        if suggestion is None:
+            flask.abort(404)
+        if (
+            not requester_discord_id
+            or suggestion.requester_discord_id != requester_discord_id
+        ):
+            flask.abort(403)
+
+        if flask.request.method == "GET":
+            if "close" in flask.request.args:
+                return rainwave_library.components.suggestion_description_block(
+                    suggestion, editable=True
+                )
+            return rainwave_library.components.suggestion_description_form(suggestion)
+
+        description = flask.request.form.get("description", "")
+        try:
+            updated = rainwave_library.models.suggestions.suggestion_description_update(
+                storage_cnx,
+                suggestion_id,
+                requester_discord_id=requester_discord_id,
+                description=description,
+                actor_name=flask.g.discord_display_name,
+            )
+        except ValueError as error:
+            return rainwave_library.components.suggestion_description_form(
+                suggestion,
+                description=description,
+                error=str(error),
+            )
+        if not updated:
+            flask.abort(403)
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+    finally:
+        storage_cnx.close()
+
+    if suggestion is None:
+        flask.abort(404)
+    return rainwave_library.components.suggestion_description_block(
+        suggestion, editable=True
+    )
+
+
 @app.route("/suggestions/<suggestion_id>/comment", methods=["GET", "POST"])
 @signed_in
 def suggestion_comment(suggestion_id: str) -> werkzeug.Response | str:

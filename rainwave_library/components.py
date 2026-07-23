@@ -1708,6 +1708,36 @@ def _suggestion_activity_actor(activity: SuggestionActivity) -> htpy.Element:
     return htpy.strong[name]
 
 
+def _suggestion_activity_details(activity: SuggestionActivity) -> htpy.Node:
+    details: list[htpy.Node] = []
+    if activity.body:
+        details.append(
+            htpy.div(style="white-space: pre-wrap")[activity.body],
+        )
+    if activity.old_value is not None or activity.new_value is not None:
+        change = htpy.div(".mt-2") if details else htpy.div
+        details.append(
+            change[
+                _suggestion_value(activity.old_value),
+                " → ",
+                _suggestion_value(activity.new_value),
+            ]
+        )
+    if not details:
+        return None
+
+    details_length = sum(
+        len(value or "")
+        for value in (activity.body, activity.old_value, activity.new_value)
+    )
+    if details_length > 300:
+        return htpy.details(".mt-2")[
+            htpy.summary["Show details"],
+            htpy.div(".mt-2")[details],
+        ]
+    return htpy.div(".mt-2")[details]
+
+
 def _suggestion_activity_item(activity: SuggestionActivity) -> htpy.Element:
     return htpy.div(".list-group-item")[
         htpy.div(".d-flex.flex-wrap.gap-2.justify-content-between")[
@@ -1722,14 +1752,7 @@ def _suggestion_activity_item(activity: SuggestionActivity) -> htpy.Element:
                 htpy.code[activity.id],
             ],
         ],
-        activity.body
-        and htpy.div(".mt-2", style="white-space: pre-wrap")[activity.body],
-        (activity.old_value is not None or activity.new_value is not None)
-        and htpy.div(".mt-2")[
-            _suggestion_value(activity.old_value),
-            " → ",
-            _suggestion_value(activity.new_value),
-        ],
+        _suggestion_activity_details(activity),
         activity.trello_action_id
         and htpy.div(".small.text-secondary")[
             "Trello action: ",
@@ -1936,12 +1959,104 @@ def suggestion_links_block(suggestion: SuggestionDetail) -> str:
     return str(_suggestion_links_block(suggestion))
 
 
+def _suggestion_description_block(
+    suggestion: SuggestionDetail,
+    *,
+    editable: bool,
+) -> htpy.Element:
+    return htpy.div(".mt-3", id=f"suggestion-description-{suggestion.id}")[
+        htpy.div(".align-items-center.d-flex.gap-2.mb-2")[
+            htpy.h6(".mb-0")["Description"],
+            editable
+            and htpy.button(
+                ".btn.btn-link.p-0.text-decoration-none",
+                aria_label=f"Edit the description for {suggestion.title}",
+                hx_get=flask.url_for(
+                    "suggestion_description", suggestion_id=suggestion.id
+                ),
+                hx_swap="outerHTML",
+                hx_target=f"#suggestion-description-{suggestion.id}",
+                title="Edit description",
+                type="button",
+            )[htpy.i(".bi-pencil")],
+        ],
+        htpy.div(
+            ".bg-body-tertiary.border.p-2.rounded",
+            style="white-space: pre-wrap",
+        )[_suggestion_value(suggestion.description)],
+    ]
+
+
+def suggestion_description_block(
+    suggestion: SuggestionDetail,
+    *,
+    editable: bool,
+) -> str:
+    return str(_suggestion_description_block(suggestion, editable=editable))
+
+
+def _suggestion_description_form(
+    suggestion: SuggestionDetail,
+    *,
+    description: str | None = None,
+    error: str | None = None,
+) -> htpy.Element:
+    url = flask.url_for("suggestion_description", suggestion_id=suggestion.id)
+    return htpy.div(".mt-3", id=f"suggestion-description-{suggestion.id}")[
+        htpy.h6["Description"],
+        htpy.form(
+            hx_disabled_elt="button",
+            hx_post=url,
+            hx_swap="outerHTML",
+            hx_target=f"#suggestion-description-{suggestion.id}",
+        )[
+            error and htpy.div(".alert.alert-danger.py-2", role="alert")[error],
+            htpy.textarea(
+                ".form-control",
+                name="description",
+                required=True,
+                rows=6,
+            )[suggestion.description if description is None else description],
+            htpy.div(".d-flex.gap-2.mt-2")[
+                htpy.button(".btn.btn-outline-success.btn-sm", type="submit")[
+                    htpy.i(".bi-file-earmark-play"), " Save description"
+                ],
+                htpy.button(
+                    ".btn.btn-outline-secondary.btn-sm",
+                    hx_get=f"{url}?close=1",
+                    hx_swap="outerHTML",
+                    hx_target=f"#suggestion-description-{suggestion.id}",
+                    type="button",
+                )["Cancel"],
+            ],
+        ],
+    ]
+
+
+def suggestion_description_form(
+    suggestion: SuggestionDetail,
+    *,
+    description: str | None = None,
+    error: str | None = None,
+) -> str:
+    return str(
+        _suggestion_description_form(
+            suggestion,
+            description=description,
+            error=error,
+        )
+    )
+
+
 def suggestion_detail_row(
     suggestion: SuggestionDetail,
     *,
     editable: bool = False,
     edit_result: tuple[str, str] | None = None,
 ) -> str:
+    description_editable = bool(
+        suggestion.requester_discord_id
+    ) and suggestion.requester_discord_id == str(flask.g.discord_id or "")
     channel_badges: htpy.Node = (
         htpy.fragment[
             [
@@ -2029,11 +2144,10 @@ def suggestion_detail_row(
                                 htpy.h6["People"], people_details
                             ],
                         ],
-                        htpy.h6(".mt-3")["Description"],
-                        htpy.div(
-                            ".bg-body-tertiary.border.p-2.rounded",
-                            style="white-space: pre-wrap",
-                        )[_suggestion_value(suggestion.description)],
+                        _suggestion_description_block(
+                            suggestion,
+                            editable=description_editable,
+                        ),
                     ],
                     htpy.h6(".mt-3")["Links"],
                     _suggestion_links_block(suggestion),
