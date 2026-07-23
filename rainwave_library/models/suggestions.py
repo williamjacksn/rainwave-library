@@ -231,6 +231,7 @@ def suggestions_get(
     claimed_by_names: typing.Iterable[str] | None = None,
     channel_ids: typing.Iterable[int] | None = None,
     kinds: typing.Iterable[str] | None = None,
+    include_unassigned_channel: bool = False,
 ) -> list[Suggestion]:
     query = query.strip() if query else None
     valid_statuses = tuple(
@@ -349,7 +350,10 @@ def suggestions_get(
             )
             {claimed_by_clause}
             and (
-                :channel_0 is null
+                (
+                    :channel_0 is null
+                    and :include_unassigned_channel = 0
+                )
                 or exists (
                     select 1
                     from suggestion_channels filtered_channel
@@ -361,6 +365,14 @@ def suggestions_get(
                             :channel_3,
                             :channel_4
                         )
+                )
+                or (
+                    :include_unassigned_channel = 1
+                    and not exists (
+                        select 1
+                        from suggestion_channels any_channel
+                        where any_channel.suggestion_id = s.suggestion_id
+                    )
                 )
             )
             and (
@@ -383,6 +395,7 @@ def suggestions_get(
             "channel_2": channel_parameters[2],
             "channel_3": channel_parameters[3],
             "channel_4": channel_parameters[4],
+            "include_unassigned_channel": int(include_unassigned_channel),
             "claimed_by_discord_id": claimed_by_discord_id,
             "offset": 100 * (page - 1),
             "query": f"%{query}%" if query else None,

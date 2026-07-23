@@ -885,6 +885,7 @@ def suggestions_rows() -> str:
     claimed_by_names = flask.request.values.getlist("claimed-by")
     kinds = flask.request.values.getlist("kinds")
     input_channels = flask.request.values.getlist("channels")
+    include_unassigned_channel = "unassigned" in input_channels
     channel_ids = [
         int(channel_id)
         for channel_id in input_channels
@@ -917,6 +918,7 @@ def suggestions_rows() -> str:
             claimed_by_names,
             channel_ids,
             kinds,
+            include_unassigned_channel,
         )
     finally:
         storage_cnx.close()

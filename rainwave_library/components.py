@@ -3248,6 +3248,21 @@ def suggestions_index(
                         htpy.div(".dropdown-menu")[
                             htpy.div(".px-2")[
                                 htpy.h6(".dropdown-header")["CHANNEL"],
+                                htpy.div(".form-check")[
+                                    htpy.input(
+                                        "#suggestion-channel-unassigned.form-check-input",
+                                        checked=True,
+                                        hx_indicator="#suggestion-filters-indicator",
+                                        hx_post=rows_url,
+                                        name="channels",
+                                        type="checkbox",
+                                        value="unassigned",
+                                    ),
+                                    htpy.label(
+                                        ".form-check-label.text-nowrap",
+                                        for_="suggestion-channel-unassigned",
+                                    )["(no channel)"],
+                                ],
                                 [
                                     htpy.div(".form-check")[
                                         htpy.input(
