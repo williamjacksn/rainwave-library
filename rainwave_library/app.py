@@ -933,6 +933,30 @@ def suggestion_staff_create() -> werkzeug.Response | str:
     return flask.redirect(redirect_url)
 
 
+@app.route("/suggestions/staff-requester-discord-id", methods=["GET"])
+@secure
+def suggestion_staff_requester_discord_id() -> str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        requester_discord_id = (
+            rainwave_library.models.suggestions.suggestion_requester_discord_id_get(
+                storage_cnx,
+                flask.request.args.get("requester-name", ""),
+            )
+        )
+    finally:
+        storage_cnx.close()
+    if flask.request.args.get("target") == "edit":
+        return rainwave_library.components.suggestion_edit_requester_discord_id_field(
+            requester_discord_id or ""
+        )
+    return rainwave_library.components.staff_suggestion_requester_discord_id_field(
+        requester_discord_id or ""
+    )
+
+
 @app.route("/suggestions/link-row", methods=["GET"])
 @signed_in
 def suggestion_link_row() -> str:

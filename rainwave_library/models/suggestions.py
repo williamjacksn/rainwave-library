@@ -534,6 +534,27 @@ def suggestion_user_name_get(
     return str(row["name"]) if row is not None else None
 
 
+def suggestion_requester_discord_id_get(
+    con: sqlite3.Connection,
+    requester_name: str,
+) -> str | None:
+    requester_name = requester_name.strip()
+    if not requester_name:
+        return None
+    row = con.execute(
+        """
+        select requester_discord_id
+        from suggestions
+        where trim(requester_name) collate nocase = :requester_name
+            and nullif(trim(requester_discord_id), '') is not null
+        order by updated_at desc, suggestion_id
+        limit 1
+        """,
+        {"requester_name": requester_name},
+    ).fetchone()
+    return str(row["requester_discord_id"]) if row is not None else None
+
+
 def suggestion_get(
     con: sqlite3.Connection, suggestion_id: str
 ) -> SuggestionDetail | None:

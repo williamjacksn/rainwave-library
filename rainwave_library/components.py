@@ -1544,6 +1544,25 @@ def _suggestion_detail_table(
     ]
 
 
+def _suggestion_edit_requester_discord_id_field(
+    requester_discord_id: str = "",
+) -> htpy.VoidElement:
+    return htpy.input(
+        "#requester-discord-id.form-control",
+        name="requester-discord-id",
+        type="text",
+        value=requester_discord_id,
+    )
+
+
+def suggestion_edit_requester_discord_id_field(
+    requester_discord_id: str = "",
+) -> str:
+    return str(
+        _suggestion_edit_requester_discord_id_field(requester_discord_id),
+    )
+
+
 def _suggestion_edit_form(
     suggestion: SuggestionDetail,
     edit_result: tuple[str, str] | None,
@@ -1611,6 +1630,15 @@ def _suggestion_edit_form(
                 htpy.label(".form-label", for_="requester-name")["Suggested by"],
                 htpy.input(
                     "#requester-name.form-control",
+                    hx_get=flask.url_for(
+                        "suggestion_staff_requester_discord_id",
+                        target="edit",
+                    ),
+                    hx_include="this",
+                    hx_swap="outerHTML",
+                    hx_sync="this:replace",
+                    hx_target="#requester-discord-id",
+                    hx_trigger="input changed delay:300ms",
                     name="requester-name",
                     type="text",
                     value=suggestion.requester_name or "",
@@ -1620,11 +1648,8 @@ def _suggestion_edit_form(
                 htpy.label(".form-label", for_="requester-discord-id")[
                     "Suggested by Discord ID"
                 ],
-                htpy.input(
-                    "#requester-discord-id.form-control",
-                    name="requester-discord-id",
-                    type="text",
-                    value=suggestion.requester_discord_id or "",
+                _suggestion_edit_requester_discord_id_field(
+                    suggestion.requester_discord_id or ""
                 ),
             ],
             htpy.div(".col-12.col-lg-4")[
@@ -2423,6 +2448,25 @@ def suggestion_create_form(
     return str(_suggestion_create_form(title, description, channel_id, links, result))
 
 
+def _staff_suggestion_requester_discord_id_field(
+    requester_discord_id: str = "",
+) -> htpy.VoidElement:
+    return htpy.input(
+        "#staff-suggestion-requester-discord-id.form-control",
+        name="requester-discord-id",
+        type="text",
+        value=requester_discord_id,
+    )
+
+
+def staff_suggestion_requester_discord_id_field(
+    requester_discord_id: str = "",
+) -> str:
+    return str(
+        _staff_suggestion_requester_discord_id_field(requester_discord_id),
+    )
+
+
 def _staff_suggestion_create_form(
     title: str = "",
     description: str = "",
@@ -2518,6 +2562,12 @@ def _staff_suggestion_create_form(
                 ],
                 htpy.input(
                     "#staff-suggestion-requester-name.form-control",
+                    hx_get=flask.url_for("suggestion_staff_requester_discord_id"),
+                    hx_include="this",
+                    hx_swap="outerHTML",
+                    hx_sync="this:replace",
+                    hx_target="#staff-suggestion-requester-discord-id",
+                    hx_trigger="input changed delay:300ms",
                     name="requester-name",
                     type="text",
                     value=requester_name,
@@ -2528,16 +2578,12 @@ def _staff_suggestion_create_form(
                     ".form-label",
                     for_="staff-suggestion-requester-discord-id",
                 )["Suggested by Discord ID"],
-                htpy.input(
-                    "#staff-suggestion-requester-discord-id.form-control",
-                    name="requester-discord-id",
-                    type="text",
-                    value=requester_discord_id,
-                ),
+                _staff_suggestion_requester_discord_id_field(requester_discord_id),
             ],
             htpy.div(".col-12.form-text")[
                 "Leave both Suggested by fields blank to attribute the suggestion "
-                "to yourself."
+                "to yourself. Enter a name in Suggested by to auto-fill the Discord ID "
+                "based on existing suggestions."
             ],
         ],
         htpy.div(".mt-3")[
