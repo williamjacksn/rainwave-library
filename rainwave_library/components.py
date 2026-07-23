@@ -2009,9 +2009,15 @@ def _suggestion_links_block(suggestion: SuggestionDetail) -> htpy.Element:
     is_owner = bool(suggestion.requester_discord_id) and (
         suggestion.requester_discord_id == str(flask.g.discord_id or "")
     )
-    can_manage_links = is_owner or flask.session.get("role") == "staff"
+    is_staff = flask.session.get("role") == "staff"
+    can_add_link = is_staff or (
+        is_owner and suggestion.status in Suggestion.owner_editable_statuses
+    )
+    can_delete_link = is_staff or (
+        is_owner and suggestion.status in Suggestion.owner_editable_statuses
+    )
     return htpy.div(id=f"suggestion-links-{suggestion.id}")[
-        can_manage_links
+        can_add_link
         and htpy.div(".mb-3", id=f"suggestion-add-link-{suggestion.id}")[
             _suggestion_link_button(suggestion.id)
         ],
@@ -2020,7 +2026,7 @@ def _suggestion_links_block(suggestion: SuggestionDetail) -> htpy.Element:
                 _suggestion_link_item(
                     link,
                     suggestion.id,
-                    deletable=can_manage_links,
+                    deletable=can_delete_link,
                 )
                 for link in suggestion.links
             ]
@@ -2129,9 +2135,11 @@ def suggestion_detail_row(
     editable: bool = False,
     edit_result: tuple[str, str] | None = None,
 ) -> str:
-    description_editable = bool(
-        suggestion.requester_discord_id
-    ) and suggestion.requester_discord_id == str(flask.g.discord_id or "")
+    description_editable = (
+        bool(suggestion.requester_discord_id)
+        and suggestion.requester_discord_id == str(flask.g.discord_id or "")
+        and suggestion.status in Suggestion.owner_editable_statuses
+    )
     channel_badges: htpy.Node = (
         htpy.fragment[
             [

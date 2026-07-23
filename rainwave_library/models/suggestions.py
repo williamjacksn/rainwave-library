@@ -78,6 +78,7 @@ class Suggestion:
         "uploaded",
         "declined",
     )
+    owner_editable_statuses: typing.ClassVar[tuple[str, ...]] = ("new", "claimed")
 
     id: str
     title: str
@@ -1026,6 +1027,7 @@ def suggestion_description_update(
             from suggestions
             where suggestion_id = :suggestion_id
                 and requester_discord_id = :requester_discord_id
+                and status in ('new', 'claimed')
             """,
             {
                 "suggestion_id": suggestion_id,
@@ -1048,6 +1050,7 @@ def suggestion_description_update(
                 updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
             where suggestion_id = :suggestion_id
                 and requester_discord_id = :requester_discord_id
+                and status in ('new', 'claimed')
             """,
             {
                 "suggestion_id": suggestion_id,
@@ -1154,7 +1157,10 @@ def suggestion_link_add(
         where suggestion_id = :suggestion_id
             and (
                 :is_staff = 1
-                or requester_discord_id = :requester_discord_id
+                or (
+                    requester_discord_id = :requester_discord_id
+                    and status in ('new', 'claimed')
+                )
             )
         """,
         {
@@ -1233,7 +1239,10 @@ def suggestion_link_delete(
                 and sl.link_id = :link_id
                 and (
                     :is_staff = 1
-                    or s.requester_discord_id = :requester_discord_id
+                    or (
+                        s.requester_discord_id = :requester_discord_id
+                        and s.status in ('new', 'claimed')
+                    )
                 )
             """,
             {

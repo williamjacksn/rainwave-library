@@ -965,6 +965,13 @@ def suggestion_description(suggestion_id: str) -> str:
             or suggestion.requester_discord_id != requester_discord_id
         ):
             flask.abort(403)
+        if suggestion.status not in (
+            rainwave_library.models.suggestions.Suggestion.owner_editable_statuses
+        ):
+            flask.abort(
+                409,
+                "Only new or claimed suggestions can be edited by their owner.",
+            )
 
         if flask.request.method == "GET":
             if "close" in flask.request.args:
@@ -1088,6 +1095,13 @@ def suggestion_link(suggestion_id: str) -> werkzeug.Response | str:
             or suggestion.requester_discord_id != requester_discord_id
         ):
             flask.abort(403)
+        if not is_staff and suggestion.status not in (
+            rainwave_library.models.suggestions.Suggestion.owner_editable_statuses
+        ):
+            flask.abort(
+                409,
+                "Links can only be added while a suggestion is new or claimed.",
+            )
 
         if flask.request.method == "GET":
             if "close" in flask.request.args:
@@ -1150,6 +1164,13 @@ def suggestion_link_delete(suggestion_id: str, link_id: str) -> str:
         )
         if not is_owner and not is_staff:
             flask.abort(403)
+        if not is_staff and suggestion.status not in (
+            rainwave_library.models.suggestions.Suggestion.owner_editable_statuses
+        ):
+            flask.abort(
+                409,
+                "Links can only be deleted while a suggestion is new or claimed.",
+            )
         if not any(link.id == link_id for link in suggestion.links):
             flask.abort(404)
 
