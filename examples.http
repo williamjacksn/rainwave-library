@@ -24,3 +24,16 @@ Content-Type: application/json
 > {%
     client.global.set('access-token', response.body['accessJwt'])
 %}
+
+### discord-create-message
+POST https://discord.com/api/v10/channels/{{ channel-id }}/messages
+Authorization: Bot {{ discord-token }}
+Content-Type: application/json
+
+{
+  "content": "Hello."
+}
+
+### discord-current-user
+GET https://discord.com/api/v10/users/@me
+Authorization: Bot {{ discord-token}}
