@@ -867,6 +867,72 @@ def suggestion_create() -> werkzeug.Response | str:
     return flask.redirect(redirect_url)
 
 
+@app.route("/suggestions/staff-create", methods=["POST"])
+@secure
+def suggestion_staff_create() -> werkzeug.Response | str:
+    title = flask.request.form.get("title", "")
+    description = flask.request.form.get("description", "")
+    kind = flask.request.form.get(
+        "kind", rainwave_library.models.suggestions.Suggestion.default_kind
+    )
+    channel = flask.request.form.get("channel", "")
+    channel_id = int(channel) if channel.isdigit() else 0
+    requester_name_input = flask.request.form.get("requester-name", "").strip()
+    requester_discord_id_input = flask.request.form.get(
+        "requester-discord-id", ""
+    ).strip()
+    requester_name = requester_name_input or None
+    requester_discord_id = requester_discord_id_input or None
+    if not requester_name_input and not requester_discord_id_input:
+        requester_name = flask.g.discord_display_name
+        requester_discord_id = str(flask.g.discord_id) if flask.g.discord_id else None
+    link_pairs = tuple(
+        (url.strip(), label.strip())
+        for url, label in itertools.zip_longest(
+            flask.request.form.getlist("link-url"),
+            flask.request.form.getlist("link-label"),
+            fillvalue="",
+        )
+    )
+    entered_links = tuple(pair for pair in link_pairs if pair[0] or pair[1])
+
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        try:
+            rainwave_library.models.suggestions.suggestion_create(
+                storage_cnx,
+                title=title,
+                description=description,
+                channel_id=channel_id,
+                kind=kind,
+                requester_name=requester_name,
+                requester_discord_id=requester_discord_id,
+                links=entered_links,
+            )
+        except ValueError as error:
+            return rainwave_library.components.staff_suggestion_create_form(
+                title=title,
+                description=description,
+                channel_id=channel_id or None,
+                kind=kind,
+                requester_name=requester_name_input,
+                requester_discord_id=requester_discord_id_input,
+                links=entered_links,
+                result=("alert-danger", str(error)),
+            )
+    finally:
+        storage_cnx.close()
+
+    redirect_url = flask.url_for("suggestions")
+    if flask.request.headers.get("HX-Request") == "true":
+        response = flask.make_response()
+        response.headers["HX-Redirect"] = redirect_url
+        return response
+    return flask.redirect(redirect_url)
+
+
 @app.route("/suggestions/link-row", methods=["GET"])
 @signed_in
 def suggestion_link_row() -> str:
