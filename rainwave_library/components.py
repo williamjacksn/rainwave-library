@@ -1677,8 +1677,24 @@ def _suggestion_edit_form(
                 ],
             ],
         ],
-        htpy.button(".btn.btn-outline-success.btn-sm.mt-3", type="submit")[
-            htpy.i(".bi-file-earmark-play"), " Save suggestion"
+        htpy.div(".d-flex.gap-2.justify-content-between.mt-3")[
+            htpy.button(".btn.btn-outline-success.btn-sm", type="submit")[
+                htpy.i(".bi-file-earmark-play"), " Save suggestion"
+            ],
+            htpy.button(
+                ".btn.btn-outline-danger.btn-sm",
+                hx_confirm=(
+                    f'Delete the suggestion "{suggestion.title}"? '
+                    "This cannot be undone."
+                ),
+                hx_delete=flask.url_for(
+                    "suggestion_delete", suggestion_id=suggestion.id
+                ),
+                hx_disabled_elt="this",
+                hx_swap="delete",
+                hx_target="closest tr",
+                type="button",
+            )[htpy.i(".bi-trash"), " Delete suggestion"],
         ],
     ]
 

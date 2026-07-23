@@ -989,6 +989,26 @@ def suggestion_update(
     return True
 
 
+def suggestion_delete(con: sqlite3.Connection, suggestion_id: str) -> bool:
+    try:
+        cursor = con.execute(
+            "delete from suggestions where suggestion_id = ?",
+            (suggestion_id,),
+        )
+        deleted = cursor.rowcount == 1
+        if deleted:
+            con.commit()
+        else:
+            con.rollback()
+    except Exception:
+        con.rollback()
+        raise
+
+    if deleted:
+        log.info("Deleted suggestion %s", suggestion_id)
+    return deleted
+
+
 def suggestion_comment_add(
     con: sqlite3.Connection,
     suggestion_id: str,

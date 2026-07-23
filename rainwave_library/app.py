@@ -1154,6 +1154,24 @@ def suggestion_update(suggestion_id: str) -> str:
     )
 
 
+@app.route("/suggestions/<suggestion_id>", methods=["DELETE"])
+@secure
+def suggestion_delete(suggestion_id: str) -> str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        deleted = rainwave_library.models.suggestions.suggestion_delete(
+            storage_cnx, suggestion_id
+        )
+    finally:
+        storage_cnx.close()
+
+    if not deleted:
+        flask.abort(404)
+    return ""
+
+
 @app.route("/suggestions/<suggestion_id>/row", methods=["GET"])
 @signed_in
 def suggestion_row(suggestion_id: str) -> str:
