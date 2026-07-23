@@ -1837,7 +1837,12 @@ def suggestion_activity_block(suggestion: SuggestionDetail) -> str:
     return str(_suggestion_activity_block(suggestion))
 
 
-def _suggestion_link_item(link: SuggestionLink) -> htpy.Element:
+def _suggestion_link_item(
+    link: SuggestionLink,
+    suggestion_id: str,
+    *,
+    deletable: bool,
+) -> htpy.Element:
     return htpy.div(".list-group-item")[
         htpy.div(".align-items-start.d-flex.gap-2.justify-content-between")[
             htpy.a(
@@ -1850,7 +1855,25 @@ def _suggestion_link_item(link: SuggestionLink) -> htpy.Element:
                 " ",
                 htpy.i(".bi-box-arrow-up-right"),
             ],
-            htpy.span(".badge.text-bg-secondary")[link.type],
+            htpy.div(".align-items-center.d-flex.gap-2")[
+                htpy.span(".badge.text-bg-secondary")[link.type],
+                deletable
+                and htpy.button(
+                    ".btn.btn-link.p-0.text-danger",
+                    aria_label=f"Delete {link.label or link.url}",
+                    hx_confirm=f'Delete the link "{link.label or link.url}"?',
+                    hx_delete=flask.url_for(
+                        "suggestion_link_delete",
+                        suggestion_id=suggestion_id,
+                        link_id=link.id,
+                    ),
+                    hx_disabled_elt="this",
+                    hx_swap="delete",
+                    hx_target="closest .list-group-item",
+                    title="Delete link",
+                    type="button",
+                )[htpy.i(".bi-trash")],
+            ],
         ],
         htpy.div(".small.text-secondary")[
             link.label and [link.url, htpy.br],
@@ -1943,12 +1966,24 @@ def suggestion_link_form(
 
 
 def _suggestion_links_block(suggestion: SuggestionDetail) -> htpy.Element:
+    is_owner = bool(suggestion.requester_discord_id) and (
+        suggestion.requester_discord_id == str(flask.g.discord_id or "")
+    )
+    can_manage_links = is_owner or flask.session.get("role") == "staff"
     return htpy.div(id=f"suggestion-links-{suggestion.id}")[
-        htpy.div(".mb-3", id=f"suggestion-add-link-{suggestion.id}")[
+        can_manage_links
+        and htpy.div(".mb-3", id=f"suggestion-add-link-{suggestion.id}")[
             _suggestion_link_button(suggestion.id)
         ],
         htpy.div(".list-group")[
-            [_suggestion_link_item(link) for link in suggestion.links]
+            [
+                _suggestion_link_item(
+                    link,
+                    suggestion.id,
+                    deletable=can_manage_links,
+                )
+                for link in suggestion.links
+            ]
         ]
         if suggestion.links
         else htpy.p(".text-secondary")["No links."],

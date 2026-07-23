@@ -1051,17 +1051,30 @@ def suggestion_comment(suggestion_id: str) -> werkzeug.Response | str:
 @app.route("/suggestions/<suggestion_id>/link", methods=["GET", "POST"])
 @signed_in
 def suggestion_link(suggestion_id: str) -> werkzeug.Response | str:
-    if flask.request.method == "GET":
-        if "close" in flask.request.args:
-            return rainwave_library.components.suggestion_link_button(suggestion_id)
-        return rainwave_library.components.suggestion_link_form(suggestion_id)
-
-    url = flask.request.form.get("url", "")
-    label = flask.request.form.get("label", "")
+    requester_discord_id = str(flask.g.discord_id or "")
+    is_staff = flask.session.get("role") == "staff"
     storage_cnx = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+        if suggestion is None:
+            flask.abort(404)
+        if not is_staff and (
+            not requester_discord_id
+            or suggestion.requester_discord_id != requester_discord_id
+        ):
+            flask.abort(403)
+
+        if flask.request.method == "GET":
+            if "close" in flask.request.args:
+                return rainwave_library.components.suggestion_link_button(suggestion_id)
+            return rainwave_library.components.suggestion_link_form(suggestion_id)
+
+        url = flask.request.form.get("url", "")
+        label = flask.request.form.get("label", "")
         try:
             added = rainwave_library.models.suggestions.suggestion_link_add(
                 storage_cnx,
@@ -1069,9 +1082,8 @@ def suggestion_link(suggestion_id: str) -> werkzeug.Response | str:
                 url=url,
                 label=label,
                 actor_name=flask.g.discord_display_name,
-                actor_discord_id=(
-                    str(flask.g.discord_id) if flask.g.discord_id else None
-                ),
+                actor_discord_id=requester_discord_id,
+                is_staff=is_staff,
             )
         except ValueError as error:
             response = flask.make_response(
@@ -1083,7 +1095,7 @@ def suggestion_link(suggestion_id: str) -> werkzeug.Response | str:
             response.headers["HX-Reswap"] = "innerHTML"
             return response
         if not added:
-            flask.abort(404)
+            flask.abort(403)
         suggestion = rainwave_library.models.suggestions.suggestion_get(
             storage_cnx, suggestion_id
         )
@@ -1093,6 +1105,47 @@ def suggestion_link(suggestion_id: str) -> werkzeug.Response | str:
     if suggestion is None:
         flask.abort(404)
     return rainwave_library.components.suggestion_links_block(suggestion)
+
+
+@app.route(
+    "/suggestions/<suggestion_id>/link/<link_id>",
+    methods=["DELETE"],
+)
+@signed_in
+def suggestion_link_delete(suggestion_id: str, link_id: str) -> str:
+    actor_discord_id = str(flask.g.discord_id or "")
+    is_staff = flask.session.get("role") == "staff"
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+        if suggestion is None:
+            flask.abort(404)
+        is_owner = bool(actor_discord_id) and (
+            suggestion.requester_discord_id == actor_discord_id
+        )
+        if not is_owner and not is_staff:
+            flask.abort(403)
+        if not any(link.id == link_id for link in suggestion.links):
+            flask.abort(404)
+
+        deleted = rainwave_library.models.suggestions.suggestion_link_delete(
+            storage_cnx,
+            suggestion_id,
+            link_id,
+            actor_name=flask.g.discord_display_name,
+            actor_discord_id=actor_discord_id,
+            is_staff=is_staff,
+        )
+    finally:
+        storage_cnx.close()
+
+    if not deleted:
+        flask.abort(404)
+    return ""
 
 
 @app.route("/suggestions/<suggestion_id>/claim", methods=["POST"])

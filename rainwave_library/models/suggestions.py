@@ -1140,14 +1140,28 @@ def suggestion_link_add(
     label: str,
     actor_name: str | None = None,
     actor_discord_id: str | None = None,
+    is_staff: bool = False,
 ) -> bool:
     url = url.strip()
     if not url:
         msg = "A link URL is required."
         raise ValueError(msg)
+    owner_discord_id = (actor_discord_id or "").strip()
     exists = con.execute(
-        "select 1 from suggestions where suggestion_id = ?",
-        (suggestion_id,),
+        """
+        select 1
+        from suggestions
+        where suggestion_id = :suggestion_id
+            and (
+                :is_staff = 1
+                or requester_discord_id = :requester_discord_id
+            )
+        """,
+        {
+            "suggestion_id": suggestion_id,
+            "requester_discord_id": owner_discord_id,
+            "is_staff": int(is_staff),
+        },
     ).fetchone()
     if exists is None:
         return False
@@ -1196,6 +1210,67 @@ def suggestion_link_add(
         raise
 
     log.info("Added link to suggestion %s", suggestion_id)
+    return True
+
+
+def suggestion_link_delete(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    link_id: str,
+    *,
+    actor_name: str | None = None,
+    actor_discord_id: str | None = None,
+    is_staff: bool = False,
+) -> bool:
+    owner_discord_id = (actor_discord_id or "").strip()
+    try:
+        link = con.execute(
+            """
+            select sl.url
+            from suggestion_links sl
+            join suggestions s using (suggestion_id)
+            where sl.suggestion_id = :suggestion_id
+                and sl.link_id = :link_id
+                and (
+                    :is_staff = 1
+                    or s.requester_discord_id = :requester_discord_id
+                )
+            """,
+            {
+                "suggestion_id": suggestion_id,
+                "link_id": link_id,
+                "requester_discord_id": owner_discord_id,
+                "is_staff": int(is_staff),
+            },
+        ).fetchone()
+        if link is None:
+            con.rollback()
+            return False
+
+        _activity_insert(
+            con,
+            suggestion_id,
+            activity_type="removed-link",
+            actor_name=actor_name,
+            actor_discord_id=actor_discord_id,
+            old_value=str(link["url"]),
+        )
+        cursor = con.execute(
+            """
+            delete from suggestion_links
+            where suggestion_id = ? and link_id = ?
+            """,
+            (suggestion_id, link_id),
+        )
+        if cursor.rowcount != 1:
+            con.rollback()
+            return False
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+
+    log.info("Deleted link %s from suggestion %s", link_id, suggestion_id)
     return True
 
 
