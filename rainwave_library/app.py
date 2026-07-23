@@ -655,6 +655,7 @@ def _suggestion_notice() -> _SuggestionNotice:
 @app.route("/suggestions/wizard", methods=["POST"])
 @signed_in
 def suggestion_wizard() -> str:
+    limits_apply = flask.session.get("role") != "staff"
     step = flask.request.form.get("step", "1")
     channel = flask.request.form.get("channel", "")
     channel_id = (
@@ -708,12 +709,13 @@ def suggestion_wizard() -> str:
                 )
         finally:
             storage_cnx.close()
-        if open_count > 5:
+        if limits_apply and open_count > 5:
             return rainwave_library.components.suggestion_wizard_body(
                 2,
                 channel_id=channel_id,
                 kind=kind,
                 open_count=open_count,
+                limits_apply=limits_apply,
                 title=title,
                 description=description,
                 links=links,
@@ -794,6 +796,7 @@ def suggestion_wizard() -> str:
             channel_id=channel_id,
             kind=kind,
             open_count=open_count,
+            limits_apply=limits_apply,
             title=title,
             description=description,
             links=links,

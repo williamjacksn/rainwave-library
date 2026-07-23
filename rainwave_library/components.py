@@ -2658,6 +2658,7 @@ def _suggestion_wizard_step2(
     channel_id: int | None = None,
     kind: str | None = None,
     open_count: int = 0,
+    limits_apply: bool = True,
     title: str = "",
     description: str = "",
     links: tuple[tuple[str, str], ...] = (),
@@ -2665,7 +2666,7 @@ def _suggestion_wizard_step2(
     url = flask.url_for("suggestion_wizard")
     channel_label = channels.get(channel_id, "—") if channel_id else "—"
     kind_label = Suggestion.kind_labels.get(kind or "", "—")
-    over_limit = open_count > 5
+    over_limit = limits_apply and open_count > 5
     return htpy.form(
         hx_disabled_elt="button",
         hx_post=url,
@@ -2691,6 +2692,8 @@ def _suggestion_wizard_step2(
                 htpy.strong[channel_label],
                 " channel.",
             ],
+            not limits_apply
+            and htpy.p(".mb-0.mt-1")["Suggestion limits do not apply to staff."],
         ],
         over_limit
         and htpy.div(".alert.alert-warning", role="alert")[
@@ -2991,6 +2994,7 @@ def _suggestion_wizard_body(
     song_count: int = 0,
     song_count_as_of: str = "",
     open_count: int = 0,
+    limits_apply: bool = True,
     title: str = "",
     description: str = "",
     links: tuple[tuple[str, str], ...] = (),
@@ -3008,7 +3012,13 @@ def _suggestion_wizard_body(
         )
     if step == 2:
         return _suggestion_wizard_step2(
-            channel_id, kind, open_count, title, description, links
+            channel_id,
+            kind,
+            open_count,
+            limits_apply,
+            title,
+            description,
+            links,
         )
     return htpy.fragment[
         _suggestion_create_notice(song_count, song_count_as_of),
@@ -3024,6 +3034,7 @@ def suggestion_wizard_body(
     song_count: int = 0,
     song_count_as_of: str = "",
     open_count: int = 0,
+    limits_apply: bool = True,
     title: str = "",
     description: str = "",
     links: tuple[tuple[str, str], ...] = (),
@@ -3038,6 +3049,7 @@ def suggestion_wizard_body(
             song_count,
             song_count_as_of,
             open_count,
+            limits_apply,
             title,
             description,
             links,
