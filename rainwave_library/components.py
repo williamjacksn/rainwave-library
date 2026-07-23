@@ -1312,7 +1312,14 @@ def songs_edit_result(alert_class: str, edit_result: str) -> str:
     return str(htpy.p(f".alert.{alert_class}")[edit_result])
 
 
-def settings_index(settings: list[tuple[str, str, bool]]) -> str:
+def settings_index(
+    settings: list[tuple[str, str, bool]],
+    *,
+    key: str = "",
+    value: str = "",
+    protected: bool = False,
+    result: tuple[str, str] | None = None,
+) -> str:
     rows = [
         htpy.tr[
             htpy.td[htpy.code(".user-select-all")[key]],
@@ -1333,6 +1340,75 @@ def settings_index(settings: list[tuple[str, str, bool]]) -> str:
             _back_button(flask.url_for("index"), "Home"), _user_menu()
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Application settings"],]],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col-lg-8")[
+                htpy.div(".card")[
+                    htpy.div(".card-header")[
+                        htpy.h5(".mb-0")["Create or replace a setting"]
+                    ],
+                    htpy.div(".card-body")[
+                        result
+                        and htpy.div(f".alert.{result[0]}", role="alert")[result[1]],
+                        htpy.p[
+                            "Saving a key that already exists replaces its value. "
+                            "Application settings are loaded at startup."
+                        ],
+                        htpy.form(
+                            action=flask.url_for("settings"),
+                            autocomplete="off",
+                            method="post",
+                        )[
+                            htpy.div(".g-3.row")[
+                                htpy.div(".col-md-5")[
+                                    htpy.label(".form-label", for_="setting-key")[
+                                        "Key"
+                                    ],
+                                    htpy.input(
+                                        "#setting-key.form-control",
+                                        name="key",
+                                        required=True,
+                                        type="text",
+                                        value=key,
+                                    ),
+                                ],
+                                htpy.div(".col-md-7")[
+                                    htpy.label(".form-label", for_="setting-value")[
+                                        "Value"
+                                    ],
+                                    htpy.input(
+                                        "#setting-value.form-control",
+                                        name="value",
+                                        required=True,
+                                        type="text",
+                                        value=value,
+                                    ),
+                                ],
+                            ],
+                            htpy.div(".form-check.mt-3")[
+                                htpy.input(
+                                    "#setting-protected.form-check-input",
+                                    checked=protected,
+                                    name="protected",
+                                    type="checkbox",
+                                    value="1",
+                                ),
+                                htpy.label(
+                                    ".form-check-label",
+                                    for_="setting-protected",
+                                )["Protect value"],
+                                htpy.div(".form-text")[
+                                    "Protected values are hidden on this page. "
+                                    "An existing protected setting remains protected."
+                                ],
+                            ],
+                            htpy.button(".btn.btn-primary.mt-3", type="submit")[
+                                htpy.i(".bi-floppy"), " Save setting"
+                            ],
+                        ],
+                    ],
+                ]
+            ]
+        ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
                 htpy.table(
@@ -2167,6 +2243,25 @@ def _suggestion_files_card(
         "suggestion_files_upload",
         suggestion_id=suggestion_id,
     )
+    upload_before_request = (
+        "const bar=document.getElementById('suggestion-files-upload-bar');"
+        "const label=document.getElementById('suggestion-files-upload-label');"
+        "bar.style.width='0%';"
+        "bar.setAttribute('aria-valuenow','0');"
+        "bar.textContent='0%';"
+        "label.textContent='Uploading files\u2026';"
+    )
+    upload_progress = (
+        "if(!event.detail.total){return;}"
+        "const percent=Math.round(event.detail.loaded/event.detail.total*100);"
+        "const bar=document.getElementById('suggestion-files-upload-bar');"
+        "const label=document.getElementById('suggestion-files-upload-label');"
+        "bar.style.width=percent+'%';"
+        "bar.setAttribute('aria-valuenow',String(percent));"
+        "bar.textContent=percent+'%';"
+        "label.textContent=percent>=100"
+        "?'Processing files\u2026':'Uploading files\u2026';"
+    )
     return htpy.div(".card", id="suggestion-files-card")[
         htpy.div(".card-header")[htpy.h5(".mb-0")["Files"]],
         htpy.div(".card-body")[
@@ -2176,10 +2271,15 @@ def _suggestion_files_card(
                 enctype="multipart/form-data",
                 hx_disabled_elt="button",
                 hx_encoding="multipart/form-data",
+                hx_indicator="#suggestion-files-upload-progress",
                 hx_post=upload_url,
                 hx_swap="outerHTML",
                 hx_target="#suggestion-files-card",
                 method="post",
+                **{
+                    "hx-on:htmx:before-request": upload_before_request,
+                    "hx-on:htmx:xhr:progress": upload_progress,
+                },
             )[
                 htpy.div(".align-items-end.g-2.row")[
                     htpy.div(".col")[
@@ -2199,7 +2299,30 @@ def _suggestion_files_card(
                             htpy.i(".bi-upload"), " Upload"
                         ]
                     ],
-                ]
+                ],
+                htpy.div(
+                    "#suggestion-files-upload-progress.htmx-indicator.mt-3",
+                    aria_live="polite",
+                    role="status",
+                )[
+                    htpy.div(".mb-1.small", id="suggestion-files-upload-label")[
+                        "Uploading files\u2026"
+                    ],
+                    htpy.div(
+                        ".progress",
+                        aria_label="File upload progress",
+                    )[
+                        htpy.div(
+                            "#suggestion-files-upload-bar."
+                            "progress-bar.progress-bar-animated.progress-bar-striped",
+                            aria_valuemax="100",
+                            aria_valuemin="0",
+                            aria_valuenow="0",
+                            role="progressbar",
+                            style="width: 0%",
+                        )["0%"]
+                    ],
+                ],
             ],
             htpy.div(".list-group.list-group-flush.mt-3")[
                 [

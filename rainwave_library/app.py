@@ -598,17 +598,48 @@ def nothing() -> str:
     return ""
 
 
-@app.route("/settings", methods=["GET"])
+@app.route("/settings", methods=["GET", "POST"])
 @secure
 def settings() -> str:
+    key = ""
+    value = ""
+    protected = False
+    result: tuple[str, str] | None = None
     storage_cnx = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
+        if flask.request.method == "POST":
+            key = flask.request.form.get("key", "")
+            value = flask.request.form.get("value", "")
+            protected = "protected" in flask.request.form
+            try:
+                created = rainwave_library.models.storage.setting_set(
+                    storage_cnx,
+                    key,
+                    value,
+                    protected=protected,
+                )
+            except ValueError as error:
+                result = ("alert-danger", str(error))
+            else:
+                result = (
+                    "alert-success",
+                    f"Setting {'created' if created else 'replaced'}.",
+                )
+                key = ""
+                value = ""
+                protected = False
         settings_ = rainwave_library.models.storage.settings_get(storage_cnx)
     finally:
         storage_cnx.close()
-    return rainwave_library.components.settings_index(settings_)
+    return rainwave_library.components.settings_index(
+        settings_,
+        key=key,
+        value=value,
+        protected=protected,
+        result=result,
+    )
 
 
 @app.route("/suggestions", methods=["GET"])

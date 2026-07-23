@@ -123,6 +123,44 @@ def setting_get(con: sqlite3.Connection, key: str) -> str | None:
     return row["value"]
 
 
+def setting_set(
+    con: sqlite3.Connection,
+    key: str,
+    value: str,
+    *,
+    protected: bool = False,
+) -> bool:
+    key = key.strip()
+    if not key:
+        msg = "Setting key is required."
+        raise ValueError(msg)
+    if not value:
+        msg = "Setting value is required."
+        raise ValueError(msg)
+
+    created = setting_get(con, key) is None
+    try:
+        con.execute(
+            """
+            insert into settings (key, value, protected)
+            values (:key, :value, :protected)
+            on conflict (key) do update set
+                value = excluded.value,
+                protected = max(settings.protected, excluded.protected)
+            """,
+            {
+                "key": key,
+                "value": value,
+                "protected": int(protected),
+            },
+        )
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+    return created
+
+
 def settings_get(con: sqlite3.Connection) -> list[tuple[str, str, bool]]:
     rows = con.execute(
         "select key, value, protected from settings order by key"
