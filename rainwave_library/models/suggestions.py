@@ -66,7 +66,7 @@ class Suggestion:
     default_kind: typing.ClassVar[str] = "new-album"
     sort_fields: typing.ClassVar[tuple[tuple[str, str], ...]] = (
         ("status", "Status"),
-        ("title", "Suggestion"),
+        ("title", "Suggestion title"),
         ("requester_name", "Suggested by"),
         ("requested_at", "Suggested at"),
         ("claimed_by_name", "Claimed by"),
