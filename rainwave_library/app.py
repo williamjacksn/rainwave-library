@@ -1072,6 +1072,7 @@ def suggestion_release(suggestion_id: str) -> str:
         released = rainwave_library.models.suggestions.suggestion_release(
             storage_cnx,
             suggestion_id,
+            flask.g.discord_display_name or "",
             str(flask.g.discord_id or ""),
         )
         suggestion = rainwave_library.models.suggestions.suggestion_get(

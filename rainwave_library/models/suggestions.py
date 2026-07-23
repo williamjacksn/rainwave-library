@@ -762,6 +762,15 @@ def suggestion_claim(
         )
         claimed = cursor.rowcount == 1
         if claimed:
+            _activity_insert(
+                con,
+                suggestion_id,
+                activity_type="updated-status",
+                actor_name=claimed_by_name,
+                actor_discord_id=claimed_by_discord_id,
+                old_value="new",
+                new_value="claimed",
+            )
             con.commit()
         else:
             con.rollback()
@@ -777,11 +786,16 @@ def suggestion_claim(
 def suggestion_release(
     con: sqlite3.Connection,
     suggestion_id: str,
+    released_by_name: str,
     claimed_by_discord_id: str,
 ) -> bool:
+    released_by_name = released_by_name.strip()
     claimed_by_discord_id = claimed_by_discord_id.strip()
-    if not claimed_by_discord_id:
-        msg = "A Discord user ID is required to release a suggestion claim."
+    if not released_by_name or not claimed_by_discord_id:
+        msg = (
+            "A Discord display name and user ID are required to release "
+            "a suggestion claim."
+        )
         raise ValueError(msg)
 
     try:
@@ -805,6 +819,15 @@ def suggestion_release(
         )
         released = cursor.rowcount == 1
         if released:
+            _activity_insert(
+                con,
+                suggestion_id,
+                activity_type="updated-status",
+                actor_name=released_by_name,
+                actor_discord_id=claimed_by_discord_id,
+                old_value="claimed",
+                new_value="new",
+            )
             con.commit()
         else:
             con.rollback()
