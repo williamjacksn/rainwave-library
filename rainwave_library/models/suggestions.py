@@ -466,6 +466,33 @@ def suggestion_open_count_for_channel(
     return int(row["open_count"])
 
 
+def suggestion_title_match_statuses(
+    con: sqlite3.Connection,
+    title: str,
+) -> tuple[str, ...]:
+    title = title.strip()
+    if not title:
+        return ()
+    row = con.execute(
+        """
+        select
+            max(status in ('new', 'claimed', 'accepted')) open_match,
+            max(status = 'declined') declined_match
+        from suggestions
+        where kind = 'new-album'
+            and trim(title) collate nocase = :title
+            and status in ('new', 'claimed', 'accepted', 'declined')
+        """,
+        {"title": title},
+    ).fetchone()
+    matches = []
+    if row["open_match"]:
+        matches.append("open-suggestion")
+    if row["declined_match"]:
+        matches.append("declined-suggestion")
+    return tuple(matches)
+
+
 def suggestion_user_name_get(
     con: sqlite3.Connection,
     discord_user_id: str,
@@ -603,6 +630,7 @@ def suggestion_create(
     channel_id: int,
     requester_name: str | None,
     requester_discord_id: str | None,
+    kind: str = Suggestion.default_kind,
     links: typing.Iterable[tuple[str, str]] = (),
 ) -> str:
     title = title.strip()
@@ -612,6 +640,17 @@ def suggestion_create(
     if channel_id not in {1, 2, 3, 4, 6}:
         msg = "A valid Rainwave channel is required."
         raise ValueError(msg)
+    if kind not in Suggestion.kinds:
+        msg = "A valid suggestion type is required."
+        raise ValueError(msg)
+    description = description.strip()
+    if not description:
+        msg = "Suggestion details are required."
+        raise ValueError(msg)
+    normalized_links = tuple((url.strip(), label.strip()) for url, label in links)
+    if any(not url or not label for url, label in normalized_links):
+        msg = "Every added link requires both a URL and a label."
+        raise ValueError(msg)
 
     suggestion_id = id_new()
     try:
@@ -620,6 +659,7 @@ def suggestion_create(
             insert into suggestions (
                 suggestion_id,
                 title,
+                kind,
                 description,
                 requester_name,
                 requester_discord_id,
@@ -629,6 +669,7 @@ def suggestion_create(
             ) values (
                 :suggestion_id,
                 :title,
+                :kind,
                 :description,
                 :requester_name,
                 :requester_discord_id,
@@ -640,7 +681,8 @@ def suggestion_create(
             {
                 "suggestion_id": suggestion_id,
                 "title": title,
-                "description": description.strip(),
+                "kind": kind,
+                "description": description,
                 "requester_name": requester_name,
                 "requester_discord_id": requester_discord_id,
             },
@@ -652,10 +694,7 @@ def suggestion_create(
             """,
             (suggestion_id, channel_id),
         )
-        for sort_order, (url, label) in enumerate(links):
-            url = url.strip()
-            if not url:
-                continue
+        for sort_order, (url, label) in enumerate(normalized_links):
             con.execute(
                 """
                 insert into suggestion_links (
@@ -668,7 +707,7 @@ def suggestion_create(
                     suggestion_id,
                     _link_type_get(url),
                     url,
-                    label.strip() or None,
+                    label,
                     sort_order,
                 ),
             )
@@ -844,6 +883,14 @@ def suggestion_update(
                 title = :title,
                 kind = :kind,
                 status = :status,
+                resolved_at = case
+                    when :status in ('uploaded', 'declined')
+                        and status != :status
+                    then strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    when :status not in ('uploaded', 'declined')
+                    then null
+                    else resolved_at
+                end,
                 description = :description,
                 requester_name = :requester_name,
                 requester_discord_id = :requester_discord_id,
@@ -1170,6 +1217,10 @@ def _suggestion_upsert(
     description = str(card.get("desc") or "")
     updated_at = str(card.get("dateLastActivity") or "")
     created_at = _created_at_get(trello_card_id, updated_at)
+    status = list_info.status
+    resolved_at = (
+        updated_at or created_at if status in {"uploaded", "declined"} else None
+    )
     con.execute(
         """
         insert into suggestions (
@@ -1177,6 +1228,7 @@ def _suggestion_upsert(
             title,
             kind,
             status,
+            resolved_at,
             description,
             requester_name,
             requested_at,
@@ -1191,6 +1243,7 @@ def _suggestion_upsert(
             :title,
             :kind,
             :status,
+            :resolved_at,
             :description,
             :requester_name,
             :requested_at,
@@ -1204,6 +1257,17 @@ def _suggestion_upsert(
         on conflict (trello_card_id) do update set
             title = excluded.title,
             kind = excluded.kind,
+            resolved_at = case
+                when excluded.status in ('uploaded', 'declined')
+                    and (
+                        suggestions.status != excluded.status
+                        or suggestions.resolved_at is null
+                    )
+                then excluded.resolved_at
+                when excluded.status not in ('uploaded', 'declined')
+                then null
+                else suggestions.resolved_at
+            end,
             status = excluded.status,
             description = excluded.description,
             requester_name = coalesce(
@@ -1219,7 +1283,8 @@ def _suggestion_upsert(
             "suggestion_id": suggestion_id,
             "title": str(card.get("name") or "Untitled suggestion"),
             "kind": kind,
-            "status": list_info.status,
+            "status": status,
+            "resolved_at": resolved_at,
             "description": description,
             "requester_name": _requester_name_get(description),
             "requested_at": _requested_at_get(description),

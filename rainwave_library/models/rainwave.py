@@ -620,6 +620,27 @@ def get_album(db: fort.PostgresDatabase, album_id: int) -> Album:
     return Album(cast(AlbumDict, cast(object, row)))
 
 
+def album_name_exists(
+    db: fort.PostgresDatabase,
+    album_name: str,
+    channel_id: int,
+) -> bool:
+    album_name = album_name.strip()
+    if not album_name:
+        return False
+    sql = """
+        select exists (
+            select 1
+            from r4_albums a
+            join r4_songs s using (album_id)
+            where lower(btrim(a.album_name)) = lower(%(album_name)s)
+                and s.song_verified is true
+                and s.song_origin_sid = %(channel_id)s
+        )
+    """
+    return bool(db.q_val(sql, {"album_name": album_name, "channel_id": channel_id}))
+
+
 def get_album_songs(db: fort.PostgresDatabase, album_id: int) -> list[Song]:
     sql = """
         with r as (

@@ -664,7 +664,18 @@ def suggestion_wizard() -> str:
     if kind not in rainwave_library.models.suggestions.Suggestion.kinds:
         kind = None
     title = flask.request.form.get("title", "")
-    if step in {"2", "3"}:
+    description = flask.request.form.get("description", "")
+    link_pairs = tuple(
+        (url.strip(), label.strip())
+        for url, label in itertools.zip_longest(
+            flask.request.form.getlist("link-url"),
+            flask.request.form.getlist("link-label"),
+            fillvalue="",
+        )
+    )
+    links = tuple(pair for pair in link_pairs if pair[0] or pair[1])
+    links_complete = all(url and label for url, label in link_pairs)
+    if step in {"2", "3", "4", "5"}:
         if channel_id is None or kind is None:
             return rainwave_library.components.suggestion_wizard_body(
                 1,
@@ -672,11 +683,14 @@ def suggestion_wizard() -> str:
                 kind=kind,
                 result=("alert-danger", "Choose a channel and a suggestion type."),
                 title=title,
+                description=description,
+                links=links,
                 **_suggestion_notice(),
             )
         storage_cnx = rainwave_library.models.storage.connection_get(
             app.config["STORAGE_CNX"]
         )
+        title_matches: tuple[str, ...] = ()
         try:
             open_count = (
                 rainwave_library.models.suggestions.suggestion_open_count_for_channel(
@@ -685,11 +699,95 @@ def suggestion_wizard() -> str:
                     channel_id,
                 )
             )
+            if step in {"4", "5"} and kind == "new-album" and title.strip():
+                title_matches = (
+                    rainwave_library.models.suggestions.suggestion_title_match_statuses(
+                        storage_cnx,
+                        title,
+                    )
+                )
         finally:
             storage_cnx.close()
-        if step == "3" and open_count <= 5:
+        if open_count > 5:
             return rainwave_library.components.suggestion_wizard_body(
-                3, channel_id=channel_id, kind=kind, title=title
+                2,
+                channel_id=channel_id,
+                kind=kind,
+                open_count=open_count,
+                title=title,
+                description=description,
+                links=links,
+            )
+        if step in {"4", "5"} and not title.strip():
+            return rainwave_library.components.suggestion_wizard_body(
+                3,
+                channel_id=channel_id,
+                kind=kind,
+                title=title,
+                description=description,
+                links=links,
+                result=("alert-danger", "Enter a suggestion title."),
+            )
+        if (
+            step in {"4", "5"}
+            and kind == "new-album"
+            and rainwave_library.models.rainwave.album_name_exists(
+                app.config["RAINWAVE_DATABASE"], title, channel_id
+            )
+        ):
+            title_matches = (*title_matches, "album")
+        if step == "5":
+            if not description.strip():
+                return rainwave_library.components.suggestion_wizard_body(
+                    4,
+                    channel_id=channel_id,
+                    kind=kind,
+                    title=title,
+                    description=description,
+                    links=links,
+                    title_matches=title_matches,
+                    result=("alert-danger", "Enter suggestion details."),
+                )
+            if not links_complete:
+                return rainwave_library.components.suggestion_wizard_body(
+                    4,
+                    channel_id=channel_id,
+                    kind=kind,
+                    title=title,
+                    description=description,
+                    links=links,
+                    title_matches=title_matches,
+                    result=(
+                        "alert-danger",
+                        "Every added link requires both a URL and a label.",
+                    ),
+                )
+            return rainwave_library.components.suggestion_wizard_body(
+                5,
+                channel_id=channel_id,
+                kind=kind,
+                title=title,
+                description=description,
+                links=links,
+            )
+        if step == "4":
+            return rainwave_library.components.suggestion_wizard_body(
+                4,
+                channel_id=channel_id,
+                kind=kind,
+                title=title,
+                description=description,
+                links=links,
+                title_matches=title_matches,
+            )
+        if step == "3":
+            return rainwave_library.components.suggestion_wizard_body(
+                3,
+                channel_id=channel_id,
+                kind=kind,
+                title=title,
+                description=description,
+                links=links,
             )
         return rainwave_library.components.suggestion_wizard_body(
             2,
@@ -697,9 +795,17 @@ def suggestion_wizard() -> str:
             kind=kind,
             open_count=open_count,
             title=title,
+            description=description,
+            links=links,
         )
     return rainwave_library.components.suggestion_wizard_body(
-        1, channel_id=channel_id, kind=kind, title=title, **_suggestion_notice()
+        1,
+        channel_id=channel_id,
+        kind=kind,
+        title=title,
+        description=description,
+        links=links,
+        **_suggestion_notice(),
     )
 
 
@@ -708,6 +814,9 @@ def suggestion_wizard() -> str:
 def suggestion_create() -> werkzeug.Response | str:
     title = flask.request.form.get("title", "")
     description = flask.request.form.get("description", "")
+    kind = flask.request.form.get(
+        "kind", rainwave_library.models.suggestions.Suggestion.default_kind
+    )
     channel = flask.request.form.get("channel", "")
     channel_id = int(channel) if channel.isdigit() else 0
     link_pairs = [
@@ -719,7 +828,6 @@ def suggestion_create() -> werkzeug.Response | str:
         )
     ]
     entered_links = tuple(pair for pair in link_pairs if pair[0] or pair[1])
-    links = [pair for pair in link_pairs if pair[0]]
     storage_cnx = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
@@ -730,11 +838,12 @@ def suggestion_create() -> werkzeug.Response | str:
                 title=title,
                 description=description,
                 channel_id=channel_id,
+                kind=kind,
                 requester_name=flask.g.discord_display_name,
                 requester_discord_id=(
                     str(flask.g.discord_id) if flask.g.discord_id else None
                 ),
-                links=links,
+                links=entered_links,
             )
         except ValueError as error:
             return rainwave_library.components.suggestion_create_form(
@@ -760,7 +869,9 @@ def suggestion_create() -> werkzeug.Response | str:
 def suggestion_link_row() -> str:
     if "close" in flask.request.args:
         return ""
-    return rainwave_library.components.suggestion_link_fields()
+    return rainwave_library.components.suggestion_link_fields(
+        required=flask.request.args.get("required") == "1"
+    )
 
 
 @app.route("/suggestions/rows", methods=["POST"])
