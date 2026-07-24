@@ -2967,6 +2967,8 @@ def _suggestion_schedule_release_form(
     release_date: str = "",
     channel_folder: str | None = None,
     folder_name: str = "",
+    include_genre: bool = False,
+    genre: str = "",
     error: str | None = None,
 ) -> htpy.Element:
     url = flask.url_for(
@@ -3049,6 +3051,38 @@ def _suggestion_schedule_release_form(
                     ],
                 ],
                 htpy.div(".col-12")[
+                    htpy.div(".form-check")[
+                        htpy.input(
+                            "#suggestion-release-include-genre.form-check-input",
+                            checked=include_genre,
+                            name="include-genre",
+                            type="checkbox",
+                            value="1",
+                        ),
+                        htpy.label(
+                            ".form-check-label",
+                            for_="suggestion-release-include-genre",
+                        )["Include a genre folder"],
+                    ],
+                    htpy.div(".mt-2")[
+                        htpy.label(
+                            ".form-label",
+                            for_="suggestion-release-genre",
+                        )["Genre"],
+                        htpy.input(
+                            "#suggestion-release-genre.form-control",
+                            name="genre",
+                            placeholder="Ambient",
+                            type="text",
+                            value=genre,
+                        ),
+                        htpy.div(".form-text")[
+                            "When selected, enter the genre without the leading "
+                            "tilde. For example, Ambient creates ~Ambient."
+                        ],
+                    ],
+                ],
+                htpy.div(".col-12")[
                     htpy.label(
                         ".form-label",
                         for_="suggestion-release-folder-name",
@@ -3083,6 +3117,8 @@ def suggestion_schedule_release_form(
     release_date: str = "",
     channel_folder: str | None = None,
     folder_name: str = "",
+    include_genre: bool = False,
+    genre: str = "",
     error: str | None = None,
 ) -> str:
     return str(
@@ -3091,6 +3127,8 @@ def suggestion_schedule_release_form(
             release_date=release_date,
             channel_folder=channel_folder,
             folder_name=folder_name,
+            include_genre=include_genre,
+            genre=genre,
             error=error,
         )
     )

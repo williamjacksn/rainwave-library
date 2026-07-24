@@ -167,11 +167,7 @@ def upcoming_music_directory_delete(
     return pathlib.PurePosixPath(*parts[:-1]).as_posix() if len(parts) > 1 else ""
 
 
-def _suggestion_release_folder_name_get(
-    suggestion_title: str,
-    folder_name: str,
-) -> str:
-    name = folder_name.strip() or suggestion_title.strip()
+def _suggestion_release_path_name_get(name: str, label: str) -> str:
     invalid_characters = '<>:"/\\|?*'
     reserved_names = {
         "CON",
@@ -189,12 +185,30 @@ def _suggestion_release_folder_name_get(
         or any(ord(character) < 32 for character in name)
         or name.split(".", 1)[0].upper() in reserved_names
     ):
-        msg = "Choose a valid final folder name."
+        msg = f"Choose a valid {label}."
         raise ValueError(msg)
     if len(name.encode()) > 255:
-        msg = "The final folder name is too long."
+        msg = f"The {label} is too long."
         raise ValueError(msg)
     return name
+
+
+def _suggestion_release_folder_name_get(
+    suggestion_title: str,
+    folder_name: str,
+) -> str:
+    return _suggestion_release_path_name_get(
+        folder_name.strip() or suggestion_title.strip(),
+        "final folder name",
+    )
+
+
+def _suggestion_release_genre_folder_get(genre: str) -> str:
+    genre_name = genre.strip().lstrip("~").strip()
+    if not genre_name:
+        msg = "Enter a genre when including a genre folder."
+        raise ValueError(msg)
+    return _suggestion_release_path_name_get(f"~{genre_name}", "genre")
 
 
 def suggestion_release_schedule(
@@ -204,6 +218,9 @@ def suggestion_release_schedule(
     release_date: str,
     channel_folder: str,
     folder_name: str = "",
+    *,
+    include_genre: bool = False,
+    genre: str = "",
 ) -> str:
     try:
         parsed_release_date = datetime.date.fromisoformat(release_date)
@@ -220,6 +237,9 @@ def suggestion_release_schedule(
         suggestion_title,
         folder_name,
     )
+    genre_folder = (
+        _suggestion_release_genre_folder_get(genre) if include_genre else None
+    )
 
     source = suggestion_staging_folder_get(library_root, suggestion_id)
     if not suggestion_staging_files_get(library_root, suggestion_id):
@@ -227,12 +247,12 @@ def suggestion_release_schedule(
         raise ValueError(msg)
 
     upcoming_root = _upcoming_music_root_get(library_root)
-    destination = (
-        upcoming_root
-        / parsed_release_date.isoformat()
-        / channel_folder
-        / final_folder_name
+    destination_parent = (
+        upcoming_root / parsed_release_date.isoformat() / channel_folder
     )
+    if genre_folder is not None:
+        destination_parent /= genre_folder
+    destination = destination_parent / final_folder_name
     if not destination.resolve().is_relative_to(upcoming_root):
         msg = "Invalid upcoming music destination."
         raise ValueError(msg)
@@ -241,7 +261,18 @@ def suggestion_release_schedule(
         raise ValueError(msg)
 
     created_directories = []
-    for directory in (upcoming_root, destination.parent.parent, destination.parent):
+    destination_parts = (
+        parsed_release_date.isoformat(),
+        channel_folder,
+        *((genre_folder,) if genre_folder is not None else ()),
+    )
+    for directory in (
+        upcoming_root,
+        *(
+            upcoming_root.joinpath(*destination_parts[:index])
+            for index in range(1, len(destination_parts) + 1)
+        ),
+    ):
         if directory.exists():
             if not directory.is_dir():
                 msg = "The upcoming music destination is not a folder."

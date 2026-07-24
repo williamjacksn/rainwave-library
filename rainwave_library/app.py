@@ -1180,6 +1180,8 @@ def suggestion_schedule_release(suggestion_id: str) -> werkzeug.Response | str:
     release_date = flask.request.form.get("release-date", "")
     channel_folder = flask.request.form.get("channel-folder", "")
     folder_name = flask.request.form.get("folder-name", "")
+    include_genre = flask.request.form.get("include-genre") == "1"
+    genre = flask.request.form.get("genre", "")
     try:
         destination = rainwave_library.models.storage.suggestion_release_schedule(
             app.config["LIBRARY_ROOT"],
@@ -1188,6 +1190,8 @@ def suggestion_schedule_release(suggestion_id: str) -> werkzeug.Response | str:
             release_date,
             channel_folder,
             folder_name,
+            include_genre=include_genre,
+            genre=genre,
         )
     except ValueError as error:
         return rainwave_library.components.suggestion_schedule_release_form(
@@ -1195,6 +1199,8 @@ def suggestion_schedule_release(suggestion_id: str) -> werkzeug.Response | str:
             release_date=release_date,
             channel_folder=channel_folder,
             folder_name=folder_name,
+            include_genre=include_genre,
+            genre=genre,
             error=str(error),
         )
     except OSError:
@@ -1207,6 +1213,8 @@ def suggestion_schedule_release(suggestion_id: str) -> werkzeug.Response | str:
             release_date=release_date,
             channel_folder=channel_folder,
             folder_name=folder_name,
+            include_genre=include_genre,
+            genre=genre,
             error="The suggestion files could not be moved.",
         )
 
