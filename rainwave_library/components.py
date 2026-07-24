@@ -5163,6 +5163,32 @@ def _upcoming_music_breadcrumbs(relative_path: str) -> htpy.Element:
     ]
 
 
+def _upcoming_music_empty_folder(directory: UpcomingMusicDirectory) -> htpy.Element:
+    folder_name = pathlib.PurePosixPath(directory.relative_path).name
+    delete_url = flask.url_for("upcoming_music_folder_delete")
+    return htpy.div[
+        htpy.p(".text-secondary")["This folder is empty."],
+        directory.relative_path
+        and htpy.form(
+            action=delete_url,
+            hx_confirm=f'Delete the empty folder "{folder_name}"?',
+            hx_disabled_elt="button",
+            hx_post=delete_url,
+            hx_swap="none",
+            method="post",
+        )[
+            htpy.input(
+                name="path",
+                type="hidden",
+                value=directory.relative_path,
+            ),
+            htpy.button(".btn.btn-outline-danger", type="submit")[
+                htpy.i(".bi-trash"), " Delete empty folder"
+            ],
+        ],
+    ]
+
+
 def upcoming_music(directory: UpcomingMusicDirectory) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
@@ -5186,7 +5212,7 @@ def upcoming_music(directory: UpcomingMusicDirectory) -> str:
                     ]
                     if directory.entries
                     else (
-                        htpy.p(".text-secondary")["This folder is empty."]
+                        _upcoming_music_empty_folder(directory)
                         if directory.exists
                         else htpy.div(".alert.alert-warning", role="alert")[
                             "The upcoming music folder does not exist."

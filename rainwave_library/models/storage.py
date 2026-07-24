@@ -121,6 +121,33 @@ def upcoming_music_file_get(
     return path
 
 
+def upcoming_music_directory_delete(
+    library_root: pathlib.Path,
+    relative_path: str,
+) -> str:
+    parts = _upcoming_music_path_parts(relative_path)
+    if not parts:
+        msg = "The upcoming music root folder cannot be deleted."
+        raise ValueError(msg)
+
+    root, directory, _ = _upcoming_music_path_get(library_root, relative_path)
+    candidate = root
+    for part in parts:
+        candidate /= part
+        if candidate.is_symlink():
+            msg = "Linked upcoming music folders cannot be deleted."
+            raise ValueError(msg)
+    if not directory.is_dir():
+        msg = "That upcoming music path is not a folder."
+        raise ValueError(msg)
+    try:
+        candidate.rmdir()
+    except OSError as error:
+        msg = "Only an empty upcoming music folder can be deleted."
+        raise ValueError(msg) from error
+    return pathlib.PurePosixPath(*parts[:-1]).as_posix() if len(parts) > 1 else ""
+
+
 def suggestion_staging_folder_get(
     library_root: pathlib.Path,
     suggestion_id: str,

@@ -188,6 +188,27 @@ def upcoming_music_file() -> flask.Response:
     return response
 
 
+@app.route("/upcoming/folder", methods=["POST"])
+@secure
+def upcoming_music_folder_delete() -> werkzeug.Response:
+    try:
+        parent_path = rainwave_library.models.storage.upcoming_music_directory_delete(
+            app.config["LIBRARY_ROOT"],
+            flask.request.form.get("path", ""),
+        )
+    except ValueError as error:
+        flask.abort(409, str(error))
+    redirect_url = flask.url_for(
+        "upcoming_music",
+        **({"path": parent_path} if parent_path else {}),
+    )
+    if flask.request.headers.get("HX-Request") == "true":
+        response = flask.make_response()
+        response.headers["HX-Redirect"] = redirect_url
+        return response
+    return flask.redirect(redirect_url)
+
+
 @app.route("/albums", methods=["GET"])
 @secure
 def albums() -> str:
