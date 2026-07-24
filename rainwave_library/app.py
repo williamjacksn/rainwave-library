@@ -1161,6 +1161,68 @@ def suggestion_page(suggestion_id: str) -> str:
     )
 
 
+@app.route("/suggestions/<suggestion_id>/schedule-release", methods=["POST"])
+@secure
+def suggestion_schedule_release(suggestion_id: str) -> werkzeug.Response | str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx,
+            suggestion_id,
+        )
+    finally:
+        storage_cnx.close()
+    if suggestion is None:
+        flask.abort(404)
+
+    release_date = flask.request.form.get("release-date", "")
+    channel_folder = flask.request.form.get("channel-folder", "")
+    folder_name = flask.request.form.get("folder-name", "")
+    try:
+        destination = rainwave_library.models.storage.suggestion_release_schedule(
+            app.config["LIBRARY_ROOT"],
+            suggestion_id,
+            suggestion.title,
+            release_date,
+            channel_folder,
+            folder_name,
+        )
+    except ValueError as error:
+        return rainwave_library.components.suggestion_schedule_release_form(
+            suggestion,
+            release_date=release_date,
+            channel_folder=channel_folder,
+            folder_name=folder_name,
+            error=str(error),
+        )
+    except OSError:
+        app.logger.exception(
+            "Could not schedule release for suggestion %s",
+            suggestion_id,
+        )
+        return rainwave_library.components.suggestion_schedule_release_form(
+            suggestion,
+            release_date=release_date,
+            channel_folder=channel_folder,
+            folder_name=folder_name,
+            error="The suggestion files could not be moved.",
+        )
+
+    app.logger.info(
+        "Scheduled suggestion %s for release at %s",
+        suggestion_id,
+        destination,
+    )
+    redirect_url = flask.url_for("upcoming_music", path=destination)
+    if flask.request.headers.get("HX-Request") == "true":
+        response = flask.make_response()
+        response.headers["HX-Redirect"] = redirect_url
+        return response
+    return flask.redirect(redirect_url)
+
+
 @app.route("/suggestions/<suggestion_id>/files", methods=["POST"])
 @secure
 def suggestion_files_upload(suggestion_id: str) -> str:

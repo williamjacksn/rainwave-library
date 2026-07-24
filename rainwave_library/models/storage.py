@@ -1,4 +1,5 @@
 import dataclasses
+import datetime
 import logging
 import os
 import pathlib
@@ -7,6 +8,14 @@ import sqlite3
 import typing
 
 log = logging.getLogger(__name__)
+
+UPCOMING_CHANNEL_FOLDERS = {
+    "game-all": "Game",
+    "ocr-all": "OC ReMix",
+    "covers-all": "Covers",
+    "chiptune-all": "Chiptune",
+    "chill-all": "Chill",
+}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -146,6 +155,100 @@ def upcoming_music_directory_delete(
         msg = "Only an empty upcoming music folder can be deleted."
         raise ValueError(msg) from error
     return pathlib.PurePosixPath(*parts[:-1]).as_posix() if len(parts) > 1 else ""
+
+
+def _suggestion_release_folder_name_get(
+    suggestion_title: str,
+    folder_name: str,
+) -> str:
+    name = folder_name.strip() or suggestion_title.strip()
+    invalid_characters = '<>:"/\\|?*'
+    reserved_names = {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        *(f"COM{number}" for number in range(1, 10)),
+        *(f"LPT{number}" for number in range(1, 10)),
+    }
+    if (
+        not name
+        or name in {".", ".."}
+        or name[-1] in {" ", "."}
+        or any(character in invalid_characters for character in name)
+        or any(ord(character) < 32 for character in name)
+        or name.split(".", 1)[0].upper() in reserved_names
+    ):
+        msg = "Choose a valid final folder name."
+        raise ValueError(msg)
+    if len(name.encode()) > 255:
+        msg = "The final folder name is too long."
+        raise ValueError(msg)
+    return name
+
+
+def suggestion_release_schedule(
+    library_root: pathlib.Path,
+    suggestion_id: str,
+    suggestion_title: str,
+    release_date: str,
+    channel_folder: str,
+    folder_name: str = "",
+) -> str:
+    try:
+        parsed_release_date = datetime.date.fromisoformat(release_date)
+    except ValueError:
+        msg = "Choose a valid release date."
+        raise ValueError(msg) from None
+    if parsed_release_date <= datetime.date.today():
+        msg = "The release date must be in the future."
+        raise ValueError(msg)
+    if channel_folder not in UPCOMING_CHANNEL_FOLDERS:
+        msg = "Choose a valid channel folder."
+        raise ValueError(msg)
+    final_folder_name = _suggestion_release_folder_name_get(
+        suggestion_title,
+        folder_name,
+    )
+
+    source = suggestion_staging_folder_get(library_root, suggestion_id)
+    if not suggestion_staging_files_get(library_root, suggestion_id):
+        msg = "Upload at least one file before scheduling the release."
+        raise ValueError(msg)
+
+    upcoming_root = _upcoming_music_root_get(library_root)
+    destination = (
+        upcoming_root
+        / parsed_release_date.isoformat()
+        / channel_folder
+        / final_folder_name
+    )
+    if not destination.resolve().is_relative_to(upcoming_root):
+        msg = "Invalid upcoming music destination."
+        raise ValueError(msg)
+    if destination.exists():
+        msg = "That upcoming music destination already exists."
+        raise ValueError(msg)
+
+    created_directories = []
+    for directory in (upcoming_root, destination.parent.parent, destination.parent):
+        if directory.exists():
+            if not directory.is_dir():
+                msg = "The upcoming music destination is not a folder."
+                raise ValueError(msg)
+            continue
+        directory.mkdir()
+        created_directories.append(directory)
+    try:
+        source.rename(destination)
+    except OSError:
+        for directory in reversed(created_directories):
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
+        raise
+    return destination.relative_to(upcoming_root).as_posix()
 
 
 def suggestion_staging_folder_get(

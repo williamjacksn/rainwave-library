@@ -1,3 +1,4 @@
+import datetime
 import pathlib
 
 import flask
@@ -15,6 +16,7 @@ from rainwave_library.models.rainwave import (
     length_display,
 )
 from rainwave_library.models.storage import (
+    UPCOMING_CHANNEL_FOLDERS,
     UpcomingMusicDirectory,
     UpcomingMusicEntry,
 )
@@ -2934,6 +2936,190 @@ def suggestion_files_card(
     )
 
 
+def _suggestion_release_default_channel_folder(
+    suggestion: SuggestionDetail,
+) -> str | None:
+    channel_folders = {
+        1: "game-all",
+        2: "ocr-all",
+        3: "covers-all",
+        4: "chiptune-all",
+        6: "chill-all",
+    }
+    channel_ids = (
+        (suggestion.primary_channel_id,)
+        if suggestion.primary_channel_id is not None
+        else ()
+    ) + suggestion.channel_ids
+    return next(
+        (
+            channel_folders[channel_id]
+            for channel_id in channel_ids
+            if channel_id in channel_folders
+        ),
+        None,
+    )
+
+
+def _suggestion_schedule_release_form(
+    suggestion: SuggestionDetail,
+    *,
+    release_date: str = "",
+    channel_folder: str | None = None,
+    folder_name: str = "",
+    error: str | None = None,
+) -> htpy.Element:
+    url = flask.url_for(
+        "suggestion_schedule_release",
+        suggestion_id=suggestion.id,
+    )
+    selected_channel_folder = (
+        _suggestion_release_default_channel_folder(suggestion)
+        if channel_folder is None
+        else channel_folder
+    )
+    minimum_release_date = (
+        datetime.date.today() + datetime.timedelta(days=1)
+    ).isoformat()
+    return htpy.form(
+        "#suggestion-schedule-release-form.modal-content",
+        action=url,
+        hx_disabled_elt="button",
+        hx_post=url,
+        hx_swap="outerHTML",
+        hx_target="this",
+        method="post",
+    )[
+        htpy.div(".modal-header")[
+            htpy.h5("#suggestion-schedule-release-title.modal-title")[
+                "Schedule release"
+            ],
+            htpy.button(
+                ".btn-close",
+                aria_label="Close",
+                data_bs_dismiss="modal",
+                type="button",
+            ),
+        ],
+        htpy.div(".modal-body")[
+            error and htpy.div(".alert.alert-danger", role="alert")[error],
+            htpy.p[
+                "All files staged for ",
+                htpy.strong[suggestion.title],
+                " will be moved into the upcoming music folder.",
+            ],
+            htpy.div(".g-3.row")[
+                htpy.div(".col-12.col-md-6")[
+                    htpy.label(
+                        ".form-label",
+                        for_="suggestion-release-date",
+                    )["Release date"],
+                    htpy.input(
+                        "#suggestion-release-date.form-control",
+                        min=minimum_release_date,
+                        name="release-date",
+                        required=True,
+                        type="date",
+                        value=release_date,
+                    ),
+                    htpy.div(".form-text")["The release date must be in the future."],
+                ],
+                htpy.div(".col-12.col-md-6")[
+                    htpy.label(
+                        ".form-label",
+                        for_="suggestion-release-channel-folder",
+                    )["Channel folder"],
+                    htpy.select(
+                        "#suggestion-release-channel-folder.form-select",
+                        name="channel-folder",
+                        required=True,
+                    )[
+                        htpy.option(
+                            disabled=True,
+                            selected=not selected_channel_folder,
+                            value="",
+                        )["Choose a channel folder"],
+                        [
+                            htpy.option(
+                                selected=folder == selected_channel_folder,
+                                value=folder,
+                            )[f"{label} ({folder})"]
+                            for folder, label in UPCOMING_CHANNEL_FOLDERS.items()
+                        ],
+                    ],
+                ],
+                htpy.div(".col-12")[
+                    htpy.label(
+                        ".form-label",
+                        for_="suggestion-release-folder-name",
+                    )["Final folder name (optional)"],
+                    htpy.input(
+                        "#suggestion-release-folder-name.form-control",
+                        name="folder-name",
+                        placeholder=suggestion.title,
+                        type="text",
+                        value=folder_name,
+                    ),
+                    htpy.div(".form-text")["Leave blank to use the suggestion name."],
+                ],
+            ],
+        ],
+        htpy.div(".modal-footer")[
+            htpy.button(
+                ".btn.btn-outline-secondary",
+                data_bs_dismiss="modal",
+                type="button",
+            )["Cancel"],
+            htpy.button(".btn.btn-primary", type="submit")[
+                htpy.i(".bi-calendar-check"), " Schedule release"
+            ],
+        ],
+    ]
+
+
+def suggestion_schedule_release_form(
+    suggestion: SuggestionDetail,
+    *,
+    release_date: str = "",
+    channel_folder: str | None = None,
+    folder_name: str = "",
+    error: str | None = None,
+) -> str:
+    return str(
+        _suggestion_schedule_release_form(
+            suggestion,
+            release_date=release_date,
+            channel_folder=channel_folder,
+            folder_name=folder_name,
+            error=error,
+        )
+    )
+
+
+def _suggestion_schedule_release_modal(
+    suggestion: SuggestionDetail,
+) -> htpy.Element:
+    return htpy.div(
+        "#suggestion-schedule-release-modal.fade.modal",
+        aria_hidden="true",
+        aria_labelledby="suggestion-schedule-release-title",
+        tabindex="-1",
+    )[
+        htpy.div(".modal-dialog.modal-dialog-centered.modal-lg")[
+            _suggestion_schedule_release_form(suggestion)
+        ]
+    ]
+
+
+def _suggestion_schedule_release_button() -> htpy.Element:
+    return htpy.button(
+        ".btn.btn-primary",
+        data_bs_target="#suggestion-schedule-release-modal",
+        data_bs_toggle="modal",
+        type="button",
+    )[htpy.i(".bi-calendar-plus"), " Schedule release"]
+
+
 def suggestion_page(
     suggestion: SuggestionDetail,
     staged_files: tuple[tuple[str, int], ...] = (),
@@ -2980,7 +3166,10 @@ def suggestion_page(
                         htpy.h5(".mb-0")[suggestion.title],
                     ),
                     htpy.div("#suggestion-summary-card-body.card-body.collapse.show")[
-                        summary
+                        htpy.div(".d-flex.justify-content-end.mb-3")[
+                            _suggestion_schedule_release_button()
+                        ],
+                        summary,
                     ],
                 ]
             ]
@@ -3023,6 +3212,7 @@ def suggestion_page(
                 )
             ]
         ],
+        _suggestion_schedule_release_modal(suggestion),
         htpy.div("#audio"),
     ]
     return str(_base(content))
