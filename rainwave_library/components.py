@@ -2399,12 +2399,13 @@ def _suggestion_tag_editor(
         )[
             htpy.input(name="path", type="hidden", value=path),
             htpy.input(name="tag", type="hidden", value=tag_name),
-            htpy.textarea(
+            htpy.input(
                 ".form-control.form-control-sm",
                 aria_label=f"{label} value",
                 name="value",
-                rows=2,
-            )["\n".join(values)],
+                type="text",
+                value=values[0] if values else "",
+            ),
             htpy.div(".d-flex.gap-2.mt-2")[
                 htpy.button(".btn.btn-primary.btn-sm", type="submit")["Save"],
                 htpy.button(
@@ -2419,22 +2420,30 @@ def _suggestion_tag_editor(
     ]
 
 
-def _suggestion_tag_cell(
+def _suggestion_tag_group_cell(
     suggestion_id: str,
     path: str,
     row_index: int,
-    tag_name: str,
-    values: tuple[str, ...],
+    tag_names: tuple[str, str],
+    tag_values: dict[str, tuple[str, ...]],
 ) -> htpy.Element:
     return htpy.td[
-        _suggestion_tag_editor(
-            suggestion_id,
-            path,
-            row_index,
-            "table",
-            tag_name,
-            values,
-        )
+        [
+            (htpy.div(".border-bottom.mb-2.pb-2") if tag_index == 0 else htpy.div)[
+                htpy.div(".fw-semibold.mb-1.small.text-secondary")[
+                    ID3_TAG_LABELS[tag_name]
+                ],
+                _suggestion_tag_editor(
+                    suggestion_id,
+                    path,
+                    row_index,
+                    "table",
+                    tag_name,
+                    tag_values[tag_name],
+                ),
+            ]
+            for tag_index, tag_name in enumerate(tag_names)
+        ]
     ]
 
 
@@ -2520,7 +2529,11 @@ def _suggestion_music_file_table(
     files: tuple[tuple[str, int], ...],
     music_tags: dict[str, Mp3TagValues],
 ) -> htpy.Element:
-    headers = tuple(ID3_TAG_LABELS.values())
+    tag_groups = (
+        ("Album / Title", ("album", "title")),
+        ("Artist / Genre", ("artist", "genre")),
+        ("URL / Comment", ("www", "comment")),
+    )
     rows = []
     cards = []
     for row_index, (path, size) in enumerate(files):
@@ -2545,14 +2558,14 @@ def _suggestion_music_file_table(
                     and htpy.div(".small.text-danger", role="status")[tags.error],
                 ],
                 [
-                    _suggestion_tag_cell(
+                    _suggestion_tag_group_cell(
                         suggestion_id,
                         path,
                         row_index,
-                        tag_name,
-                        tag_values[tag_name],
+                        tag_names,
+                        tag_values,
                     )
-                    for tag_name in ID3_TAG_LABELS
+                    for _, tag_names in tag_groups
                 ],
                 htpy.td(".text-center")[
                     _suggestion_music_delete_button(suggestion_id, path)
@@ -2608,7 +2621,7 @@ def _suggestion_music_file_table(
                 htpy.thead[
                     htpy.tr[
                         htpy.th(scope="col")["File"],
-                        [htpy.th(scope="col")[label] for label in headers],
+                        [htpy.th(scope="col")[label] for label, _ in tag_groups],
                         htpy.th(scope="col")[htpy.span(".visually-hidden")["Actions"]],
                     ]
                 ],
