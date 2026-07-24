@@ -2834,6 +2834,14 @@ def suggestion_page(
         ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
+                htpy.div(".card")[
+                    htpy.div(".card-header")[htpy.h5(".mb-0")["Links"]],
+                    htpy.div(".card-body")[_suggestion_links_block(suggestion)],
+                ]
+            ]
+        ],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
                 _suggestion_files_card(
                     suggestion.id,
                     staged_files,
