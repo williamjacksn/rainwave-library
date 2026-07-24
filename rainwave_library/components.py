@@ -2942,9 +2942,9 @@ def _suggestion_release_default_channel_folder(
     channel_folders = {
         1: "game-all",
         2: "ocr-all",
-        3: "covers-all",
-        4: "chiptune-all",
-        6: "chill-all",
+        3: "cover-all",
+        4: "chip-all",
+        6: "chill-only",
     }
     channel_ids = (
         (suggestion.primary_channel_id,)
