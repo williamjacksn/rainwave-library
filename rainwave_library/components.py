@@ -2742,6 +2742,32 @@ def _suggestion_image_preview_modal() -> htpy.Element:
     ]
 
 
+def _collapsible_card_header(
+    collapse_id: str,
+    label: str,
+    content: htpy.Node,
+) -> htpy.Element:
+    return htpy.div(
+        ".align-items-center.card-header.d-flex.gap-3."
+        "justify-content-between.position-relative"
+    )[
+        htpy.div(".flex-grow-1", style="min-width: 0")[content],
+        htpy.button(
+            ".btn.btn-link.p-0.stretched-link.text-body",
+            aria_controls=collapse_id,
+            aria_expanded="true",
+            aria_label=f"Toggle {label}",
+            data_bs_target=f"#{collapse_id}",
+            data_bs_toggle="collapse",
+            title=f"Toggle {label}",
+            type="button",
+        )[
+            htpy.i(".bi-chevron-down.flex-shrink-0"),
+            htpy.span(".visually-hidden")[f"Toggle {label}"],
+        ],
+    ]
+
+
 def _suggestion_files_card(
     suggestion_id: str,
     staged_files: tuple[tuple[str, int], ...],
@@ -2790,13 +2816,18 @@ def _suggestion_files_card(
         )
     )
     music_tags = music_tags or {}
+    collapse_id = "suggestion-files-card-body"
     return htpy.div(".card", id="suggestion-files-card")[
-        htpy.div(".card-header")[
-            htpy.h5(".mb-1" if folder_path else ".mb-0")["Files"],
-            folder_path
-            and htpy.code(".d-block.small.text-break.user-select-all")[folder_path],
-        ],
-        htpy.div(".card-body")[
+        _collapsible_card_header(
+            collapse_id,
+            "Files",
+            htpy.div[
+                htpy.h5(".mb-1" if folder_path else ".mb-0")["Files"],
+                folder_path
+                and htpy.code(".d-block.small.text-break.user-select-all")[folder_path],
+            ],
+        ),
+        htpy.div(f"#{collapse_id}.card-body.collapse.show")[
             result and htpy.div(f".alert.{result[0]}.py-2", role="alert")[result[1]],
             htpy.form(
                 {
@@ -2937,16 +2968,42 @@ def suggestion_page(
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
                 htpy.div(".card")[
-                    htpy.div(".card-header")[htpy.h5(".mb-0")[suggestion.title]],
-                    htpy.div(".card-body")[summary],
+                    _collapsible_card_header(
+                        "suggestion-summary-card-body",
+                        suggestion.title,
+                        htpy.h5(".mb-0")[suggestion.title],
+                    ),
+                    htpy.div("#suggestion-summary-card-body.card-body.collapse.show")[
+                        summary
+                    ],
                 ]
             ]
         ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
                 htpy.div(".card")[
-                    htpy.div(".card-header")[htpy.h5(".mb-0")["Links"]],
-                    htpy.div(".card-body")[_suggestion_links_block(suggestion)],
+                    _collapsible_card_header(
+                        "suggestion-links-card-body",
+                        "Links",
+                        htpy.h5(".mb-0")["Links"],
+                    ),
+                    htpy.div("#suggestion-links-card-body.card-body.collapse.show")[
+                        _suggestion_links_block(suggestion)
+                    ],
+                ]
+            ]
+        ],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.div(".card")[
+                    _collapsible_card_header(
+                        "suggestion-activity-card-body",
+                        "Activity",
+                        htpy.h5(".mb-0")["Activity"],
+                    ),
+                    htpy.div("#suggestion-activity-card-body.card-body.collapse.show")[
+                        _suggestion_activity_block(suggestion)
+                    ],
                 ]
             ]
         ],
