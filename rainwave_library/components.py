@@ -3,6 +3,7 @@ import htpy
 import markupsafe
 
 import rainwave_library.versions as v
+from rainwave_library.models.mp3 import ID3_TAG_LABELS, Mp3TagValues
 from rainwave_library.models.rainwave import (
     Album,
     Artist,
@@ -2234,10 +2235,410 @@ def suggestion_description_form(
     )
 
 
+def _music_player(metadata: htpy.Node, source_url: str) -> htpy.Element:
+    return htpy.div(
+        ".bottom-0.fade.m-1.position-fixed.show.start-50.toast.translate-middle-x"
+    )[
+        htpy.div(".toast-header")[
+            htpy.div(".me-auto")["Music player"],
+            htpy.button(
+                ".btn-close",
+                data_bs_dismiss="toast",
+                hx_get=flask.url_for("nothing"),
+                hx_target="#audio",
+                type="button",
+            ),
+        ],
+        htpy.div(".toast-body")[
+            htpy.div("#audio-metadata.pb-1")[metadata],
+            htpy.audio(
+                autoplay=True,
+                controls=True,
+                preload="metadata",
+                src=source_url,
+            ),
+        ],
+    ]
+
+
+def _suggestion_file_category(path: str) -> str:
+    normalized_path = path.casefold()
+    if normalized_path.endswith(".mp3"):
+        return "music"
+    if normalized_path.endswith((".jpg", ".png")):
+        return "images"
+    return "other-files"
+
+
+def _suggestion_file_item(
+    suggestion_id: str,
+    path: str,
+    size: int,
+) -> htpy.Element:
+    category = _suggestion_file_category(path)
+    previewable = category == "images"
+    playable = category == "music"
+    return htpy.div(".d-flex.gap-3.justify-content-between.list-group-item.px-0")[
+        htpy.div(".align-items-start.d-flex.flex-grow-1.gap-2")[
+            htpy.code(".text-break")[path],
+            previewable
+            and htpy.button(
+                ".btn.btn-link.p-0",
+                aria_label=f"Preview {path}",
+                data_bs_target="#suggestion-image-preview-modal",
+                data_bs_toggle="modal",
+                data_preview_name=path,
+                data_preview_url=flask.url_for(
+                    "suggestion_file_preview",
+                    suggestion_id=suggestion_id,
+                    path=path,
+                ),
+                title="Preview image",
+                type="button",
+            )[htpy.i(".bi-eye")],
+            playable
+            and htpy.button(
+                ".btn.btn-link.p-0",
+                aria_label=f"Play {path}",
+                hx_get=flask.url_for(
+                    "suggestion_file_play",
+                    suggestion_id=suggestion_id,
+                    path=path,
+                ),
+                hx_target="#audio",
+                title="Play MP3",
+                type="button",
+            )[htpy.i(".bi-play")],
+        ],
+        htpy.div(".align-items-center.d-flex.gap-2")[
+            htpy.span(".small.text-nowrap.text-secondary")[f"{size:,} bytes"],
+            htpy.button(
+                ".btn.btn-link.p-0.text-danger",
+                aria_label=f"Delete {path}",
+                hx_confirm=f'Delete the file "{path}"?',
+                hx_delete=flask.url_for(
+                    "suggestion_file_delete",
+                    suggestion_id=suggestion_id,
+                    path=path,
+                ),
+                hx_disabled_elt="this",
+                hx_swap="outerHTML",
+                hx_target="#suggestion-files-card",
+                title="Delete file",
+                type="button",
+            )[htpy.i(".bi-trash")],
+        ],
+    ]
+
+
+def _suggestion_file_section(
+    suggestion_id: str,
+    section_id: str,
+    label: str,
+    files: tuple[tuple[str, int], ...],
+    music_tags: dict[str, Mp3TagValues],
+) -> htpy.Element:
+    heading_id = f"suggestion-files-{section_id}-heading"
+    return htpy.section(".mt-3", aria_labelledby=heading_id)[
+        htpy.h6(".mb-0.py-2.text-secondary", id=heading_id)[label],
+        _suggestion_music_file_table(suggestion_id, files, music_tags)
+        if section_id == "music"
+        else htpy.div(".list-group.list-group-flush")[
+            [_suggestion_file_item(suggestion_id, path, size) for path, size in files]
+        ],
+    ]
+
+
+def _suggestion_tag_values(values: tuple[str, ...]) -> htpy.Node:
+    if not values:
+        return htpy.span(".text-secondary")["—"]
+    return htpy.div[
+        [
+            htpy.div(".text-break", style="white-space: pre-wrap")[value]
+            for value in values
+        ]
+    ]
+
+
+def _suggestion_tag_cell(
+    suggestion_id: str,
+    path: str,
+    row_index: int,
+    tag_name: str,
+    values: tuple[str, ...],
+) -> htpy.Element:
+    label = ID3_TAG_LABELS[tag_name]
+    editor_id = f"suggestion-tag-{row_index}-{tag_name}"
+    update_url = flask.url_for(
+        "suggestion_file_tags_update",
+        suggestion_id=suggestion_id,
+    )
+    return htpy.td[
+        htpy.div(".align-items-start.d-flex.gap-2.justify-content-between")[
+            _suggestion_tag_values(values),
+            htpy.button(
+                ".btn.btn-link.flex-shrink-0.p-0",
+                aria_controls=editor_id,
+                aria_expanded="false",
+                aria_label=f"Edit {label} for {path}",
+                data_bs_target=f"#{editor_id}",
+                data_bs_toggle="collapse",
+                title=f"Edit {label}",
+                type="button",
+            )[htpy.i(".bi-pencil")],
+        ],
+        htpy.form(
+            f"#{editor_id}.collapse.mt-2",
+            action=update_url,
+            hx_disabled_elt="button",
+            hx_post=update_url,
+            hx_swap="outerHTML",
+            hx_target="#suggestion-files-card",
+            method="post",
+        )[
+            htpy.input(name="path", type="hidden", value=path),
+            htpy.input(name="tag", type="hidden", value=tag_name),
+            htpy.textarea(
+                ".form-control.form-control-sm",
+                aria_label=f"{label} value",
+                name="value",
+                rows=2,
+            )["\n".join(values)],
+            htpy.div(".d-flex.gap-2.mt-2")[
+                htpy.button(".btn.btn-primary.btn-sm", type="submit")["Save"],
+                htpy.button(
+                    ".btn.btn-outline-secondary.btn-sm",
+                    data_bs_target=f"#{editor_id}",
+                    data_bs_toggle="collapse",
+                    type="button",
+                )["Cancel"],
+            ],
+            htpy.div(".form-text")["Leave blank to remove this tag."],
+        ],
+    ]
+
+
+def _suggestion_bulk_tag_form(suggestion_id: str) -> htpy.Element:
+    update_url = flask.url_for(
+        "suggestion_file_tags_update",
+        suggestion_id=suggestion_id,
+    )
+    return htpy.form(
+        ".border.p-3.rounded",
+        action=update_url,
+        hx_confirm="Update this tag for every MP3 file in the suggestion folder?",
+        hx_disabled_elt="button",
+        hx_post=update_url,
+        hx_swap="outerHTML",
+        hx_target="#suggestion-files-card",
+        method="post",
+    )[
+        htpy.input(name="scope", type="hidden", value="all"),
+        htpy.div(".fw-semibold.mb-2")["Edit one tag for all MP3 files"],
+        htpy.div(".align-items-end.g-2.row")[
+            htpy.div(".col-sm-4")[
+                htpy.label(".form-label", for_="suggestion-bulk-tag")["Tag"],
+                htpy.select(
+                    "#suggestion-bulk-tag.form-select",
+                    name="tag",
+                )[
+                    [
+                        htpy.option(value=tag_name)[label]
+                        for tag_name, label in ID3_TAG_LABELS.items()
+                    ]
+                ],
+            ],
+            htpy.div(".col")[
+                htpy.label(".form-label", for_="suggestion-bulk-tag-value")["Value"],
+                htpy.textarea(
+                    "#suggestion-bulk-tag-value.form-control",
+                    name="value",
+                    rows=1,
+                ),
+                htpy.div(".form-text")[
+                    "Enter one value per line. Leave blank to remove the tag."
+                ],
+            ],
+            htpy.div(".col-sm-auto")[
+                htpy.button(".btn.btn-primary", type="submit")["Apply to all"]
+            ],
+        ],
+    ]
+
+
+def _suggestion_music_file_table(
+    suggestion_id: str,
+    files: tuple[tuple[str, int], ...],
+    music_tags: dict[str, Mp3TagValues],
+) -> htpy.Element:
+    headers = tuple(ID3_TAG_LABELS.values())
+    rows = []
+    for row_index, (path, size) in enumerate(files):
+        tags = music_tags.get(path, Mp3TagValues())
+        tag_values = {
+            "album": tags.album,
+            "title": tags.title,
+            "artist": tags.artist,
+            "genre": tags.genre,
+            "www": tags.www,
+            "comment": tags.comment,
+        }
+        rows.append(
+            htpy.tr[
+                htpy.td[
+                    htpy.div(".align-items-start.d-flex.gap-2")[
+                        htpy.code(".text-break")[path],
+                        htpy.button(
+                            ".btn.btn-link.p-0",
+                            aria_label=f"Play {path}",
+                            hx_get=flask.url_for(
+                                "suggestion_file_play",
+                                suggestion_id=suggestion_id,
+                                path=path,
+                            ),
+                            hx_target="#audio",
+                            title="Play MP3",
+                            type="button",
+                        )[htpy.i(".bi-play")],
+                    ],
+                    htpy.div(".small.text-secondary")[f"{size:,} bytes"],
+                    tags.error
+                    and htpy.div(".small.text-danger", role="status")[tags.error],
+                ],
+                [
+                    _suggestion_tag_cell(
+                        suggestion_id,
+                        path,
+                        row_index,
+                        tag_name,
+                        tag_values[tag_name],
+                    )
+                    for tag_name in ID3_TAG_LABELS
+                ],
+                htpy.td(".text-center")[
+                    htpy.button(
+                        ".btn.btn-link.p-0.text-danger",
+                        aria_label=f"Delete {path}",
+                        hx_confirm=f'Delete the file "{path}"?',
+                        hx_delete=flask.url_for(
+                            "suggestion_file_delete",
+                            suggestion_id=suggestion_id,
+                            path=path,
+                        ),
+                        hx_disabled_elt="this",
+                        hx_swap="outerHTML",
+                        hx_target="#suggestion-files-card",
+                        title="Delete file",
+                        type="button",
+                    )[htpy.i(".bi-trash")]
+                ],
+            ]
+        )
+    return htpy.div[
+        _suggestion_bulk_tag_form(suggestion_id),
+        htpy.div(".mt-3.table-responsive")[
+            htpy.table(".align-middle.mb-0.table.table-bordered.table-sm")[
+                htpy.thead[
+                    htpy.tr[
+                        htpy.th(scope="col")["File"],
+                        [htpy.th(scope="col")[label] for label in headers],
+                        htpy.th(scope="col")[htpy.span(".visually-hidden")["Actions"]],
+                    ]
+                ],
+                htpy.tbody[rows],
+            ]
+        ],
+    ]
+
+
+def suggestion_file_player(suggestion_id: str, path: str) -> str:
+    metadata = htpy.strong[
+        htpy.i(".bi-music-note-beamed"),
+        " ",
+        path,
+    ]
+    return str(
+        _music_player(
+            metadata,
+            flask.url_for(
+                "suggestion_file_stream",
+                suggestion_id=suggestion_id,
+                path=path,
+            ),
+        )
+    )
+
+
+def _suggestion_image_preview_modal() -> htpy.Element:
+    preview_script = markupsafe.Markup(
+        """
+        (() => {
+            const modal = document.getElementById(
+                "suggestion-image-preview-modal"
+            );
+            if (!modal) return;
+            const image = document.getElementById(
+                "suggestion-image-preview-image"
+            );
+            const title = document.getElementById(
+                "suggestion-image-preview-title"
+            );
+            modal.addEventListener("show.bs.modal", (event) => {
+                const trigger = event.relatedTarget;
+                if (!(trigger instanceof HTMLElement)) return;
+                const name = trigger.dataset.previewName || "Image preview";
+                image.src = trigger.dataset.previewUrl || "";
+                image.alt = name;
+                title.textContent = name;
+            });
+            modal.addEventListener("hidden.bs.modal", () => {
+                image.removeAttribute("src");
+                image.alt = "";
+            });
+        })();
+        """
+    )
+    return htpy.div[
+        htpy.div(
+            "#suggestion-image-preview-modal.fade.modal",
+            aria_hidden="true",
+            aria_labelledby="suggestion-image-preview-title",
+            tabindex="-1",
+        )[
+            htpy.div(".modal-dialog.modal-dialog-centered.modal-xl")[
+                htpy.div(".bg-dark.modal-content.text-white")[
+                    htpy.div(".border-0.modal-header")[
+                        htpy.h5("#suggestion-image-preview-title.mb-0.modal-title")[
+                            "Image preview"
+                        ],
+                        htpy.button(
+                            ".btn-close.btn-close-white",
+                            aria_label="Close",
+                            data_bs_dismiss="modal",
+                            type="button",
+                        ),
+                    ],
+                    htpy.div(".modal-body.p-2.text-center")[
+                        htpy.img(
+                            "#suggestion-image-preview-image.img-fluid",
+                            alt="",
+                            style="max-height: calc(100vh - 9rem)",
+                        )
+                    ],
+                ]
+            ]
+        ],
+        htpy.script[preview_script],
+    ]
+
+
 def _suggestion_files_card(
     suggestion_id: str,
     staged_files: tuple[tuple[str, int], ...],
     result: tuple[str, str] | None = None,
+    *,
+    folder_path: str | None = None,
+    music_tags: dict[str, Mp3TagValues] | None = None,
 ) -> htpy.Element:
     upload_url = flask.url_for(
         "suggestion_files_upload",
@@ -2262,8 +2663,29 @@ def _suggestion_files_card(
         "label.textContent=percent>=100"
         "?'Processing files\u2026':'Uploading files\u2026';"
     )
+    file_sections = tuple(
+        (
+            section_id,
+            label,
+            tuple(
+                file
+                for file in staged_files
+                if _suggestion_file_category(file[0]) == section_id
+            ),
+        )
+        for section_id, label in (
+            ("music", "Music"),
+            ("images", "Images"),
+            ("other-files", "Other files"),
+        )
+    )
+    music_tags = music_tags or {}
     return htpy.div(".card", id="suggestion-files-card")[
-        htpy.div(".card-header")[htpy.h5(".mb-0")["Files"]],
+        htpy.div(".card-header")[
+            htpy.h5(".mb-1" if folder_path else ".mb-0")["Files"],
+            folder_path
+            and htpy.code(".d-block.small.text-break.user-select-all")[folder_path],
+        ],
         htpy.div(".card-body")[
             result and htpy.div(f".alert.{result[0]}.py-2", role="alert")[result[1]],
             htpy.form(
@@ -2324,22 +2746,22 @@ def _suggestion_files_card(
                     ],
                 ],
             ],
-            htpy.div(".list-group.list-group-flush.mt-3")[
-                [
-                    htpy.div(
-                        ".d-flex.gap-3.justify-content-between.list-group-item.px-0"
-                    )[
-                        htpy.code(".text-break")[path],
-                        htpy.span(".small.text-nowrap.text-secondary")[
-                            f"{size:,} bytes"
-                        ],
-                    ]
-                    for path, size in staged_files
-                ]
+            [
+                _suggestion_file_section(
+                    suggestion_id,
+                    section_id,
+                    label,
+                    files,
+                    music_tags,
+                )
+                for section_id, label, files in file_sections
+                if files
             ]
             if staged_files
             else htpy.p(".mb-0.mt-3.text-secondary")["No staged files."],
         ],
+        any(_suggestion_file_category(path) == "images" for path, _ in staged_files)
+        and _suggestion_image_preview_modal(),
     ]
 
 
@@ -2347,13 +2769,27 @@ def suggestion_files_card(
     suggestion_id: str,
     staged_files: tuple[tuple[str, int], ...],
     result: tuple[str, str] | None = None,
+    *,
+    folder_path: str | None = None,
+    music_tags: dict[str, Mp3TagValues] | None = None,
 ) -> str:
-    return str(_suggestion_files_card(suggestion_id, staged_files, result))
+    return str(
+        _suggestion_files_card(
+            suggestion_id,
+            staged_files,
+            result,
+            folder_path=folder_path,
+            music_tags=music_tags,
+        )
+    )
 
 
 def suggestion_page(
     suggestion: SuggestionDetail,
     staged_files: tuple[tuple[str, int], ...] = (),
+    *,
+    folder_path: str | None = None,
+    music_tags: dict[str, Mp3TagValues] | None = None,
 ) -> str:
     channel_badges: htpy.Node = (
         htpy.fragment[
@@ -2394,8 +2830,16 @@ def suggestion_page(
             ]
         ],
         htpy.div(".pt-3.row")[
-            htpy.div(".col")[_suggestion_files_card(suggestion.id, staged_files)]
+            htpy.div(".col")[
+                _suggestion_files_card(
+                    suggestion.id,
+                    staged_files,
+                    folder_path=folder_path,
+                    music_tags=music_tags,
+                )
+            ]
         ],
+        htpy.div("#audio"),
     ]
     return str(_base(content))
 
@@ -4383,36 +4827,19 @@ def songs_index() -> str:
 
 
 def songs_play(song: Song) -> str:
-    content = htpy.div(
-        ".bottom-0.fade.m-1.position-fixed.show.start-50.toast.translate-middle-x"
-    )[
-        htpy.div(".toast-header")[
-            htpy.div(".me-auto")["Music player"],
-            htpy.button(
-                ".btn-close",
-                data_bs_dismiss="toast",
-                hx_get=flask.url_for("nothing"),
-                hx_target="#audio",
-                type="button",
-            ),
-        ],
-        htpy.div(".toast-body")[
-            htpy.div("#audio-metadata.pb-1")[
-                htpy.strong[htpy.i(".bi-disc"), " ", song.album_name],
-                htpy.br,
-                htpy.strong[htpy.i(".bi-music-not-beamed"), " ", song.title],
-                htpy.br,
-                htpy.strong[htpy.i(".bi-person"), " ", song.artist_tag],
-            ],
-            htpy.audio(
-                autoplay=True,
-                controls=True,
-                preload="metadata",
-                src=flask.url_for("stream_song", song_id=song.id),
-            ),
-        ],
+    metadata = htpy.fragment[
+        htpy.strong[htpy.i(".bi-disc"), " ", song.album_name],
+        htpy.br,
+        htpy.strong[htpy.i(".bi-music-not-beamed"), " ", song.title],
+        htpy.br,
+        htpy.strong[htpy.i(".bi-person"), " ", song.artist_tag],
     ]
-    return str(content)
+    return str(
+        _music_player(
+            metadata,
+            flask.url_for("stream_song", song_id=song.id),
+        )
+    )
 
 
 def songs_remove(song: Song, new_loc: str) -> str:

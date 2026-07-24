@@ -8,10 +8,10 @@ import typing
 log = logging.getLogger(__name__)
 
 
-def suggestion_staging_files_get(
+def suggestion_staging_folder_get(
     library_root: pathlib.Path,
     suggestion_id: str,
-) -> tuple[tuple[str, int], ...]:
+) -> pathlib.Path:
     staging_root = (library_root / "staging").resolve()
     suggestion_root = (staging_root / suggestion_id).resolve()
     if suggestion_root == staging_root or not suggestion_root.is_relative_to(
@@ -19,6 +19,14 @@ def suggestion_staging_files_get(
     ):
         msg = "Invalid suggestion staging directory."
         raise ValueError(msg)
+    return suggestion_root
+
+
+def suggestion_staging_files_get(
+    library_root: pathlib.Path,
+    suggestion_id: str,
+) -> tuple[tuple[str, int], ...]:
+    suggestion_root = suggestion_staging_folder_get(library_root, suggestion_id)
     if not suggestion_root.is_dir():
         return ()
 
@@ -66,13 +74,7 @@ def suggestion_staging_files_upload(
         msg = "The upload contains duplicate filenames."
         raise ValueError(msg)
 
-    staging_root = (library_root / "staging").resolve()
-    suggestion_root = (staging_root / suggestion_id).resolve()
-    if suggestion_root == staging_root or not suggestion_root.is_relative_to(
-        staging_root
-    ):
-        msg = "Invalid suggestion staging directory."
-        raise ValueError(msg)
+    suggestion_root = suggestion_staging_folder_get(library_root, suggestion_id)
     suggestion_root.mkdir(parents=True, exist_ok=True)
 
     destinations = [suggestion_root / filename for filename, _ in normalized_uploads]
@@ -96,6 +98,81 @@ def suggestion_staging_files_upload(
             destination.unlink(missing_ok=True)
         raise
     return tuple(destination.name for destination in destinations)
+
+
+def _suggestion_staging_file_get(
+    library_root: pathlib.Path,
+    suggestion_id: str,
+    relative_path: str,
+) -> tuple[pathlib.Path, pathlib.PurePosixPath]:
+    normalized_path = relative_path.replace("\\", "/").strip()
+    path = pathlib.PurePosixPath(normalized_path)
+    if (
+        not normalized_path
+        or path.is_absolute()
+        or path == pathlib.PurePosixPath(".")
+        or ".." in path.parts
+        or pathlib.PureWindowsPath(normalized_path).drive
+        or any(ord(character) < 32 for character in normalized_path)
+    ):
+        msg = "Invalid suggestion file path."
+        raise ValueError(msg)
+
+    suggestion_root = suggestion_staging_folder_get(library_root, suggestion_id)
+    candidate = suggestion_root.joinpath(*path.parts)
+    try:
+        resolved_candidate = candidate.resolve(strict=True)
+    except FileNotFoundError:
+        msg = "That file no longer exists in the suggestion folder."
+        raise ValueError(msg) from None
+    if (
+        not resolved_candidate.is_relative_to(suggestion_root)
+        or not candidate.is_file()
+    ):
+        msg = "Invalid suggestion file path."
+        raise ValueError(msg)
+    return candidate, path
+
+
+def suggestion_staging_file_get(
+    library_root: pathlib.Path,
+    suggestion_id: str,
+    relative_path: str,
+) -> pathlib.Path:
+    candidate, _ = _suggestion_staging_file_get(
+        library_root,
+        suggestion_id,
+        relative_path,
+    )
+    return candidate
+
+
+def suggestion_staging_file_delete(
+    library_root: pathlib.Path,
+    suggestion_id: str,
+    relative_path: str,
+) -> str:
+    candidate, path = _suggestion_staging_file_get(
+        library_root,
+        suggestion_id,
+        relative_path,
+    )
+
+    try:
+        candidate.unlink()
+    except FileNotFoundError:
+        msg = "That file no longer exists in the suggestion folder."
+        raise ValueError(msg) from None
+
+    suggestion_root = suggestion_staging_folder_get(library_root, suggestion_id)
+    parent = candidate.parent
+    while parent != suggestion_root:
+        try:
+            parent.rmdir()
+        except OSError:
+            break
+        parent = parent.parent
+    return path.as_posix()
 
 
 def connection_init(path: str) -> None:

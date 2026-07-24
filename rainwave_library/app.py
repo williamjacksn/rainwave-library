@@ -1049,6 +1049,41 @@ def suggestions_rows() -> str:
     return rainwave_library.components.suggestions_rows(suggestions_, page)
 
 
+def _suggestion_staged_files_get(
+    suggestion_id: str,
+) -> tuple[
+    tuple[tuple[str, int], ...],
+    pathlib.Path,
+    dict[str, rainwave_library.models.mp3.Mp3TagValues],
+]:
+    library_root = app.config["LIBRARY_ROOT"]
+    staged_files = rainwave_library.models.storage.suggestion_staging_files_get(
+        library_root,
+        suggestion_id,
+    )
+    folder_path = rainwave_library.models.storage.suggestion_staging_folder_get(
+        library_root,
+        suggestion_id,
+    )
+    music_tags = {}
+    for path, _ in staged_files:
+        if not path.casefold().endswith(".mp3"):
+            continue
+        try:
+            file_path = rainwave_library.models.storage.suggestion_staging_file_get(
+                library_root,
+                suggestion_id,
+                path,
+            )
+        except (OSError, ValueError):
+            music_tags[path] = rainwave_library.models.mp3.Mp3TagValues(
+                error="Could not read ID3 tags."
+            )
+            continue
+        music_tags[path] = rainwave_library.models.mp3.id3_tag_values_get(file_path)
+    return staged_files, folder_path, music_tags
+
+
 @app.route("/suggestions/<suggestion_id>", methods=["GET"])
 @secure
 def suggestion_page(suggestion_id: str) -> str:
@@ -1063,11 +1098,13 @@ def suggestion_page(suggestion_id: str) -> str:
         storage_cnx.close()
     if suggestion is None:
         flask.abort(404)
-    staged_files = rainwave_library.models.storage.suggestion_staging_files_get(
-        app.config["LIBRARY_ROOT"],
-        suggestion_id,
+    staged_files, folder_path, music_tags = _suggestion_staged_files_get(suggestion_id)
+    return rainwave_library.components.suggestion_page(
+        suggestion,
+        staged_files,
+        folder_path=str(folder_path),
+        music_tags=music_tags,
     )
-    return rainwave_library.components.suggestion_page(suggestion, staged_files)
 
 
 @app.route("/suggestions/<suggestion_id>/files", methods=["POST"])
@@ -1113,15 +1150,241 @@ def suggestion_files_upload(suggestion_id: str) -> str:
         app.logger.exception("Could not upload files for suggestion %s", suggestion_id)
         result = ("alert-danger", "The files could not be uploaded.")
 
-    staged_files = rainwave_library.models.storage.suggestion_staging_files_get(
-        app.config["LIBRARY_ROOT"],
-        suggestion_id,
-    )
+    staged_files, folder_path, music_tags = _suggestion_staged_files_get(suggestion_id)
     return rainwave_library.components.suggestion_files_card(
         suggestion_id,
         staged_files,
         result,
+        folder_path=str(folder_path),
+        music_tags=music_tags,
     )
+
+
+@app.route("/suggestions/<suggestion_id>/files", methods=["DELETE"])
+@secure
+def suggestion_file_delete(suggestion_id: str) -> str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+    finally:
+        storage_cnx.close()
+    if suggestion is None:
+        flask.abort(404)
+
+    relative_path = flask.request.args.get("path", "")
+    try:
+        deleted_path = rainwave_library.models.storage.suggestion_staging_file_delete(
+            app.config["LIBRARY_ROOT"],
+            suggestion_id,
+            relative_path,
+        )
+        result = ("alert-success", f"Deleted {deleted_path}.")
+        app.logger.info(
+            "Deleted file %s for suggestion %s",
+            deleted_path,
+            suggestion_id,
+        )
+    except ValueError as error:
+        result = ("alert-danger", str(error))
+    except OSError:
+        app.logger.exception(
+            "Could not delete file %s for suggestion %s",
+            relative_path,
+            suggestion_id,
+        )
+        result = ("alert-danger", "The file could not be deleted.")
+
+    staged_files, folder_path, music_tags = _suggestion_staged_files_get(suggestion_id)
+    return rainwave_library.components.suggestion_files_card(
+        suggestion_id,
+        staged_files,
+        result,
+        folder_path=str(folder_path),
+        music_tags=music_tags,
+    )
+
+
+@app.route("/suggestions/<suggestion_id>/files/tags", methods=["POST"])
+@secure
+def suggestion_file_tags_update(suggestion_id: str) -> str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+    finally:
+        storage_cnx.close()
+    if suggestion is None:
+        flask.abort(404)
+
+    tag_name = flask.request.form.get("tag", "")
+    value = flask.request.form.get("value", "")
+    tag_label = rainwave_library.models.mp3.ID3_TAG_LABELS.get(tag_name)
+    if tag_label is None:
+        result = ("alert-danger", "Choose a valid ID3 tag.")
+    elif flask.request.form.get("scope") == "all":
+        staged_files = rainwave_library.models.storage.suggestion_staging_files_get(
+            app.config["LIBRARY_ROOT"],
+            suggestion_id,
+        )
+        music_paths = [
+            path for path, _ in staged_files if path.casefold().endswith(".mp3")
+        ]
+        updated_count = 0
+        failed_count = 0
+        for path in music_paths:
+            try:
+                file_path = rainwave_library.models.storage.suggestion_staging_file_get(
+                    app.config["LIBRARY_ROOT"],
+                    suggestion_id,
+                    path,
+                )
+                rainwave_library.models.mp3.id3_tag_values_set(
+                    file_path,
+                    tag_name,
+                    value,
+                )
+                updated_count += 1
+            except (OSError, ValueError):
+                failed_count += 1
+                app.logger.exception(
+                    "Could not update %s for suggestion file %s",
+                    tag_name,
+                    path,
+                )
+        if not music_paths:
+            result = ("alert-danger", "There are no MP3 files to update.")
+        elif failed_count:
+            result = (
+                "alert-warning",
+                f"Updated {tag_label} for {updated_count} MP3 "
+                f"file{'' if updated_count == 1 else 's'}; "
+                f"{failed_count} could not be updated.",
+            )
+        else:
+            result = (
+                "alert-success",
+                f"Updated {tag_label} for {updated_count} MP3 "
+                f"file{'' if updated_count == 1 else 's'}.",
+            )
+    else:
+        relative_path = flask.request.form.get("path", "")
+        if not relative_path.casefold().endswith(".mp3"):
+            result = ("alert-danger", "Choose an MP3 file.")
+        else:
+            try:
+                file_path = rainwave_library.models.storage.suggestion_staging_file_get(
+                    app.config["LIBRARY_ROOT"],
+                    suggestion_id,
+                    relative_path,
+                )
+                rainwave_library.models.mp3.id3_tag_values_set(
+                    file_path,
+                    tag_name,
+                    value,
+                )
+                result = (
+                    "alert-success",
+                    f"Updated {tag_label} for {relative_path}.",
+                )
+            except (OSError, ValueError) as error:
+                result = ("alert-danger", str(error))
+
+    staged_files, folder_path, music_tags = _suggestion_staged_files_get(suggestion_id)
+    return rainwave_library.components.suggestion_files_card(
+        suggestion_id,
+        staged_files,
+        result,
+        folder_path=str(folder_path),
+        music_tags=music_tags,
+    )
+
+
+def _suggestion_staged_file_get(
+    suggestion_id: str,
+    allowed_extensions: set[str],
+) -> tuple[str, pathlib.Path]:
+    relative_path = flask.request.args.get("path", "")
+    extension = pathlib.PurePosixPath(
+        relative_path.replace("\\", "/")
+    ).suffix.casefold()
+    if extension not in allowed_extensions:
+        flask.abort(404)
+
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+    finally:
+        storage_cnx.close()
+    if suggestion is None:
+        flask.abort(404)
+
+    try:
+        file_path = rainwave_library.models.storage.suggestion_staging_file_get(
+            app.config["LIBRARY_ROOT"],
+            suggestion_id,
+            relative_path,
+        )
+    except (OSError, ValueError):
+        flask.abort(404)
+    return relative_path, file_path
+
+
+@app.route("/suggestions/<suggestion_id>/files/preview", methods=["GET"])
+@secure
+def suggestion_file_preview(suggestion_id: str) -> flask.Response:
+    image_types = {
+        ".jpg": "image/jpeg",
+        ".png": "image/png",
+    }
+    relative_path, image_path = _suggestion_staged_file_get(
+        suggestion_id,
+        set(image_types),
+    )
+    extension = pathlib.PurePosixPath(
+        relative_path.replace("\\", "/")
+    ).suffix.casefold()
+
+    response = flask.send_file(
+        image_path,
+        conditional=True,
+        mimetype=image_types[extension],
+    )
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+@app.route("/suggestions/<suggestion_id>/files/play", methods=["GET"])
+@secure
+def suggestion_file_play(suggestion_id: str) -> str:
+    relative_path, _ = _suggestion_staged_file_get(suggestion_id, {".mp3"})
+    return rainwave_library.components.suggestion_file_player(
+        suggestion_id,
+        relative_path,
+    )
+
+
+@app.route("/suggestions/<suggestion_id>/files/stream", methods=["GET"])
+@secure
+def suggestion_file_stream(suggestion_id: str) -> flask.Response:
+    _, audio_path = _suggestion_staged_file_get(suggestion_id, {".mp3"})
+    response = flask.send_file(
+        audio_path,
+        conditional=True,
+        mimetype="audio/mpeg",
+    )
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @app.route("/suggestions/<suggestion_id>/details", methods=["GET"])

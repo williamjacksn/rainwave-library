@@ -1,3 +1,4 @@
+import dataclasses
 import logging
 import pathlib
 import typing
@@ -5,6 +6,119 @@ import typing
 import mutagen.id3
 
 log = logging.getLogger(__name__)
+
+ID3_TAG_LABELS = {
+    "album": "Album",
+    "title": "Title",
+    "artist": "Artist",
+    "genre": "Genre",
+    "www": "WWW",
+    "comment": "Comment",
+}
+
+
+@dataclasses.dataclass(frozen=True)
+class Mp3TagValues:
+    album: tuple[str, ...] = ()
+    title: tuple[str, ...] = ()
+    artist: tuple[str, ...] = ()
+    genre: tuple[str, ...] = ()
+    www: tuple[str, ...] = ()
+    comment: tuple[str, ...] = ()
+    error: str | None = None
+
+
+def _text_frame_values(tags: mutagen.id3.ID3, frame_id: str) -> tuple[str, ...]:
+    values = []
+    for frame in tags.getall(frame_id):
+        for value in getattr(frame, "text", ()):
+            normalized_value = str(value).strip()
+            if normalized_value:
+                values.append(normalized_value)
+    return tuple(values)
+
+
+def id3_tag_values_get(filename: str | pathlib.Path) -> Mp3TagValues:
+    try:
+        tags = mutagen.id3.ID3(filename)
+    except mutagen.id3.ID3NoHeaderError:
+        return Mp3TagValues(error="No ID3 tags found.")
+    except (mutagen.MutagenError, OSError) as error:
+        log.warning("Unable to read ID3 tags from %s: %s", filename, error)
+        return Mp3TagValues(error="Could not read ID3 tags.")
+
+    www = tuple(
+        url
+        for frame in tags.getall("WXXX")
+        if (url := str(getattr(frame, "url", "")).strip())
+    )
+    return Mp3TagValues(
+        album=_text_frame_values(tags, "TALB"),
+        title=_text_frame_values(tags, "TIT2"),
+        artist=_text_frame_values(tags, "TPE1"),
+        genre=_text_frame_values(tags, "TCON"),
+        www=www,
+        comment=_text_frame_values(tags, "COMM"),
+    )
+
+
+def id3_tag_values_set(
+    filename: str | pathlib.Path,
+    tag_name: str,
+    value: str,
+) -> None:
+    if tag_name not in ID3_TAG_LABELS:
+        msg = "Choose a valid ID3 tag."
+        raise ValueError(msg)
+    values = tuple(line.strip() for line in value.splitlines() if line.strip())
+    try:
+        try:
+            tags = mutagen.id3.ID3(filename)
+        except mutagen.id3.ID3NoHeaderError:
+            tags = mutagen.id3.ID3()
+
+        if tag_name == "album":
+            tags.delall("TALB")
+            if values:
+                tags.add(mutagen.id3.TALB(encoding=3, text=list(values)))
+        elif tag_name == "title":
+            tags.delall("TIT2")
+            if values:
+                tags.add(mutagen.id3.TIT2(encoding=3, text=list(values)))
+        elif tag_name == "artist":
+            tags.delall("TPE1")
+            if values:
+                tags.add(mutagen.id3.TPE1(encoding=3, text=list(values)))
+        elif tag_name == "genre":
+            tags.delall("TCON")
+            if values:
+                tags.add(mutagen.id3.TCON(encoding=3, text=list(values)))
+        elif tag_name == "www":
+            tags.delall("WXXX")
+            for index, url in enumerate(values):
+                tags.add(
+                    mutagen.id3.WXXX(
+                        encoding=3,
+                        desc="" if index == 0 else f"Rainwave {index + 1}",
+                        url=url,
+                    )
+                )
+        elif tag_name == "comment":
+            tags.delall("COMM")
+            if values:
+                tags.add(
+                    mutagen.id3.COMM(
+                        encoding=3,
+                        lang="eng",
+                        desc="",
+                        text=list(values),
+                    )
+                )
+        tags.save(filename)
+    except (mutagen.MutagenError, OSError) as error:
+        log.error("Unable to update %s in %s: %s", tag_name, filename, error)
+        msg = "Could not update the ID3 tag."
+        raise ValueError(msg) from error
 
 
 # Special characters sorted by results of ord()
