@@ -12,7 +12,7 @@ ID3_TAG_LABELS = {
     "title": "Title",
     "artist": "Artist",
     "genre": "Genre",
-    "www": "WWW",
+    "www": "URL",
     "comment": "Comment",
 }
 

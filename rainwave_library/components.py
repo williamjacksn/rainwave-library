@@ -2360,20 +2360,21 @@ def _suggestion_tag_values(values: tuple[str, ...]) -> htpy.Node:
     ]
 
 
-def _suggestion_tag_cell(
+def _suggestion_tag_editor(
     suggestion_id: str,
     path: str,
     row_index: int,
+    layout: str,
     tag_name: str,
     values: tuple[str, ...],
 ) -> htpy.Element:
     label = ID3_TAG_LABELS[tag_name]
-    editor_id = f"suggestion-tag-{row_index}-{tag_name}"
+    editor_id = f"suggestion-tag-{layout}-{row_index}-{tag_name}"
     update_url = flask.url_for(
         "suggestion_file_tags_update",
         suggestion_id=suggestion_id,
     )
-    return htpy.td[
+    return htpy.div[
         htpy.div(".align-items-start.d-flex.gap-2.justify-content-between")[
             _suggestion_tag_values(values),
             htpy.button(
@@ -2416,6 +2417,58 @@ def _suggestion_tag_cell(
             htpy.div(".form-text")["Leave blank to remove this tag."],
         ],
     ]
+
+
+def _suggestion_tag_cell(
+    suggestion_id: str,
+    path: str,
+    row_index: int,
+    tag_name: str,
+    values: tuple[str, ...],
+) -> htpy.Element:
+    return htpy.td[
+        _suggestion_tag_editor(
+            suggestion_id,
+            path,
+            row_index,
+            "table",
+            tag_name,
+            values,
+        )
+    ]
+
+
+def _suggestion_music_play_button(suggestion_id: str, path: str) -> htpy.Element:
+    return htpy.button(
+        ".btn.btn-link.p-0",
+        aria_label=f"Play {path}",
+        hx_get=flask.url_for(
+            "suggestion_file_play",
+            suggestion_id=suggestion_id,
+            path=path,
+        ),
+        hx_target="#audio",
+        title="Play MP3",
+        type="button",
+    )[htpy.i(".bi-play")]
+
+
+def _suggestion_music_delete_button(suggestion_id: str, path: str) -> htpy.Element:
+    return htpy.button(
+        ".btn.btn-link.p-0.text-danger",
+        aria_label=f"Delete {path}",
+        hx_confirm=f'Delete the file "{path}"?',
+        hx_delete=flask.url_for(
+            "suggestion_file_delete",
+            suggestion_id=suggestion_id,
+            path=path,
+        ),
+        hx_disabled_elt="this",
+        hx_swap="outerHTML",
+        hx_target="#suggestion-files-card",
+        title="Delete file",
+        type="button",
+    )[htpy.i(".bi-trash")]
 
 
 def _suggestion_bulk_tag_form(suggestion_id: str) -> htpy.Element:
@@ -2469,6 +2522,7 @@ def _suggestion_music_file_table(
 ) -> htpy.Element:
     headers = tuple(ID3_TAG_LABELS.values())
     rows = []
+    cards = []
     for row_index, (path, size) in enumerate(files):
         tags = music_tags.get(path, Mp3TagValues())
         tag_values = {
@@ -2484,18 +2538,7 @@ def _suggestion_music_file_table(
                 htpy.td[
                     htpy.div(".align-items-start.d-flex.gap-2")[
                         htpy.code(".text-break")[path],
-                        htpy.button(
-                            ".btn.btn-link.p-0",
-                            aria_label=f"Play {path}",
-                            hx_get=flask.url_for(
-                                "suggestion_file_play",
-                                suggestion_id=suggestion_id,
-                                path=path,
-                            ),
-                            hx_target="#audio",
-                            title="Play MP3",
-                            type="button",
-                        )[htpy.i(".bi-play")],
+                        _suggestion_music_play_button(suggestion_id, path),
                     ],
                     htpy.div(".small.text-secondary")[f"{size:,} bytes"],
                     tags.error
@@ -2512,27 +2555,55 @@ def _suggestion_music_file_table(
                     for tag_name in ID3_TAG_LABELS
                 ],
                 htpy.td(".text-center")[
-                    htpy.button(
-                        ".btn.btn-link.p-0.text-danger",
-                        aria_label=f"Delete {path}",
-                        hx_confirm=f'Delete the file "{path}"?',
-                        hx_delete=flask.url_for(
-                            "suggestion_file_delete",
-                            suggestion_id=suggestion_id,
-                            path=path,
-                        ),
-                        hx_disabled_elt="this",
-                        hx_swap="outerHTML",
-                        hx_target="#suggestion-files-card",
-                        title="Delete file",
-                        type="button",
-                    )[htpy.i(".bi-trash")]
+                    _suggestion_music_delete_button(suggestion_id, path)
+                ],
+            ]
+        )
+        cards.append(
+            htpy.article(".card.mb-3")[
+                htpy.div(".card-header")[
+                    htpy.div(".align-items-start.d-flex.gap-3.justify-content-between")[
+                        htpy.div(".flex-grow-1", style="min-width: 0")[
+                            htpy.div(".align-items-start.d-flex.gap-2")[
+                                htpy.code(".text-break")[path],
+                                _suggestion_music_play_button(suggestion_id, path),
+                            ],
+                            htpy.div(".small.text-secondary")[f"{size:,} bytes"],
+                            tags.error
+                            and htpy.div(".small.text-danger", role="status")[
+                                tags.error
+                            ],
+                        ],
+                        _suggestion_music_delete_button(suggestion_id, path),
+                    ]
+                ],
+                htpy.div(".card-body")[
+                    [
+                        (
+                            htpy.div(".border-bottom.mb-3.pb-3")
+                            if tag_index < len(ID3_TAG_LABELS) - 1
+                            else htpy.div
+                        )[
+                            htpy.div(".fw-semibold.mb-1.small.text-secondary")[label],
+                            _suggestion_tag_editor(
+                                suggestion_id,
+                                path,
+                                row_index,
+                                "mobile",
+                                tag_name,
+                                tag_values[tag_name],
+                            ),
+                        ]
+                        for tag_index, (tag_name, label) in enumerate(
+                            ID3_TAG_LABELS.items()
+                        )
+                    ]
                 ],
             ]
         )
     return htpy.div[
         _suggestion_bulk_tag_form(suggestion_id),
-        htpy.div(".mt-3.table-responsive")[
+        htpy.div(".d-none.d-md-block.mt-3.table-responsive")[
             htpy.table(".align-middle.mb-0.table.table-sm")[
                 htpy.thead[
                     htpy.tr[
@@ -2544,6 +2615,7 @@ def _suggestion_music_file_table(
                 htpy.tbody[rows],
             ]
         ],
+        htpy.div(".d-md-none.mt-3")[cards],
     ]
 
 
