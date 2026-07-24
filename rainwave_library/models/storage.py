@@ -11,10 +11,20 @@ log = logging.getLogger(__name__)
 
 UPCOMING_CHANNEL_FOLDERS = {
     "game-all": "Game",
+    "game-chill-all": "Game, Chill",
+    "game-only": "Game only",
     "ocr-all": "OC ReMix",
-    "covers-all": "Covers",
-    "chiptune-all": "Chiptune",
-    "chill-all": "Chill",
+    "ocr-chill-all": "OC ReMix, Chill",
+    "ocr-chip-all": "OC ReMix, Chiptune",
+    "ocr-game-all": "OC ReMix, Game",
+    "ocr-only": "OC ReMix only",
+    "cover-all": "Covers",
+    "cover-chill-all": "Covers, Chill",
+    "cover-chip-all": "Covers, Chiptune",
+    "cover-only": "Covers only",
+    "chip-all": "Chiptune",
+    "chip-only": "Chiptune only",
+    "chill-only": "Chill",
 }
 
 
