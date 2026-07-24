@@ -62,12 +62,39 @@ def id3_tag_values_get(filename: str | pathlib.Path) -> Mp3TagValues:
     )
 
 
-def id3_tag_values_set(
+def _id3_tag_value_set(tags: mutagen.id3.ID3, tag_name: str, value: str) -> None:
+    if tag_name == "album":
+        tags.delall("TALB")
+        if value:
+            tags.add(mutagen.id3.TALB(encoding=3, text=[value]))
+    elif tag_name == "title":
+        tags.delall("TIT2")
+        if value:
+            tags.add(mutagen.id3.TIT2(encoding=3, text=[value]))
+    elif tag_name == "artist":
+        tags.delall("TPE1")
+        if value:
+            tags.add(mutagen.id3.TPE1(encoding=3, text=[value]))
+    elif tag_name == "genre":
+        tags.delall("TCON")
+        if value:
+            tags.add(mutagen.id3.TCON(encoding=3, text=[value]))
+    elif tag_name == "www":
+        tags.delall("WXXX")
+        if value:
+            tags.add(mutagen.id3.WXXX(encoding=0, url=value))
+    elif tag_name == "comment":
+        tags.delall("COMM")
+        if value:
+            tags.add(mutagen.id3.COMM(encoding=3, text=[value]))
+
+
+def _id3_tag_values_set(
     filename: str | pathlib.Path,
-    tag_name: str,
-    value: str,
+    values: typing.Mapping[str, str],
+    error_message: str,
 ) -> None:
-    if tag_name not in ID3_TAG_LABELS:
+    if any(tag_name not in ID3_TAG_LABELS for tag_name in values):
         msg = "Choose a valid ID3 tag."
         raise ValueError(msg)
     try:
@@ -76,35 +103,27 @@ def id3_tag_values_set(
         except mutagen.id3.ID3NoHeaderError:
             tags = mutagen.id3.ID3()
 
-        if tag_name == "album":
-            tags.delall("TALB")
-            if value:
-                tags.add(mutagen.id3.TALB(encoding=3, text=[value]))
-        elif tag_name == "title":
-            tags.delall("TIT2")
-            if value:
-                tags.add(mutagen.id3.TIT2(encoding=3, text=[value]))
-        elif tag_name == "artist":
-            tags.delall("TPE1")
-            if value:
-                tags.add(mutagen.id3.TPE1(encoding=3, text=[value]))
-        elif tag_name == "genre":
-            tags.delall("TCON")
-            if value:
-                tags.add(mutagen.id3.TCON(encoding=3, text=[value]))
-        elif tag_name == "www":
-            tags.delall("WXXX")
-            if value:
-                tags.add(mutagen.id3.WXXX(encoding=0, url=value))
-        elif tag_name == "comment":
-            tags.delall("COMM")
-            if value:
-                tags.add(mutagen.id3.COMM(encoding=3, text=[value]))
+        for tag_name, value in values.items():
+            _id3_tag_value_set(tags, tag_name, value)
         tags.save(filename)
     except (mutagen.MutagenError, OSError) as error:
-        log.error("Unable to update %s in %s: %s", tag_name, filename, error)
-        msg = "Could not update the ID3 tag."
-        raise ValueError(msg) from error
+        log.error("Unable to update ID3 tags in %s: %s", filename, error)
+        raise ValueError(error_message) from error
+
+
+def id3_tag_values_set_all(
+    filename: str | pathlib.Path,
+    values: typing.Mapping[str, str],
+) -> None:
+    _id3_tag_values_set(filename, values, "Could not update the ID3 tags.")
+
+
+def id3_tag_values_set(
+    filename: str | pathlib.Path,
+    tag_name: str,
+    value: str,
+) -> None:
+    _id3_tag_values_set(filename, {tag_name: value}, "Could not update the ID3 tag.")
 
 
 # Special characters sorted by results of ord()

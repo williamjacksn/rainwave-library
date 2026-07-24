@@ -2360,70 +2360,7 @@ def _suggestion_tag_values(values: tuple[str, ...]) -> htpy.Node:
     ]
 
 
-def _suggestion_tag_editor(
-    suggestion_id: str,
-    path: str,
-    row_index: int,
-    layout: str,
-    tag_name: str,
-    values: tuple[str, ...],
-) -> htpy.Element:
-    label = ID3_TAG_LABELS[tag_name]
-    editor_id = f"suggestion-tag-{layout}-{row_index}-{tag_name}"
-    update_url = flask.url_for(
-        "suggestion_file_tags_update",
-        suggestion_id=suggestion_id,
-    )
-    return htpy.div[
-        htpy.div(".align-items-start.d-flex.gap-2.justify-content-between")[
-            _suggestion_tag_values(values),
-            htpy.button(
-                ".btn.btn-link.flex-shrink-0.p-0",
-                aria_controls=editor_id,
-                aria_expanded="false",
-                aria_label=f"Edit {label} for {path}",
-                data_bs_target=f"#{editor_id}",
-                data_bs_toggle="collapse",
-                title=f"Edit {label}",
-                type="button",
-            )[htpy.i(".bi-pencil")],
-        ],
-        htpy.form(
-            f"#{editor_id}.collapse.mt-2",
-            action=update_url,
-            hx_disabled_elt="button",
-            hx_post=update_url,
-            hx_swap="outerHTML",
-            hx_target="#suggestion-files-card",
-            method="post",
-        )[
-            htpy.input(name="path", type="hidden", value=path),
-            htpy.input(name="tag", type="hidden", value=tag_name),
-            htpy.input(
-                ".form-control.form-control-sm",
-                aria_label=f"{label} value",
-                name="value",
-                type="text",
-                value=values[0] if values else "",
-            ),
-            htpy.div(".d-flex.gap-2.mt-2")[
-                htpy.button(".btn.btn-primary.btn-sm", type="submit")["Save"],
-                htpy.button(
-                    ".btn.btn-outline-secondary.btn-sm",
-                    data_bs_target=f"#{editor_id}",
-                    data_bs_toggle="collapse",
-                    type="button",
-                )["Cancel"],
-            ],
-            htpy.div(".form-text")["Leave blank to remove this tag."],
-        ],
-    ]
-
-
 def _suggestion_tag_group_cell(
-    suggestion_id: str,
-    path: str,
-    row_index: int,
     tag_names: tuple[str, str],
     tag_values: dict[str, tuple[str, ...]],
 ) -> htpy.Element:
@@ -2433,16 +2370,111 @@ def _suggestion_tag_group_cell(
                 htpy.div(".fw-semibold.mb-1.small.text-secondary")[
                     ID3_TAG_LABELS[tag_name]
                 ],
-                _suggestion_tag_editor(
-                    suggestion_id,
-                    path,
-                    row_index,
-                    "table",
-                    tag_name,
-                    tag_values[tag_name],
-                ),
+                _suggestion_tag_values(tag_values[tag_name]),
             ]
             for tag_index, tag_name in enumerate(tag_names)
+        ]
+    ]
+
+
+def _suggestion_music_edit_button(row_index: int, path: str) -> htpy.Element:
+    modal_id = f"suggestion-file-tags-{row_index}"
+    return htpy.button(
+        ".btn.btn-link.p-0",
+        aria_label=f"Edit tags for {path}",
+        data_bs_target=f"#{modal_id}",
+        data_bs_toggle="modal",
+        title="Edit tags",
+        type="button",
+    )[htpy.i(".bi-pencil")]
+
+
+def _suggestion_music_tag_modal(
+    suggestion_id: str,
+    path: str,
+    row_index: int,
+    tag_values: dict[str, tuple[str, ...]],
+) -> htpy.Element:
+    modal_id = f"suggestion-file-tags-{row_index}"
+    title_id = f"{modal_id}-title"
+    update_url = flask.url_for(
+        "suggestion_file_tags_update",
+        suggestion_id=suggestion_id,
+    )
+    return htpy.div(
+        f"#{modal_id}.fade.modal",
+        aria_hidden="true",
+        aria_labelledby=title_id,
+        tabindex="-1",
+    )[
+        htpy.div(".modal-dialog.modal-dialog-scrollable.modal-lg")[
+            htpy.form(
+                ".modal-content",
+                action=update_url,
+                hx_disabled_elt="button",
+                hx_post=update_url,
+                hx_swap="outerHTML",
+                hx_target="#suggestion-files-card",
+                method="post",
+            )[
+                htpy.input(name="scope", type="hidden", value="file"),
+                htpy.input(name="path", type="hidden", value=path),
+                htpy.div(".modal-header")[
+                    htpy.h5(".modal-title", id=title_id)["Edit MP3 tags"],
+                    htpy.button(
+                        ".btn-close",
+                        aria_label="Close",
+                        data_bs_dismiss="modal",
+                        type="button",
+                    ),
+                ],
+                htpy.div(".modal-body")[
+                    htpy.div(".mb-3")[
+                        htpy.div(".small.text-secondary")["File"],
+                        htpy.code(".text-break")[path],
+                    ],
+                    htpy.div(".g-3.row")[
+                        [
+                            htpy.div(
+                                ".col-12"
+                                if tag_name in {"www", "comment"}
+                                else ".col-12.col-md-6"
+                            )[
+                                htpy.label(
+                                    ".form-label",
+                                    for_=f"{modal_id}-{tag_name}",
+                                )[label],
+                                htpy.input(
+                                    f"#{modal_id}-{tag_name}.form-control",
+                                    name=tag_name,
+                                    type="text",
+                                    value=(
+                                        tag_values[tag_name][0]
+                                        if tag_values[tag_name]
+                                        else ""
+                                    ),
+                                ),
+                            ]
+                            for tag_name, label in ID3_TAG_LABELS.items()
+                        ]
+                    ],
+                    htpy.div(".form-text.mt-3")[
+                        "Leave a field blank to remove that tag."
+                    ],
+                ],
+                htpy.div(".modal-footer")[
+                    htpy.button(
+                        ".btn.btn-outline-secondary",
+                        data_bs_dismiss="modal",
+                        type="button",
+                    )["Cancel"],
+                    htpy.button(
+                        ".btn.btn-primary",
+                        data_bs_dismiss="modal",
+                        type="submit",
+                    )["Save tags"],
+                ],
+            ]
         ]
     ]
 
@@ -2530,12 +2562,13 @@ def _suggestion_music_file_table(
     music_tags: dict[str, Mp3TagValues],
 ) -> htpy.Element:
     tag_groups = (
-        ("Album / Title", ("album", "title")),
-        ("Artist / Genre", ("artist", "genre")),
-        ("URL / Comment", ("www", "comment")),
+        ("album", "title"),
+        ("artist", "genre"),
+        ("www", "comment"),
     )
     rows = []
     cards = []
+    modals = []
     for row_index, (path, size) in enumerate(files):
         tags = music_tags.get(path, Mp3TagValues())
         tag_values = {
@@ -2559,16 +2592,16 @@ def _suggestion_music_file_table(
                 ],
                 [
                     _suggestion_tag_group_cell(
-                        suggestion_id,
-                        path,
-                        row_index,
                         tag_names,
                         tag_values,
                     )
-                    for _, tag_names in tag_groups
+                    for tag_names in tag_groups
                 ],
                 htpy.td(".text-center")[
-                    _suggestion_music_delete_button(suggestion_id, path)
+                    htpy.div(".d-flex.gap-2.justify-content-center")[
+                        _suggestion_music_edit_button(row_index, path),
+                        _suggestion_music_delete_button(suggestion_id, path),
+                    ]
                 ],
             ]
         )
@@ -2587,7 +2620,10 @@ def _suggestion_music_file_table(
                                 tags.error
                             ],
                         ],
-                        _suggestion_music_delete_button(suggestion_id, path),
+                        htpy.div(".d-flex.gap-2")[
+                            _suggestion_music_edit_button(row_index, path),
+                            _suggestion_music_delete_button(suggestion_id, path),
+                        ],
                     ]
                 ],
                 htpy.div(".card-body")[
@@ -2598,14 +2634,7 @@ def _suggestion_music_file_table(
                             else htpy.div
                         )[
                             htpy.div(".fw-semibold.mb-1.small.text-secondary")[label],
-                            _suggestion_tag_editor(
-                                suggestion_id,
-                                path,
-                                row_index,
-                                "mobile",
-                                tag_name,
-                                tag_values[tag_name],
-                            ),
+                            _suggestion_tag_values(tag_values[tag_name]),
                         ]
                         for tag_index, (tag_name, label) in enumerate(
                             ID3_TAG_LABELS.items()
@@ -2614,21 +2643,21 @@ def _suggestion_music_file_table(
                 ],
             ]
         )
+        modals.append(
+            _suggestion_music_tag_modal(
+                suggestion_id,
+                path,
+                row_index,
+                tag_values,
+            )
+        )
     return htpy.div[
         _suggestion_bulk_tag_form(suggestion_id),
         htpy.div(".d-none.d-md-block.mt-3.table-responsive")[
-            htpy.table(".align-middle.mb-0.table.table-sm")[
-                htpy.thead[
-                    htpy.tr[
-                        htpy.th(scope="col")["File"],
-                        [htpy.th(scope="col")[label] for label, _ in tag_groups],
-                        htpy.th(scope="col")[htpy.span(".visually-hidden")["Actions"]],
-                    ]
-                ],
-                htpy.tbody[rows],
-            ]
+            htpy.table(".align-middle.mb-0.table.table-sm")[htpy.tbody[rows],]
         ],
         htpy.div(".d-md-none.mt-3")[cards],
+        modals,
     ]
 
 

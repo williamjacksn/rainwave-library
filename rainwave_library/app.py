@@ -1223,78 +1223,109 @@ def suggestion_file_tags_update(suggestion_id: str) -> str:
     if suggestion is None:
         flask.abort(404)
 
-    tag_name = flask.request.form.get("tag", "")
-    value = flask.request.form.get("value", "")
-    tag_label = rainwave_library.models.mp3.ID3_TAG_LABELS.get(tag_name)
-    if tag_label is None:
-        result = ("alert-danger", "Choose a valid ID3 tag.")
-    elif flask.request.form.get("scope") == "all":
-        staged_files = rainwave_library.models.storage.suggestion_staging_files_get(
-            app.config["LIBRARY_ROOT"],
-            suggestion_id,
-        )
-        music_paths = [
-            path for path, _ in staged_files if path.casefold().endswith(".mp3")
-        ]
-        updated_count = 0
-        failed_count = 0
-        for path in music_paths:
-            try:
-                file_path = rainwave_library.models.storage.suggestion_staging_file_get(
-                    app.config["LIBRARY_ROOT"],
-                    suggestion_id,
-                    path,
-                )
-                rainwave_library.models.mp3.id3_tag_values_set(
-                    file_path,
-                    tag_name,
-                    value,
-                )
-                updated_count += 1
-            except (OSError, ValueError):
-                failed_count += 1
-                app.logger.exception(
-                    "Could not update %s for suggestion file %s",
-                    tag_name,
-                    path,
-                )
-        if not music_paths:
-            result = ("alert-danger", "There are no MP3 files to update.")
-        elif failed_count:
-            result = (
-                "alert-warning",
-                f"Updated {tag_label} for {updated_count} MP3 "
-                f"file{'' if updated_count == 1 else 's'}; "
-                f"{failed_count} could not be updated.",
-            )
-        else:
-            result = (
-                "alert-success",
-                f"Updated {tag_label} for {updated_count} MP3 "
-                f"file{'' if updated_count == 1 else 's'}.",
-            )
-    else:
+    scope = flask.request.form.get("scope")
+    if scope == "file":
         relative_path = flask.request.form.get("path", "")
         if not relative_path.casefold().endswith(".mp3"):
             result = ("alert-danger", "Choose an MP3 file.")
         else:
+            tag_values = {
+                tag_name: flask.request.form.get(tag_name, "")
+                for tag_name in rainwave_library.models.mp3.ID3_TAG_LABELS
+            }
             try:
                 file_path = rainwave_library.models.storage.suggestion_staging_file_get(
                     app.config["LIBRARY_ROOT"],
                     suggestion_id,
                     relative_path,
                 )
-                rainwave_library.models.mp3.id3_tag_values_set(
+                rainwave_library.models.mp3.id3_tag_values_set_all(
                     file_path,
-                    tag_name,
-                    value,
+                    tag_values,
                 )
                 result = (
                     "alert-success",
-                    f"Updated {tag_label} for {relative_path}.",
+                    f"Updated tags for {relative_path}.",
                 )
             except (OSError, ValueError) as error:
                 result = ("alert-danger", str(error))
+    else:
+        tag_name = flask.request.form.get("tag", "")
+        value = flask.request.form.get("value", "")
+        tag_label = rainwave_library.models.mp3.ID3_TAG_LABELS.get(tag_name)
+        if tag_label is None:
+            result = ("alert-danger", "Choose a valid ID3 tag.")
+        elif scope == "all":
+            staged_files = rainwave_library.models.storage.suggestion_staging_files_get(
+                app.config["LIBRARY_ROOT"],
+                suggestion_id,
+            )
+            music_paths = [
+                path for path, _ in staged_files if path.casefold().endswith(".mp3")
+            ]
+            updated_count = 0
+            failed_count = 0
+            for path in music_paths:
+                try:
+                    file_path = (
+                        rainwave_library.models.storage.suggestion_staging_file_get(
+                            app.config["LIBRARY_ROOT"],
+                            suggestion_id,
+                            path,
+                        )
+                    )
+                    rainwave_library.models.mp3.id3_tag_values_set(
+                        file_path,
+                        tag_name,
+                        value,
+                    )
+                    updated_count += 1
+                except (OSError, ValueError):
+                    failed_count += 1
+                    app.logger.exception(
+                        "Could not update %s for suggestion file %s",
+                        tag_name,
+                        path,
+                    )
+            if not music_paths:
+                result = ("alert-danger", "There are no MP3 files to update.")
+            elif failed_count:
+                result = (
+                    "alert-warning",
+                    f"Updated {tag_label} for {updated_count} MP3 "
+                    f"file{'' if updated_count == 1 else 's'}; "
+                    f"{failed_count} could not be updated.",
+                )
+            else:
+                result = (
+                    "alert-success",
+                    f"Updated {tag_label} for {updated_count} MP3 "
+                    f"file{'' if updated_count == 1 else 's'}.",
+                )
+        else:
+            relative_path = flask.request.form.get("path", "")
+            if not relative_path.casefold().endswith(".mp3"):
+                result = ("alert-danger", "Choose an MP3 file.")
+            else:
+                try:
+                    file_path = (
+                        rainwave_library.models.storage.suggestion_staging_file_get(
+                            app.config["LIBRARY_ROOT"],
+                            suggestion_id,
+                            relative_path,
+                        )
+                    )
+                    rainwave_library.models.mp3.id3_tag_values_set(
+                        file_path,
+                        tag_name,
+                        value,
+                    )
+                    result = (
+                        "alert-success",
+                        f"Updated {tag_label} for {relative_path}.",
+                    )
+                except (OSError, ValueError) as error:
+                    result = ("alert-danger", str(error))
 
     staged_files, folder_path, music_tags = _suggestion_staged_files_get(suggestion_id)
     return rainwave_library.components.suggestion_files_card(
