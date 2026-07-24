@@ -70,7 +70,6 @@ def id3_tag_values_set(
     if tag_name not in ID3_TAG_LABELS:
         msg = "Choose a valid ID3 tag."
         raise ValueError(msg)
-    values = tuple(line.strip() for line in value.splitlines() if line.strip())
     try:
         try:
             tags = mutagen.id3.ID3(filename)
@@ -79,41 +78,28 @@ def id3_tag_values_set(
 
         if tag_name == "album":
             tags.delall("TALB")
-            if values:
-                tags.add(mutagen.id3.TALB(encoding=3, text=list(values)))
+            if value:
+                tags.add(mutagen.id3.TALB(encoding=3, text=[value]))
         elif tag_name == "title":
             tags.delall("TIT2")
-            if values:
-                tags.add(mutagen.id3.TIT2(encoding=3, text=list(values)))
+            if value:
+                tags.add(mutagen.id3.TIT2(encoding=3, text=[value]))
         elif tag_name == "artist":
             tags.delall("TPE1")
-            if values:
-                tags.add(mutagen.id3.TPE1(encoding=3, text=list(values)))
+            if value:
+                tags.add(mutagen.id3.TPE1(encoding=3, text=[value]))
         elif tag_name == "genre":
             tags.delall("TCON")
-            if values:
-                tags.add(mutagen.id3.TCON(encoding=3, text=list(values)))
+            if value:
+                tags.add(mutagen.id3.TCON(encoding=3, text=[value]))
         elif tag_name == "www":
             tags.delall("WXXX")
-            for index, url in enumerate(values):
-                tags.add(
-                    mutagen.id3.WXXX(
-                        encoding=3,
-                        desc="" if index == 0 else f"Rainwave {index + 1}",
-                        url=url,
-                    )
-                )
+            if value:
+                tags.add(mutagen.id3.WXXX(encoding=0, url=value))
         elif tag_name == "comment":
             tags.delall("COMM")
-            if values:
-                tags.add(
-                    mutagen.id3.COMM(
-                        encoding=3,
-                        lang="eng",
-                        desc="",
-                        text=list(values),
-                    )
-                )
+            if value:
+                tags.add(mutagen.id3.COMM(encoding=3, text=[value]))
         tags.save(filename)
     except (mutagen.MutagenError, OSError) as error:
         log.error("Unable to update %s in %s: %s", tag_name, filename, error)

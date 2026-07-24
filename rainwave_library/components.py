@@ -2420,8 +2420,7 @@ def _suggestion_tag_cell(
 
 def _suggestion_bulk_tag_form(suggestion_id: str) -> htpy.Element:
     update_url = flask.url_for(
-        "suggestion_file_tags_update",
-        suggestion_id=suggestion_id,
+        "suggestion_file_tags_update", suggestion_id=suggestion_id
     )
     return htpy.form(
         ".border.p-3.rounded",
@@ -2450,14 +2449,10 @@ def _suggestion_bulk_tag_form(suggestion_id: str) -> htpy.Element:
             ],
             htpy.div(".col")[
                 htpy.label(".form-label", for_="suggestion-bulk-tag-value")["Value"],
-                htpy.textarea(
-                    "#suggestion-bulk-tag-value.form-control",
-                    name="value",
-                    rows=1,
+                htpy.div(".form-text")["Leave blank to remove the tag."],
+                htpy.input(
+                    "#suggestion-bulk-tag-value.form-control", name="value", type="text"
                 ),
-                htpy.div(".form-text")[
-                    "Enter one value per line. Leave blank to remove the tag."
-                ],
             ],
             htpy.div(".col-sm-auto")[
                 htpy.button(".btn.btn-primary", type="submit")["Apply to all"]
@@ -2689,6 +2684,10 @@ def _suggestion_files_card(
         htpy.div(".card-body")[
             result and htpy.div(f".alert.{result[0]}.py-2", role="alert")[result[1]],
             htpy.form(
+                {
+                    "hx-on:htmx:before-request": upload_before_request,
+                    "hx-on:htmx:xhr:progress": upload_progress,
+                },
                 action=upload_url,
                 enctype="multipart/form-data",
                 hx_disabled_elt="button",
@@ -2698,15 +2697,14 @@ def _suggestion_files_card(
                 hx_swap="outerHTML",
                 hx_target="#suggestion-files-card",
                 method="post",
-                **{
-                    "hx-on:htmx:before-request": upload_before_request,
-                    "hx-on:htmx:xhr:progress": upload_progress,
-                },
             )[
-                htpy.div(".align-items-end.g-2.row")[
-                    htpy.div(".col")[
+                htpy.div(".g-2.row")[
+                    htpy.div(".col-12.col-sm-11")[
                         htpy.label(".form-label", for_="suggestion-files")[
                             "Upload files"
+                        ],
+                        htpy.div(".form-text")[
+                            "The maximum upload size per request is 1 GB."
                         ],
                         htpy.input(
                             "#suggestion-files.form-control",
@@ -2715,11 +2713,8 @@ def _suggestion_files_card(
                             required=True,
                             type="file",
                         ),
-                        htpy.div(".form-text")[
-                            "The maximum upload size per request is 1 GB."
-                        ],
                     ],
-                    htpy.div(".col-auto")[
+                    htpy.div(".col")[
                         htpy.button(".btn.btn-primary", type="submit")[
                             htpy.i(".bi-upload"), " Upload"
                         ]
