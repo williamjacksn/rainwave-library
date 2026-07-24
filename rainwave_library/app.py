@@ -155,6 +155,39 @@ def index() -> werkzeug.Response | str:
     return rainwave_library.components.welcome(flask.session.get("role", "member"))
 
 
+@app.route("/upcoming", methods=["GET"])
+@secure
+def upcoming_music() -> str:
+    try:
+        directory = rainwave_library.models.storage.upcoming_music_directory_get(
+            app.config["LIBRARY_ROOT"],
+            flask.request.args.get("path", ""),
+        )
+    except ValueError:
+        flask.abort(404)
+    return rainwave_library.components.upcoming_music(directory)
+
+
+@app.route("/upcoming/file", methods=["GET"])
+@secure
+def upcoming_music_file() -> flask.Response:
+    try:
+        path = rainwave_library.models.storage.upcoming_music_file_get(
+            app.config["LIBRARY_ROOT"],
+            flask.request.args.get("path", ""),
+        )
+    except ValueError:
+        flask.abort(404)
+    response = flask.send_file(
+        path,
+        as_attachment=True,
+        conditional=True,
+        download_name=path.name,
+    )
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
 @app.route("/albums", methods=["GET"])
 @secure
 def albums() -> str:

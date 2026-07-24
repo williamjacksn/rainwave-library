@@ -1,3 +1,5 @@
+import pathlib
+
 import flask
 import htpy
 import markupsafe
@@ -11,6 +13,10 @@ from rainwave_library.models.rainwave import (
     Song,
     channels,
     length_display,
+)
+from rainwave_library.models.storage import (
+    UpcomingMusicDirectory,
+    UpcomingMusicEntry,
 )
 from rainwave_library.models.suggestions import (
     Suggestion,
@@ -5104,6 +5110,95 @@ def songs_rows(songs: list[Song], page: int) -> str:
     return str(htpy.fragment[trs])
 
 
+def _upcoming_music_entry(entry: UpcomingMusicEntry) -> htpy.Element:
+    href = (
+        flask.url_for("upcoming_music", path=entry.relative_path)
+        if entry.is_directory
+        else flask.url_for("upcoming_music_file", path=entry.relative_path)
+    )
+    return htpy.a(
+        ".align-items-center.d-flex.gap-3.list-group-item.list-group-item-action",
+        download=None if entry.is_directory else entry.name,
+        href=href,
+    )[
+        htpy.i(
+            ".bi-folder-fill.fs-4.text-warning"
+            if entry.is_directory
+            else ".bi-file-earmark.fs-4.text-secondary"
+        ),
+        htpy.div(".flex-grow-1.text-break")[entry.name],
+        htpy.span(".small.text-nowrap.text-secondary")[
+            "Folder" if entry.is_directory else f"{entry.size or 0:,} bytes"
+        ],
+    ]
+
+
+def _upcoming_music_breadcrumbs(relative_path: str) -> htpy.Element:
+    parts = pathlib.PurePosixPath(relative_path).parts if relative_path else ()
+    breadcrumbs = [
+        htpy.li(
+            ".active.breadcrumb-item" if not parts else ".breadcrumb-item",
+            aria_current="page" if not parts else None,
+        )[
+            "Upcoming music"
+            if not parts
+            else htpy.a(href=flask.url_for("upcoming_music"))["Upcoming music"]
+        ]
+    ]
+    for index, part in enumerate(parts):
+        is_current = index == len(parts) - 1
+        path = pathlib.PurePosixPath(*parts[: index + 1]).as_posix()
+        breadcrumbs.append(
+            htpy.li(
+                ".active.breadcrumb-item" if is_current else ".breadcrumb-item",
+                aria_current="page" if is_current else None,
+            )[
+                part
+                if is_current
+                else htpy.a(href=flask.url_for("upcoming_music", path=path))[part]
+            ]
+        )
+    return htpy.nav(aria_label="Upcoming music folders")[
+        htpy.ol(".breadcrumb")[breadcrumbs]
+    ]
+
+
+def upcoming_music(directory: UpcomingMusicDirectory) -> str:
+    content = [
+        htpy.div(".g-1.pt-3.row")[
+            _back_button(flask.url_for("index"), "Home"),
+            _user_menu(),
+        ],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.h1["Upcoming music"],
+                htpy.code(".d-block.small.text-break.user-select-all")[
+                    str(directory.path)
+                ],
+            ]
+        ],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                _upcoming_music_breadcrumbs(directory.relative_path),
+                (
+                    htpy.div(".list-group")[
+                        [_upcoming_music_entry(entry) for entry in directory.entries]
+                    ]
+                    if directory.entries
+                    else (
+                        htpy.p(".text-secondary")["This folder is empty."]
+                        if directory.exists
+                        else htpy.div(".alert.alert-warning", role="alert")[
+                            "The upcoming music folder does not exist."
+                        ]
+                    )
+                ),
+            ]
+        ],
+    ]
+    return str(_base(content))
+
+
 def welcome(role: str) -> str:
     tools: list[tuple[str, str, str]] = [
         (
@@ -5127,6 +5222,11 @@ def welcome(role: str) -> str:
                     "get_ocremix",
                     "OC ReMix",
                     "Download and tag remixes from ocremix.org",
+                ),
+                (
+                    "upcoming_music",
+                    "Upcoming music",
+                    "Browse music staged in the upcoming library folder",
                 ),
                 (
                     "bluesky",

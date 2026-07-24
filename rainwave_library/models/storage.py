@@ -1,3 +1,4 @@
+import dataclasses
 import logging
 import os
 import pathlib
@@ -6,6 +7,118 @@ import sqlite3
 import typing
 
 log = logging.getLogger(__name__)
+
+
+@dataclasses.dataclass(frozen=True)
+class UpcomingMusicEntry:
+    name: str
+    relative_path: str
+    is_directory: bool
+    size: int | None
+
+
+@dataclasses.dataclass(frozen=True)
+class UpcomingMusicDirectory:
+    path: pathlib.Path
+    relative_path: str
+    exists: bool
+    entries: tuple[UpcomingMusicEntry, ...]
+
+
+def _upcoming_music_path_parts(relative_path: str) -> tuple[str, ...]:
+    normalized_path = relative_path.replace("\\", "/").strip()
+    path = pathlib.PurePosixPath(normalized_path)
+    if (
+        path.is_absolute()
+        or ".." in path.parts
+        or pathlib.PureWindowsPath(normalized_path).drive
+        or any(ord(character) < 32 for character in normalized_path)
+    ):
+        msg = "Invalid upcoming music path."
+        raise ValueError(msg)
+    return path.parts if normalized_path else ()
+
+
+def _upcoming_music_root_get(library_root: pathlib.Path) -> pathlib.Path:
+    return (library_root / "~upcoming").resolve()
+
+
+def _upcoming_music_path_get(
+    library_root: pathlib.Path,
+    relative_path: str,
+) -> tuple[pathlib.Path, pathlib.Path, tuple[str, ...]]:
+    root = _upcoming_music_root_get(library_root)
+    parts = _upcoming_music_path_parts(relative_path)
+    candidate = root.joinpath(*parts)
+    try:
+        resolved_candidate = candidate.resolve(strict=True)
+    except FileNotFoundError:
+        msg = "That upcoming music path no longer exists."
+        raise ValueError(msg) from None
+    if not resolved_candidate.is_relative_to(root):
+        msg = "Invalid upcoming music path."
+        raise ValueError(msg)
+    return root, resolved_candidate, parts
+
+
+def upcoming_music_directory_get(
+    library_root: pathlib.Path,
+    relative_path: str = "",
+) -> UpcomingMusicDirectory:
+    root = _upcoming_music_root_get(library_root)
+    parts = _upcoming_music_path_parts(relative_path)
+    normalized_path = pathlib.PurePosixPath(*parts).as_posix() if parts else ""
+    if not root.exists() and not parts:
+        return UpcomingMusicDirectory(root, "", False, ())
+
+    _, directory, _ = _upcoming_music_path_get(library_root, relative_path)
+    if not directory.is_dir():
+        msg = "That upcoming music path is not a folder."
+        raise ValueError(msg)
+
+    entries = []
+    try:
+        children = tuple(directory.iterdir())
+    except OSError as error:
+        msg = "The upcoming music folder could not be read."
+        raise ValueError(msg) from error
+    for child in children:
+        try:
+            resolved_child = child.resolve(strict=True)
+            if not resolved_child.is_relative_to(root):
+                continue
+            is_directory = resolved_child.is_dir()
+            if not is_directory and not resolved_child.is_file():
+                continue
+            child_parts = (*parts, child.name)
+            entries.append(
+                UpcomingMusicEntry(
+                    name=child.name,
+                    relative_path=pathlib.PurePosixPath(*child_parts).as_posix(),
+                    is_directory=is_directory,
+                    size=None if is_directory else resolved_child.stat().st_size,
+                )
+            )
+        except OSError:
+            continue
+    entries.sort(key=lambda entry: (not entry.is_directory, entry.name.casefold()))
+    return UpcomingMusicDirectory(
+        directory,
+        normalized_path,
+        True,
+        tuple(entries),
+    )
+
+
+def upcoming_music_file_get(
+    library_root: pathlib.Path,
+    relative_path: str,
+) -> pathlib.Path:
+    _, path, _ = _upcoming_music_path_get(library_root, relative_path)
+    if not path.is_file():
+        msg = "That upcoming music path is not a file."
+        raise ValueError(msg)
+    return path
 
 
 def suggestion_staging_folder_get(
