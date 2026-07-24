@@ -2715,6 +2715,9 @@ def _suggestion_files_card(
                             required=True,
                             type="file",
                         ),
+                        htpy.div(".form-text")[
+                            "The maximum upload size per request is 1 GB."
+                        ],
                     ],
                     htpy.div(".col-auto")[
                         htpy.button(".btn.btn-primary", type="submit")[
