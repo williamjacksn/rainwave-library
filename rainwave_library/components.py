@@ -1616,7 +1616,7 @@ def _suggestion_value(value: str | int | float | None) -> htpy.Node:
 def _suggestion_detail_table(
     rows: list[tuple[str, htpy.Node]],
 ) -> htpy.Element:
-    return htpy.table(".table.table-sm")[
+    return htpy.table(".d-block.table.table-sm")[
         htpy.tbody[
             [
                 htpy.tr[
@@ -3166,10 +3166,10 @@ def suggestion_page(
                         htpy.h5(".mb-0")[suggestion.title],
                     ),
                     htpy.div("#suggestion-summary-card-body.card-body.collapse.show")[
-                        htpy.div(".d-flex.justify-content-end.mb-3")[
+                        summary,
+                        htpy.div(".d-flex.justify-content-start.mt-3")[
                             _suggestion_schedule_release_button()
                         ],
-                        summary,
                     ],
                 ]
             ]
