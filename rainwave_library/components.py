@@ -2537,7 +2537,7 @@ def _suggestion_music_file_table(
     return htpy.div[
         _suggestion_bulk_tag_form(suggestion_id),
         htpy.div(".mt-3.table-responsive")[
-            htpy.table(".align-middle.mb-0.table.table-bordered.table-sm")[
+            htpy.table(".align-middle.mb-0.table.table-sm")[
                 htpy.thead[
                     htpy.tr[
                         htpy.th(scope="col")["File"],
