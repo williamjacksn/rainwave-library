@@ -2448,8 +2448,9 @@ def _suggestion_bulk_tag_form(suggestion_id: str) -> htpy.Element:
                 ],
             ],
             htpy.div(".col")[
-                htpy.label(".form-label", for_="suggestion-bulk-tag-value")["Value"],
-                htpy.div(".form-text")["Leave blank to remove the tag."],
+                htpy.label(".form-label", for_="suggestion-bulk-tag-value")[
+                    "Value (leave blank to remove tag)"
+                ],
                 htpy.input(
                     "#suggestion-bulk-tag-value.form-control", name="value", type="text"
                 ),
@@ -2698,8 +2699,8 @@ def _suggestion_files_card(
                 hx_target="#suggestion-files-card",
                 method="post",
             )[
-                htpy.div(".g-2.row")[
-                    htpy.div(".col-12.col-sm-11")[
+                htpy.div(".align-items-end.g-2.row")[
+                    htpy.div(".col-12.col-sm-auto")[
                         htpy.label(".form-label", for_="suggestion-files")[
                             "Upload files"
                         ],
@@ -2714,7 +2715,7 @@ def _suggestion_files_card(
                             type="file",
                         ),
                     ],
-                    htpy.div(".col")[
+                    htpy.div(".col-auto")[
                         htpy.button(".btn.btn-primary", type="submit")[
                             htpy.i(".bi-upload"), " Upload"
                         ]
