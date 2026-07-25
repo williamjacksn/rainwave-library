@@ -2870,9 +2870,7 @@ def _suggestion_files_card(
                         htpy.label(".form-label", for_="suggestion-files")[
                             "Upload files"
                         ],
-                        htpy.div(".form-text")[
-                            "The maximum upload size per request is 1 GB."
-                        ],
+                        htpy.div(".form-text")["The maximum upload size is 1 GB."],
                         htpy.input(
                             "#suggestion-files.form-control",
                             multiple=True,
