@@ -1997,36 +1997,24 @@ def _suggestion_link_item(
                 " ",
                 htpy.i(".bi-box-arrow-up-right"),
             ],
-            htpy.div(".align-items-center.d-flex.gap-2")[
-                htpy.span(".badge.text-bg-secondary")[link.type],
-                deletable
-                and htpy.button(
-                    ".btn.btn-link.p-0.text-danger",
-                    aria_label=f"Delete {link.label or link.url}",
-                    hx_confirm=f'Delete the link "{link.label or link.url}"?',
-                    hx_delete=flask.url_for(
-                        "suggestion_link_delete",
-                        suggestion_id=suggestion_id,
-                        link_id=link.id,
-                    ),
-                    hx_disabled_elt="this",
-                    hx_swap="delete",
-                    hx_target="closest .list-group-item",
-                    title="Delete link",
-                    type="button",
-                )[htpy.i(".bi-trash")],
-            ],
+            deletable
+            and htpy.button(
+                ".btn.btn-link.p-0.text-danger",
+                aria_label=f"Delete {link.label or link.url}",
+                hx_confirm=f'Delete the link "{link.label or link.url}"?',
+                hx_delete=flask.url_for(
+                    "suggestion_link_delete",
+                    suggestion_id=suggestion_id,
+                    link_id=link.id,
+                ),
+                hx_disabled_elt="this",
+                hx_swap="delete",
+                hx_target="closest .list-group-item",
+                title="Delete link",
+                type="button",
+            )[htpy.i(".bi-trash")],
         ],
-        htpy.div(".small.text-secondary")[
-            link.label and [link.url, htpy.br],
-            "ID: ",
-            htpy.code[link.id],
-            link.trello_attachment_id
-            and [
-                " · Trello attachment: ",
-                htpy.code[link.trello_attachment_id],
-            ],
-        ],
+        link.label and htpy.div(".small.text-secondary")[link.url],
     ]
 
 
