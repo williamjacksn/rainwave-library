@@ -1851,11 +1851,7 @@ def _suggestion_activity_item(activity: SuggestionActivity) -> htpy.Element:
                 " ",
                 activity.type.replace("-", " "),
             ],
-            htpy.span(".small.text-secondary")[
-                activity.created_at,
-                " · ",
-                htpy.code[activity.id],
-            ],
+            htpy.span(".small.text-secondary")[activity.created_at],
         ],
         _suggestion_activity_details(activity),
         activity.trello_action_id
