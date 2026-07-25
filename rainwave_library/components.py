@@ -1445,6 +1445,23 @@ def _suggestion_status_badge(status: str) -> htpy.Element:
     ]
 
 
+def _suggestion_channel_badge(channel_id: int) -> htpy.Element:
+    channel_colors = {
+        1: ("#1f95e5", "#000"),
+        2: ("#de641b", "#000"),
+        3: ("#b7000f", "#fff"),
+        4: ("#6e439d", "#fff"),
+        6: ("#186e75", "#fff"),
+    }
+    colors = channel_colors.get(channel_id)
+    return htpy.span(
+        ".badge.me-1",
+        style=(
+            f"background-color: {colors[0]}; color: {colors[1]}" if colors else None
+        ),
+    )[channels.get(channel_id, str(channel_id))]
+
+
 def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
     editable = flask.session.get("role") == "staff"
     claimable = (
@@ -1485,9 +1502,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             htpy.div(".small.mt-2")[
                 htpy.strong["Channels: "],
                 [
-                    htpy.span(".badge.border.me-1.text-bg-light.text-dark")[
-                        channels.get(channel_id, str(channel_id))
-                    ]
+                    _suggestion_channel_badge(channel_id)
                     for channel_id in suggestion.channel_ids
                 ]
                 or htpy.span(".text-secondary")["—"],
@@ -1545,9 +1560,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
         htpy.td(".d-none.d-md-table-cell")[_suggestion_status_badge(suggestion.status)],
         htpy.td(".d-none.d-md-table-cell")[
             [
-                htpy.span(".badge.border.me-1.text-bg-light.text-dark")[
-                    channels.get(channel_id, str(channel_id))
-                ]
+                _suggestion_channel_badge(channel_id)
                 for channel_id in suggestion.channel_ids
             ]
             or htpy.span(".text-secondary")["—"]
@@ -3168,9 +3181,7 @@ def suggestion_page(
     channel_badges: htpy.Node = (
         htpy.fragment[
             [
-                htpy.span(".badge.border.me-1.text-bg-light.text-dark")[
-                    channels.get(channel_id, str(channel_id))
-                ]
+                _suggestion_channel_badge(channel_id)
                 for channel_id in suggestion.channel_ids
             ]
         ]
@@ -3270,9 +3281,7 @@ def suggestion_detail_row(
     channel_badges: htpy.Node = (
         htpy.fragment[
             [
-                htpy.span(".badge.border.me-1.text-bg-light.text-dark")[
-                    channels.get(channel_id, str(channel_id))
-                ]
+                _suggestion_channel_badge(channel_id)
                 for channel_id in suggestion.channel_ids
             ]
         ]
