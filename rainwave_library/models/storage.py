@@ -7,6 +7,9 @@ import shutil
 import sqlite3
 import typing
 
+import mutagen
+import mutagen.mp3
+
 log = logging.getLogger(__name__)
 
 UPCOMING_CHANNEL_FOLDERS = {
@@ -34,6 +37,7 @@ class UpcomingMusicEntry:
     relative_path: str
     is_directory: bool
     size: int | None
+    duration_seconds: float | None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -80,6 +84,47 @@ def _upcoming_music_path_get(
     return root, resolved_candidate, parts
 
 
+def _upcoming_music_mp3_duration_get(
+    directory: pathlib.Path,
+    root: pathlib.Path,
+) -> float:
+    duration_seconds = 0.0
+    pending_directories = [directory]
+    while pending_directories:
+        current_directory = pending_directories.pop()
+        try:
+            children = current_directory.iterdir()
+            for child in children:
+                try:
+                    if child.is_symlink():
+                        continue
+                    resolved_child = child.resolve(strict=True)
+                    if not resolved_child.is_relative_to(root):
+                        continue
+                    if resolved_child.is_dir():
+                        pending_directories.append(resolved_child)
+                    elif (
+                        resolved_child.is_file()
+                        and resolved_child.suffix.casefold() == ".mp3"
+                    ):
+                        mp3 = mutagen.mp3.MP3(resolved_child)
+                        if mp3.info is not None:
+                            duration_seconds += mp3.info.length
+                except (mutagen.MutagenError, OSError) as error:
+                    log.warning(
+                        "Unable to read upcoming music file %s: %s",
+                        child,
+                        error,
+                    )
+        except OSError as error:
+            log.warning(
+                "Unable to read upcoming music folder %s: %s",
+                current_directory,
+                error,
+            )
+    return duration_seconds
+
+
 def upcoming_music_directory_get(
     library_root: pathlib.Path,
     relative_path: str = "",
@@ -116,6 +161,11 @@ def upcoming_music_directory_get(
                     relative_path=pathlib.PurePosixPath(*child_parts).as_posix(),
                     is_directory=is_directory,
                     size=None if is_directory else resolved_child.stat().st_size,
+                    duration_seconds=(
+                        _upcoming_music_mp3_duration_get(resolved_child, root)
+                        if is_directory
+                        else None
+                    ),
                 )
             )
         except OSError:

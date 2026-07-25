@@ -5353,6 +5353,9 @@ def _upcoming_music_entry(entry: UpcomingMusicEntry) -> htpy.Element:
         if entry.is_directory
         else flask.url_for("upcoming_music_file", path=entry.relative_path)
     )
+    duration_seconds = int(entry.duration_seconds or 0)
+    duration_hours, duration_remainder = divmod(duration_seconds, 3600)
+    duration_minutes, duration_seconds = divmod(duration_remainder, 60)
     return htpy.a(
         ".align-items-center.d-flex.gap-3.list-group-item.list-group-item-action",
         download=None if entry.is_directory else entry.name,
@@ -5365,7 +5368,11 @@ def _upcoming_music_entry(entry: UpcomingMusicEntry) -> htpy.Element:
         ),
         htpy.div(".flex-grow-1.text-break")[entry.name],
         htpy.span(".small.text-nowrap.text-secondary")[
-            "Folder" if entry.is_directory else f"{entry.size or 0:,} bytes"
+            (
+                f"{duration_hours}:{duration_minutes:02d}:{duration_seconds:02d} MP3"
+                if entry.is_directory
+                else f"{entry.size or 0:,} bytes"
+            )
         ],
     ]
 
