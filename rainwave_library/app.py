@@ -232,21 +232,58 @@ def _suggestion_claim_announce(
     )
 
 
+def _suggestion_channel_name(
+    suggestion: rainwave_library.models.suggestions.SuggestionDetail,
+) -> str:
+    channel_id = suggestion.primary_channel_id
+    if channel_id is None and suggestion.channel_ids:
+        channel_id = suggestion.channel_ids[0]
+    return rainwave_library.models.rainwave.channels.get(channel_id, "Unknown")
+
+
 def _suggestion_accepted_announce(
     suggestion: rainwave_library.models.suggestions.SuggestionDetail,
 ) -> None:
+    channel_name = _suggestion_channel_name(suggestion)
     if suggestion.requester_discord_id:
         content = (
             f"<@{suggestion.requester_discord_id}> your suggestion "
-            f"**{suggestion.title}** was accepted."
+            f"**{suggestion.title}** for the {channel_name} channel was accepted."
         )
         mentioned_user_ids = (suggestion.requester_discord_id,)
     else:
-        content = f"The suggestion **{suggestion.title}** was accepted."
+        content = (
+            f"The suggestion **{suggestion.title}** for the {channel_name} channel "
+            "was accepted."
+        )
         mentioned_user_ids = ()
 
     if suggestion.kind in {"new-album", "add-to-existing-album"}:
         content += " New music will be added to Rainwave in a future update."
+
+    _suggestion_discord_message_send(
+        suggestion.id,
+        content,
+        mentioned_user_ids,
+    )
+
+
+def _suggestion_declined_announce(
+    suggestion: rainwave_library.models.suggestions.SuggestionDetail,
+) -> None:
+    channel_name = _suggestion_channel_name(suggestion)
+    if suggestion.requester_discord_id:
+        content = (
+            f"<@{suggestion.requester_discord_id}> your suggestion "
+            f"**{suggestion.title}** for the {channel_name} channel was declined."
+        )
+        mentioned_user_ids = (suggestion.requester_discord_id,)
+    else:
+        content = (
+            f"The suggestion **{suggestion.title}** for the {channel_name} channel "
+            "was declined."
+        )
+        mentioned_user_ids = ()
 
     _suggestion_discord_message_send(
         suggestion.id,
@@ -2172,6 +2209,7 @@ def suggestion_update(suggestion_id: str) -> str:
 
     result: tuple[str, str]
     accepted = False
+    declined = False
     try:
         channel_ids = [
             int(channel_id)
@@ -2216,6 +2254,11 @@ def suggestion_update(suggestion_id: str) -> str:
                 and previous_suggestion.status != "accepted"
                 and suggestion.status == "accepted"
             )
+            declined = (
+                suggestion is not None
+                and previous_suggestion.status != "declined"
+                and suggestion.status == "declined"
+            )
         finally:
             storage_cnx.close()
         result = ("alert-success", "Suggestion updated.")
@@ -2235,6 +2278,8 @@ def suggestion_update(suggestion_id: str) -> str:
         flask.abort(404)
     if accepted:
         _suggestion_accepted_announce(suggestion)
+    if declined:
+        _suggestion_declined_announce(suggestion)
     return rainwave_library.components.suggestion_detail_row(
         suggestion, editable=True, edit_result=result
     )
