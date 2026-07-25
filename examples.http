@@ -37,3 +37,11 @@ Content-Type: application/json
 ### discord-current-user
 GET https://discord.com/api/v10/users/@me
 Authorization: Bot {{ discord-token}}
+
+### discord-user
+GET https://discord.com/api/v10/users/{{ user-id }}
+Authorization: Bot {{ discord-token}}
+
+### discord-member
+GET https://discord.com/api/v10/guilds/{{ guild-id }}/members/{{ user-id }}
+Authorization: Bot {{ discord-token}}
