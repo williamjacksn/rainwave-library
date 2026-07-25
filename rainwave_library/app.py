@@ -88,14 +88,10 @@ def external_url_for(endpoint: str, *args, **kwargs) -> str:  # noqa: ANN002, AN
     )
 
 
-def _suggestion_created_announce(
+def _suggestion_discord_message_send(
     suggestion_id: str,
-    *,
-    title: str,
-    channel_id: int,
-    kind: str,
-    requester_name: str | None,
-    requester_discord_id: str | None,
+    content: str,
+    mentioned_user_ids: tuple[str, ...] = (),
 ) -> None:
     try:
         storage_cnx = rainwave_library.models.storage.connection_get(
@@ -119,41 +115,95 @@ def _suggestion_created_announce(
             )
             return
 
-        channel_name = rainwave_library.models.rainwave.channels.get(
-            channel_id, "Unknown"
-        )
-        kind_name = rainwave_library.models.suggestions.Suggestion.kind_labels.get(
-            kind, kind
-        )
-        suggested_by = (
-            f"<@{requester_discord_id}>"
-            if requester_discord_id
-            else requester_name or "Unknown"
-        )
-        suggestions_url = external_url_for("suggestions")
-        content = "\n".join(
-            (
-                "**New music suggestion**",
-                f"**Title:** {title.strip()}",
-                f"**Channel:** {channel_name}",
-                f"**Type:** {kind_name}",
-                f"**Suggested by:** {suggested_by}",
-                f"-# [See all suggestions]({suggestions_url})",
-            )
-        )
         rainwave_library.models.discord.send_message(
             bot_token,
             discord_channel_id,
             content,
-            mentioned_user_ids=(
-                (requester_discord_id,) if requester_discord_id else ()
-            ),
+            mentioned_user_ids=mentioned_user_ids,
         )
     except Exception:
         app.logger.exception(
-            "Could not announce suggestion %s on Discord",
+            "Could not send a Discord message for suggestion %s",
             suggestion_id,
         )
+
+
+def _suggestion_created_announce(
+    suggestion_id: str,
+    *,
+    title: str,
+    channel_id: int,
+    kind: str,
+    requester_name: str | None,
+    requester_discord_id: str | None,
+) -> None:
+    channel_name = rainwave_library.models.rainwave.channels.get(channel_id, "Unknown")
+    kind_name = rainwave_library.models.suggestions.Suggestion.kind_labels.get(
+        kind, kind
+    )
+    suggested_by = (
+        f"<@{requester_discord_id}>"
+        if requester_discord_id
+        else requester_name or "Unknown"
+    )
+    suggestions_url = external_url_for("suggestions")
+    content = "\n".join(
+        (
+            "**New music suggestion**",
+            f"**Title:** {title.strip()}",
+            f"**Channel:** {channel_name}",
+            f"**Type:** {kind_name}",
+            f"**Suggested by:** {suggested_by}",
+            f"-# [See all suggestions]({suggestions_url})",
+        )
+    )
+    _suggestion_discord_message_send(
+        suggestion_id,
+        content,
+        (requester_discord_id,) if requester_discord_id else (),
+    )
+
+
+def _suggestion_comment_announce(
+    suggestion: rainwave_library.models.suggestions.SuggestionDetail,
+    *,
+    commenter_name: str | None,
+    commenter_discord_id: str | None,
+    body: str,
+) -> None:
+    if not suggestion.requester_discord_id:
+        app.logger.warning(
+            "Could not announce a comment on suggestion %s because the requester "
+            "does not have a Discord ID",
+            suggestion.id,
+        )
+        return
+
+    commenter = (
+        f"<@{commenter_discord_id}>"
+        if commenter_discord_id
+        else commenter_name or "Unknown commenter"
+    )
+    content = "\n".join(
+        (
+            f"<@{suggestion.requester_discord_id}> there is a new comment on your "
+            f"suggestion **{suggestion.title}**",
+            f"{commenter} said: {body.strip()}",
+        )
+    )
+    mentioned_user_ids = tuple(
+        dict.fromkeys(
+            (
+                suggestion.requester_discord_id,
+                *([commenter_discord_id] if commenter_discord_id else []),
+            )
+        )
+    )
+    _suggestion_discord_message_send(
+        suggestion.id,
+        content,
+        mentioned_user_ids,
+    )
 
 
 def signed_in(f: typing.Callable) -> typing.Callable:
@@ -1884,6 +1934,12 @@ def suggestion_comment(suggestion_id: str) -> werkzeug.Response | str:
 
     if suggestion is None:
         flask.abort(404)
+    _suggestion_comment_announce(
+        suggestion,
+        commenter_name=flask.g.discord_display_name,
+        commenter_discord_id=(str(flask.g.discord_id) if flask.g.discord_id else None),
+        body=body,
+    )
     return rainwave_library.components.suggestion_activity_block(suggestion)
 
 
