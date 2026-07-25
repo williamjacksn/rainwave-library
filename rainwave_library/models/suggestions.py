@@ -2,7 +2,6 @@ import logging
 import secrets
 import sqlite3
 import typing
-import urllib.parse
 from dataclasses import dataclass
 
 log = logging.getLogger(__name__)
@@ -51,17 +50,13 @@ class Suggestion:
     claimed_by_name: str | None
     claimed_by_discord_id: str | None
     channel_ids: tuple[int, ...]
-    tags: tuple[str, ...]
 
 
 @dataclass(frozen=True)
 class SuggestionLink:
     id: str
-    type: str
     url: str
     label: str | None
-    sort_order: float
-    trello_attachment_id: str | None
 
 
 @dataclass(frozen=True)
@@ -164,9 +159,6 @@ def _suggestion_from_row(row: sqlite3.Row) -> Suggestion:
                 if channel_id
             )
         ),
-        tags=tuple(sorted((row["tags"] or "").split("\x1f"), key=str.casefold))
-        if row["tags"]
-        else (),
     )
 
 
@@ -274,12 +266,7 @@ def suggestions_get(
                 select group_concat(channel_id, ',')
                 from suggestion_channels sc
                 where sc.suggestion_id = s.suggestion_id
-            ) channel_ids,
-            (
-                select group_concat(tag, char(31))
-                from suggestion_tags st
-                where st.suggestion_id = s.suggestion_id
-            ) tags
+            ) channel_ids
         from suggestions s
         where (
                 :status_0 is null
@@ -518,11 +505,6 @@ def suggestion_get(
                 where sc.suggestion_id = s.suggestion_id
             ) channel_ids,
             (
-                select group_concat(tag, char(31))
-                from suggestion_tags st
-                where st.suggestion_id = s.suggestion_id
-            ) tags,
-            (
                 select channel_id
                 from suggestion_channels sc
                 where sc.suggestion_id = s.suggestion_id and sc.is_primary
@@ -541,18 +523,15 @@ def suggestion_get(
     links = tuple(
         SuggestionLink(
             id=link["link_id"],
-            type=link["link_type"],
             url=link["url"],
             label=link["label"],
-            sort_order=float(link["sort_order"]),
-            trello_attachment_id=link["trello_attachment_id"],
         )
         for link in con.execute(
             """
             select *
             from suggestion_links
             where suggestion_id = ?
-            order by sort_order, link_id
+            order by link_id
             """,
             (suggestion_id,),
         ).fetchall()
@@ -590,7 +569,6 @@ def suggestion_get(
         requested_at=suggestion.requested_at,
         claimed_by_name=suggestion.claimed_by_name,
         channel_ids=suggestion.channel_ids,
-        tags=suggestion.tags,
         primary_channel_id=row["primary_channel_id"],
         requester_discord_id=row["requester_discord_id"],
         claimed_by_discord_id=row["claimed_by_discord_id"],
@@ -679,21 +657,19 @@ def suggestion_create(
             """,
             (suggestion_id, channel_id),
         )
-        for sort_order, (url, label) in enumerate(normalized_links):
+        for url, label in normalized_links:
             con.execute(
                 """
                 insert into suggestion_links (
-                    link_id, suggestion_id, link_type, url, label, sort_order
-                ) values (?, ?, ?, ?, ?, ?)
+                    link_id, suggestion_id, url, label
+                ) values (?, ?, ?, ?)
                 on conflict (suggestion_id, url) do nothing
                 """,
                 (
                     id_new(),
                     suggestion_id,
-                    _link_type_get(url),
                     url,
                     label,
-                    sort_order,
                 ),
             )
         _activity_insert(
@@ -1149,14 +1125,6 @@ def suggestion_link_add(
     if duplicate is not None:
         msg = "This link has already been added."
         raise ValueError(msg)
-    next_sort_order = con.execute(
-        """
-        select coalesce(max(sort_order), -1) + 1 next_sort_order
-        from suggestion_links
-        where suggestion_id = ?
-        """,
-        (suggestion_id,),
-    ).fetchone()["next_sort_order"]
     try:
         _activity_insert(
             con,
@@ -1169,16 +1137,14 @@ def suggestion_link_add(
         con.execute(
             """
             insert into suggestion_links (
-                link_id, suggestion_id, link_type, url, label, sort_order
-            ) values (?, ?, ?, ?, ?, ?)
+                link_id, suggestion_id, url, label
+            ) values (?, ?, ?, ?)
             """,
             (
                 id_new(),
                 suggestion_id,
-                _link_type_get(url),
                 url,
                 label.strip() or None,
-                next_sort_order,
             ),
         )
         con.commit()
@@ -1252,17 +1218,3 @@ def suggestion_link_delete(
 
     log.info("Deleted link %s from suggestion %s", link_id, suggestion_id)
     return True
-
-
-def _link_type_get(url: str) -> str:
-    hostname = (urllib.parse.urlparse(url).hostname or "").lower()
-    if hostname == "discord.com" or hostname.endswith(".discord.com"):
-        return "discord"
-    if hostname.endswith("bandcamp.com"):
-        return "bandcamp"
-    if any(
-        hostname == domain or hostname.endswith(f".{domain}")
-        for domain in ("dropbox.com", "mediafire.com", "mega.nz")
-    ):
-        return "download"
-    return "reference"

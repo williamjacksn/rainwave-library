@@ -1271,6 +1271,115 @@ def _migration_9(con: sqlite3.Connection) -> None:
     )
 
 
+def _migration_10(con: sqlite3.Connection) -> None:
+    con.execute("drop table if exists suggestion_tags")
+
+
+def _migration_11(con: sqlite3.Connection) -> None:
+    con.executescript(
+        """
+        create table _migration_11_suggestion_links (
+            link_id text primary key not null,
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            link_type text not null,
+            url text not null,
+            label text,
+            sort_order real not null default 0,
+            unique (suggestion_id, url)
+        ) without rowid;
+
+        insert into _migration_11_suggestion_links (
+            link_id,
+            suggestion_id,
+            link_type,
+            url,
+            label,
+            sort_order
+        )
+        select
+            link_id,
+            suggestion_id,
+            link_type,
+            url,
+            label,
+            sort_order
+        from suggestion_links;
+
+        drop table suggestion_links;
+        alter table _migration_11_suggestion_links rename to suggestion_links;
+
+        create index suggestion_links_suggestion_idx
+            on suggestion_links (suggestion_id, sort_order);
+        """
+    )
+
+
+def _migration_12(con: sqlite3.Connection) -> None:
+    con.executescript(
+        """
+        create table _migration_12_suggestion_links (
+            link_id text primary key not null,
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            link_type text not null,
+            url text not null,
+            label text,
+            unique (suggestion_id, url)
+        ) without rowid;
+
+        insert into _migration_12_suggestion_links (
+            link_id,
+            suggestion_id,
+            link_type,
+            url,
+            label
+        )
+        select
+            link_id,
+            suggestion_id,
+            link_type,
+            url,
+            label
+        from suggestion_links;
+
+        drop table suggestion_links;
+        alter table _migration_12_suggestion_links rename to suggestion_links;
+        """
+    )
+
+
+def _migration_13(con: sqlite3.Connection) -> None:
+    con.executescript(
+        """
+        create table _migration_13_suggestion_links (
+            link_id text primary key not null,
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            url text not null,
+            label text,
+            unique (suggestion_id, url)
+        ) without rowid;
+
+        insert into _migration_13_suggestion_links (
+            link_id,
+            suggestion_id,
+            url,
+            label
+        )
+        select
+            link_id,
+            suggestion_id,
+            url,
+            label
+        from suggestion_links;
+
+        drop table suggestion_links;
+        alter table _migration_13_suggestion_links rename to suggestion_links;
+        """
+    )
+
+
 MIGRATIONS = (
     _migration_1,
     _migration_2,
@@ -1281,6 +1390,10 @@ MIGRATIONS = (
     _migration_7,
     _migration_8,
     _migration_9,
+    _migration_10,
+    _migration_11,
+    _migration_12,
+    _migration_13,
 )
 
 
