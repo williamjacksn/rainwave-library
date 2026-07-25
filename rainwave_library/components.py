@@ -12,6 +12,7 @@ from rainwave_library.models.rainwave import (
     Artist,
     Listener,
     Song,
+    channel_badge,
     channels,
     length_display,
 )
@@ -1445,23 +1446,6 @@ def _suggestion_status_badge(status: str) -> htpy.Element:
     ]
 
 
-def _suggestion_channel_badge(channel_id: int) -> htpy.Element:
-    channel_colors = {
-        1: ("#1f95e5", "#fff"),
-        2: ("#de641b", "#fff"),
-        3: ("#b7000f", "#fff"),
-        4: ("#6e439d", "#fff"),
-        6: ("#186e75", "#fff"),
-    }
-    colors = channel_colors.get(channel_id)
-    return htpy.span(
-        ".badge.me-1",
-        style=(
-            f"background-color: {colors[0]}; color: {colors[1]}" if colors else None
-        ),
-    )[channels.get(channel_id, str(channel_id))]
-
-
 def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
     editable = flask.session.get("role") == "staff"
     claimable = (
@@ -1501,10 +1485,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             ],
             htpy.div(".small.mt-2")[
                 htpy.strong["Channels: "],
-                [
-                    _suggestion_channel_badge(channel_id)
-                    for channel_id in suggestion.channel_ids
-                ]
+                [channel_badge(channel_id) for channel_id in suggestion.channel_ids]
                 or htpy.span(".text-secondary")["—"],
             ],
             htpy.div(".small.mt-1")[
@@ -1559,10 +1540,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
         ],
         htpy.td(".d-none.d-md-table-cell")[_suggestion_status_badge(suggestion.status)],
         htpy.td(".d-none.d-md-table-cell")[
-            [
-                _suggestion_channel_badge(channel_id)
-                for channel_id in suggestion.channel_ids
-            ]
+            [channel_badge(channel_id) for channel_id in suggestion.channel_ids]
             or htpy.span(".text-secondary")["—"]
         ],
         htpy.td(".d-none.d-md-table-cell")[htpy.div(".fw-semibold")[suggestion.title],],
@@ -3314,10 +3292,7 @@ def suggestion_page(
 ) -> str:
     channel_badges: htpy.Node = (
         htpy.fragment[
-            [
-                _suggestion_channel_badge(channel_id)
-                for channel_id in suggestion.channel_ids
-            ]
+            [channel_badge(channel_id) for channel_id in suggestion.channel_ids]
         ]
         if suggestion.channel_ids
         else htpy.span(".text-secondary")["—"]
@@ -3418,10 +3393,7 @@ def suggestion_detail_row(
     )
     channel_badges: htpy.Node = (
         htpy.fragment[
-            [
-                _suggestion_channel_badge(channel_id)
-                for channel_id in suggestion.channel_ids
-            ]
+            [channel_badge(channel_id) for channel_id in suggestion.channel_ids]
         ]
         if suggestion.channel_ids
         else htpy.span(".text-secondary")["—"]
@@ -4984,7 +4956,7 @@ def suggestions_index(
                                         htpy.label(
                                             ".form-check-label.text-nowrap",
                                             for_=f"suggestion-channel-{channel_id}",
-                                        )[_suggestion_channel_badge(channel_id)],
+                                        )[channel_badge(channel_id)],
                                     ]
                                     for channel_id, _label in rainwave_channels
                                 ],

@@ -26,6 +26,23 @@ channels: dict[int | str, str] = {
 }
 
 
+def channel_badge(channel_id: int) -> htpy.Element:
+    channel_colors = {
+        1: ("#1f95e5", "#fff"),
+        2: ("#de641b", "#fff"),
+        3: ("#b7000f", "#fff"),
+        4: ("#6e439d", "#fff"),
+        6: ("#186e75", "#fff"),
+    }
+    colors = channel_colors.get(channel_id)
+    return htpy.span(
+        ".badge.me-1",
+        style=(
+            f"background-color: {colors[0]}; color: {colors[1]}" if colors else None
+        ),
+    )[channels.get(channel_id, str(channel_id))]
+
+
 def connection_get(dsn: str) -> fort.PostgresDatabase:
     return fort.PostgresDatabase(dsn, maxconn=5)
 
@@ -435,7 +452,11 @@ class Song:
 
     @property
     def origin_channel(self) -> str:
-        return channels.get(self.data.get("song_origin_sid"), "Unknown")
+        return channels.get(self.origin_channel_id, "Unknown")
+
+    @property
+    def origin_channel_id(self) -> int:
+        return self.data.get("song_origin_sid")
 
     @property
     def rating(self) -> float:
@@ -542,7 +563,9 @@ class Song:
                     )[htpy.i(".bi-play")],
                 ],
                 htpy.td(".d-none.d-md-table-cell.text-end")[htpy.code[self.id]],
-                htpy.td(".d-none.d-md-table-cell.text-nowrap")[self.origin_channel],
+                htpy.td(".d-none.d-md-table-cell.text-nowrap")[
+                    channel_badge(self.origin_channel_id)
+                ],
                 htpy.td(".d-none.d-md-table-cell.user-select-all")[self.album_name],
                 htpy.td(".d-none.d-md-table-cell.user-select-all")[self.title],
                 htpy.td(".d-none.d-md-table-cell")[self.artist_tag],
