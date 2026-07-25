@@ -206,6 +206,32 @@ def _suggestion_comment_announce(
     )
 
 
+def _suggestion_claim_announce(
+    suggestion: rainwave_library.models.suggestions.SuggestionDetail,
+) -> None:
+    if not suggestion.requester_discord_id or not suggestion.claimed_by_discord_id:
+        app.logger.warning(
+            "Could not announce the claim on suggestion %s because a Discord ID "
+            "is missing",
+            suggestion.id,
+        )
+        return
+
+    content = (
+        f"<@{suggestion.requester_discord_id}> your suggestion "
+        f"**{suggestion.title}** was claimed by "
+        f"<@{suggestion.claimed_by_discord_id}>."
+    )
+    mentioned_user_ids = (suggestion.requester_discord_id,)
+    if suggestion.claimed_by_discord_id != suggestion.requester_discord_id:
+        mentioned_user_ids += (suggestion.claimed_by_discord_id,)
+    _suggestion_discord_message_send(
+        suggestion.id,
+        content,
+        mentioned_user_ids,
+    )
+
+
 def signed_in(f: typing.Callable) -> typing.Callable:
     @functools.wraps(f)
     def decorated_function(*args, **kwargs) -> werkzeug.Response:  # noqa: ANN002, ANN003
@@ -2082,6 +2108,7 @@ def suggestion_claim(suggestion_id: str) -> str:
         flask.abort(404)
     if not claimed:
         flask.abort(409, "This suggestion is no longer available to claim.")
+    _suggestion_claim_announce(suggestion)
     return rainwave_library.components.suggestion_row(suggestion)
 
 
