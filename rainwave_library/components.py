@@ -1447,8 +1447,8 @@ def _suggestion_status_badge(status: str) -> htpy.Element:
 
 def _suggestion_channel_badge(channel_id: int) -> htpy.Element:
     channel_colors = {
-        1: ("#1f95e5", "#000"),
-        2: ("#de641b", "#000"),
+        1: ("#1f95e5", "#fff"),
+        2: ("#de641b", "#fff"),
         3: ("#b7000f", "#fff"),
         4: ("#6e439d", "#fff"),
         6: ("#186e75", "#fff"),
@@ -4846,9 +4846,9 @@ def suggestions_index(
                                         htpy.label(
                                             ".form-check-label.text-nowrap",
                                             for_=f"suggestion-channel-{channel_id}",
-                                        )[label],
+                                        )[_suggestion_channel_badge(channel_id)],
                                     ]
-                                    for channel_id, label in rainwave_channels
+                                    for channel_id, _label in rainwave_channels
                                 ],
                             ]
                         ],
