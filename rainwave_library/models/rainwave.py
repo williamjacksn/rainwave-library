@@ -659,6 +659,65 @@ def calculate_removed_location(
     return pathlib.Path(library_root) / "removed" / relative
 
 
+def song_channel_filename_get(
+    filename: str | os.PathLike,
+    library_root: str | os.PathLike,
+    channel_root_folder: ChannelRootFolder | str,
+) -> pathlib.Path:
+    try:
+        selected_folder = ChannelRootFolder(channel_root_folder)
+    except ValueError:
+        msg = "Choose a valid channel root folder."
+        raise ValueError(msg) from None
+
+    root = pathlib.Path(library_root).resolve()
+    source = pathlib.Path(filename).resolve()
+    if not source.is_relative_to(root):
+        msg = "The song file is outside the library root."
+        raise ValueError(msg)
+
+    relative = source.relative_to(root)
+    channel_folders = {folder.value for folder in ChannelRootFolder}
+    if len(relative.parts) < 2 or relative.parts[0] not in channel_folders:
+        msg = "The song file is not in a recognized channel root folder."
+        raise ValueError(msg)
+
+    destination = root.joinpath(
+        selected_folder.value,
+        *relative.parts[1:],
+    ).resolve()
+    if not destination.is_relative_to(root):
+        msg = "Invalid song destination."
+        raise ValueError(msg)
+    return destination
+
+
+def song_channel_change(
+    filename: str | os.PathLike,
+    library_root: str | os.PathLike,
+    channel_root_folder: ChannelRootFolder | str,
+) -> pathlib.Path:
+    source = pathlib.Path(filename).resolve()
+    destination = song_channel_filename_get(
+        source,
+        library_root,
+        channel_root_folder,
+    )
+    if source == destination:
+        msg = "The song is already in that channel root folder."
+        raise ValueError(msg)
+    if not source.is_file():
+        msg = "The current song file does not exist."
+        raise ValueError(msg)
+    if destination.exists():
+        msg = f"A file already exists at {destination}."
+        raise ValueError(msg)
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    source.rename(destination)
+    return destination
+
+
 def get_album(db: fort.PostgresDatabase, album_id: int) -> Album:
     sql = """
         select album_id, album_name

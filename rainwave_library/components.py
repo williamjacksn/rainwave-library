@@ -1099,6 +1099,148 @@ def impersonate_user(discord_user_id: str = "", error: str | None = None) -> str
     return str(_base(content))
 
 
+def _songs_change_channels_target(
+    *,
+    new_filename: str | None = None,
+    error: str | None = None,
+) -> htpy.Element:
+    return htpy.div(
+        "#song-change-channels-target.form-text.mt-3",
+        aria_live="polite",
+        role="status",
+    )[
+        htpy.div(".fw-semibold")["Potential new filename"],
+        (
+            htpy.code(".d-block.text-break.user-select-all")[new_filename]
+            if new_filename is not None
+            else htpy.span(class_="text-danger" if error else None)[
+                error or "Choose a channel root folder to preview the new filename."
+            ]
+        ),
+    ]
+
+
+def songs_change_channels_target(
+    *,
+    new_filename: str | None = None,
+    error: str | None = None,
+) -> str:
+    return str(
+        _songs_change_channels_target(
+            new_filename=new_filename,
+            error=error,
+        )
+    )
+
+
+def _songs_change_channels_form(
+    song: Song,
+    *,
+    channel_root_folder: str = "",
+    new_filename: str | None = None,
+    error: str | None = None,
+) -> htpy.Element:
+    url = flask.url_for("songs_change_channels", song_id=song.id)
+    return htpy.form(
+        "#song-change-channels-form.modal-content",
+        action=url,
+        hx_disabled_elt="button",
+        hx_post=url,
+        hx_swap="outerHTML",
+        hx_target="this",
+        method="post",
+    )[
+        htpy.div(".modal-header")[
+            htpy.h5("#song-change-channels-title.modal-title")["Change channels"],
+            htpy.button(
+                ".btn-close",
+                aria_label="Close",
+                data_bs_dismiss="modal",
+                type="button",
+            ),
+        ],
+        htpy.div(".modal-body")[
+            error and htpy.div(".alert.alert-danger", role="alert")[error],
+            htpy.div(".mb-3")[
+                htpy.div(".form-label")["Current filename"],
+                htpy.code(".d-block.text-break.user-select-all")[song.filename],
+            ],
+            htpy.label(
+                ".form-label",
+                for_="song-change-channels-root-folder",
+            )["Channel root folder"],
+            htpy.select(
+                "#song-change-channels-root-folder.form-select",
+                hx_get=flask.url_for(
+                    "songs_change_channels_target",
+                    song_id=song.id,
+                ),
+                hx_swap="outerHTML",
+                hx_target="#song-change-channels-target",
+                hx_trigger="change",
+                name="channel-root-folder",
+                required=True,
+            )[
+                htpy.option(
+                    disabled=True,
+                    selected=not channel_root_folder,
+                    value="",
+                )["Choose a channel root folder"],
+                [
+                    htpy.option(
+                        selected=folder.value == channel_root_folder,
+                        value=folder.value,
+                    )[f"{folder.label} ({folder.value})"]
+                    for folder in ChannelRootFolder
+                ],
+            ],
+            _songs_change_channels_target(
+                new_filename=new_filename,
+            ),
+        ],
+        htpy.div(".modal-footer")[
+            htpy.button(
+                ".btn.btn-outline-secondary",
+                data_bs_dismiss="modal",
+                type="button",
+            )["Cancel"],
+            htpy.button(".btn.btn-primary", type="submit")[
+                htpy.i(".bi-arrow-left-right"), " Change channels"
+            ],
+        ],
+    ]
+
+
+def songs_change_channels_form(
+    song: Song,
+    *,
+    channel_root_folder: str = "",
+    new_filename: str | None = None,
+    error: str | None = None,
+) -> str:
+    return str(
+        _songs_change_channels_form(
+            song,
+            channel_root_folder=channel_root_folder,
+            new_filename=new_filename,
+            error=error,
+        )
+    )
+
+
+def _songs_change_channels_modal(song: Song) -> htpy.Element:
+    return htpy.div(
+        "#song-change-channels-modal.fade.modal",
+        aria_hidden="true",
+        aria_labelledby="song-change-channels-title",
+        tabindex="-1",
+    )[
+        htpy.div(".modal-dialog.modal-dialog-centered.modal-lg")[
+            _songs_change_channels_form(song)
+        ]
+    ]
+
+
 def songs_detail(song: Song) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
@@ -1196,12 +1338,19 @@ def songs_detail(song: Song) -> str:
                     ".btn.btn-outline-success.me-1",
                     href=flask.url_for("songs_edit", song_id=song.id),
                 )[htpy.i(".bi-pencil"), " Edit tags"],
+                htpy.button(
+                    ".btn.btn-outline-primary.me-1",
+                    data_bs_target="#song-change-channels-modal",
+                    data_bs_toggle="modal",
+                    type="button",
+                )[htpy.i(".bi-arrow-left-right"), " Change channels"],
                 htpy.a(
                     ".btn.btn-outline-danger",
                     href=flask.url_for("songs_remove", song_id=song.id),
                 )[htpy.i(".bi-file-earmark-break"), " Remove file"],
             ]
         ],
+        _songs_change_channels_modal(song),
     ]
     return str(_base(content))
 

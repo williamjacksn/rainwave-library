@@ -2425,6 +2425,75 @@ def songs_detail(song_id: int) -> str:
     return rainwave_library.components.songs_detail(song)
 
 
+@app.route("/songs/<int:song_id>/change-channels/target", methods=["GET"])
+@secure
+def songs_change_channels_target(song_id: int) -> str:
+    db = app.config["RAINWAVE_DATABASE"]
+    song = rainwave_library.models.rainwave.get_song(db, song_id)
+    try:
+        new_filename = rainwave_library.models.rainwave.song_channel_filename_get(
+            song.filename,
+            app.config["LIBRARY_ROOT"],
+            flask.request.args.get("channel-root-folder", ""),
+        )
+    except ValueError as error:
+        return rainwave_library.components.songs_change_channels_target(
+            error=str(error)
+        )
+    return rainwave_library.components.songs_change_channels_target(
+        new_filename=str(new_filename)
+    )
+
+
+@app.route("/songs/<int:song_id>/change-channels", methods=["POST"])
+@secure
+def songs_change_channels(song_id: int) -> werkzeug.Response | str:
+    db = app.config["RAINWAVE_DATABASE"]
+    song = rainwave_library.models.rainwave.get_song(db, song_id)
+    channel_root_folder = flask.request.form.get("channel-root-folder", "")
+    new_filename: pathlib.Path | None = None
+    try:
+        new_filename = rainwave_library.models.rainwave.song_channel_filename_get(
+            song.filename,
+            app.config["LIBRARY_ROOT"],
+            channel_root_folder,
+        )
+        destination = rainwave_library.models.rainwave.song_channel_change(
+            song.filename,
+            app.config["LIBRARY_ROOT"],
+            channel_root_folder,
+        )
+    except ValueError as error:
+        return rainwave_library.components.songs_change_channels_form(
+            song,
+            channel_root_folder=channel_root_folder,
+            new_filename=str(new_filename) if new_filename is not None else None,
+            error=str(error),
+        )
+    except OSError:
+        app.logger.exception("Could not change channels for song %s", song_id)
+        return rainwave_library.components.songs_change_channels_form(
+            song,
+            channel_root_folder=channel_root_folder,
+            new_filename=str(new_filename) if new_filename is not None else None,
+            error="The song file could not be moved.",
+        )
+
+    app.logger.info(
+        "Changed channels for song %s by moving it to %s",
+        song_id,
+        destination,
+    )
+    # Give the scanner time to update the filename and channel in the database.
+    time.sleep(1)
+    redirect_url = flask.url_for("songs_detail", song_id=song_id)
+    if flask.request.headers.get("HX-Request") == "true":
+        response = flask.make_response()
+        response.headers["HX-Redirect"] = redirect_url
+        return response
+    return flask.redirect(redirect_url)
+
+
 @app.route("/songs/<int:song_id>/download", methods=["GET"])
 @secure
 def songs_download(song_id: int) -> flask.Response:
