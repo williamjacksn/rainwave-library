@@ -1159,12 +1159,16 @@ def suggestion_page(suggestion_id: str) -> str:
             suggestion_id,
         )
     )
+    staged_genre = rainwave_library.models.mp3.most_common_genre_get(
+        music_tags.values()
+    )
     return rainwave_library.components.suggestion_page(
         suggestion,
         staged_files,
         folder_path=str(folder_path),
         music_tags=music_tags,
         staged_mp3_duration_seconds=staged_mp3_duration_seconds,
+        staged_genre=staged_genre,
     )
 
 

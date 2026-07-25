@@ -284,9 +284,9 @@ def _suggestion_release_folder_name_get(
 def _suggestion_release_genre_folder_get(genre: str) -> str:
     genre_name = genre.strip().lstrip("~").strip()
     if not genre_name:
-        msg = "Enter a genre when including a genre folder."
+        msg = "Enter a category when including a category folder."
         raise ValueError(msg)
-    return _suggestion_release_path_name_get(f"~{genre_name}", "genre")
+    return _suggestion_release_path_name_get(f"~{genre_name}", "category")
 
 
 def suggestion_release_schedule(

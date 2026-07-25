@@ -3147,22 +3147,19 @@ def _suggestion_schedule_release_form(
                         htpy.label(
                             ".form-check-label",
                             for_="suggestion-release-include-genre",
-                        )["Include a genre folder"],
+                        )["Include a category folder"],
                     ],
                     htpy.div(".mt-2")[
-                        htpy.label(
-                            ".form-label",
-                            for_="suggestion-release-genre",
-                        )["Genre"],
                         htpy.input(
                             "#suggestion-release-genre.form-control",
+                            aria_label="Category",
                             name="genre",
                             placeholder="Ambient",
                             type="text",
                             value=genre,
                         ),
                         htpy.div(".form-text")[
-                            "When selected, enter the genre without the leading "
+                            "When selected, enter the category without the leading "
                             "tilde. For example, Ambient creates ~Ambient."
                         ],
                     ],
@@ -3226,6 +3223,7 @@ def suggestion_schedule_release_form(
 def _suggestion_schedule_release_modal(
     suggestion: SuggestionDetail,
     staged_duration_seconds: float,
+    staged_genre: str,
 ) -> htpy.Element:
     return htpy.div(
         "#suggestion-schedule-release-modal.fade.modal",
@@ -3236,6 +3234,7 @@ def _suggestion_schedule_release_modal(
         htpy.div(".modal-dialog.modal-dialog-centered.modal-lg")[
             _suggestion_schedule_release_form(
                 suggestion,
+                genre=staged_genre,
                 staged_duration_seconds=staged_duration_seconds,
             )
         ]
@@ -3258,6 +3257,7 @@ def suggestion_page(
     folder_path: str | None = None,
     music_tags: dict[str, Mp3TagValues] | None = None,
     staged_mp3_duration_seconds: float = 0.0,
+    staged_genre: str = "",
 ) -> str:
     channel_badges: htpy.Node = (
         htpy.fragment[
@@ -3345,6 +3345,7 @@ def suggestion_page(
         _suggestion_schedule_release_modal(
             suggestion,
             staged_mp3_duration_seconds,
+            staged_genre,
         ),
         htpy.div("#audio"),
     ]

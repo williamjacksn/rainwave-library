@@ -11,7 +11,7 @@ ID3_TAG_LABELS = {
     "album": "Album",
     "title": "Title",
     "artist": "Artist",
-    "genre": "Genre",
+    "genre": "Category",
     "www": "URL",
     "comment": "Comment",
 }
@@ -26,6 +26,25 @@ class Mp3TagValues:
     www: tuple[str, ...] = ()
     comment: tuple[str, ...] = ()
     error: str | None = None
+
+
+def most_common_genre_get(tag_values: typing.Iterable[Mp3TagValues]) -> str:
+    genre_counts: dict[str, int] = {}
+    genre_labels: dict[str, str] = {}
+    for values in tag_values:
+        genres_in_file = set()
+        for genre in values.genre:
+            label = genre.strip()
+            normalized_genre = label.casefold()
+            if not normalized_genre or normalized_genre in genres_in_file:
+                continue
+            genres_in_file.add(normalized_genre)
+            genre_counts[normalized_genre] = genre_counts.get(normalized_genre, 0) + 1
+            genre_labels.setdefault(normalized_genre, label)
+    if not genre_counts:
+        return ""
+    most_common_genre = max(genre_counts, key=lambda genre: genre_counts[genre])
+    return genre_labels[most_common_genre]
 
 
 def _text_frame_values(tags: mutagen.id3.ID3, frame_id: str) -> tuple[str, ...]:
