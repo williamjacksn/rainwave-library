@@ -88,6 +88,74 @@ def external_url_for(endpoint: str, *args, **kwargs) -> str:  # noqa: ANN002, AN
     )
 
 
+def _suggestion_created_announce(
+    suggestion_id: str,
+    *,
+    title: str,
+    channel_id: int,
+    kind: str,
+    requester_name: str | None,
+    requester_discord_id: str | None,
+) -> None:
+    try:
+        storage_cnx = rainwave_library.models.storage.connection_get(
+            app.config["STORAGE_CNX"]
+        )
+        try:
+            bot_token = rainwave_library.models.storage.setting_get(
+                storage_cnx, "discord/bot-token"
+            )
+            discord_channel_id = rainwave_library.models.storage.setting_get(
+                storage_cnx, "discord/music-suggestion-channel-id"
+            )
+        finally:
+            storage_cnx.close()
+
+        if not bot_token or not discord_channel_id:
+            app.logger.warning(
+                "Could not announce suggestion %s because the Discord settings "
+                "are incomplete",
+                suggestion_id,
+            )
+            return
+
+        channel_name = rainwave_library.models.rainwave.channels.get(
+            channel_id, "Unknown"
+        )
+        kind_name = rainwave_library.models.suggestions.Suggestion.kind_labels.get(
+            kind, kind
+        )
+        suggested_by = (
+            f"<@{requester_discord_id}>"
+            if requester_discord_id
+            else requester_name or "Unknown"
+        )
+        suggestions_url = external_url_for("suggestions")
+        content = "\n".join(
+            (
+                "**New music suggestion**",
+                f"**Title:** {title.strip()}",
+                f"**Channel:** {channel_name}",
+                f"**Type:** {kind_name}",
+                f"**Suggested by:** {suggested_by}",
+                f"-# [See all suggestions]({suggestions_url})",
+            )
+        )
+        rainwave_library.models.discord.send_message(
+            bot_token,
+            discord_channel_id,
+            content,
+            mentioned_user_ids=(
+                (requester_discord_id,) if requester_discord_id else ()
+            ),
+        )
+    except Exception:
+        app.logger.exception(
+            "Could not announce suggestion %s on Discord",
+            suggestion_id,
+        )
+
+
 def signed_in(f: typing.Callable) -> typing.Callable:
     @functools.wraps(f)
     def decorated_function(*args, **kwargs) -> werkzeug.Response:  # noqa: ANN002, ANN003
@@ -911,7 +979,7 @@ def suggestion_create() -> werkzeug.Response | str:
     )
     try:
         try:
-            rainwave_library.models.suggestions.suggestion_create(
+            suggestion_id = rainwave_library.models.suggestions.suggestion_create(
                 storage_cnx,
                 title=title,
                 description=description,
@@ -933,6 +1001,15 @@ def suggestion_create() -> werkzeug.Response | str:
             )
     finally:
         storage_cnx.close()
+
+    _suggestion_created_announce(
+        suggestion_id,
+        title=title,
+        channel_id=channel_id,
+        kind=kind,
+        requester_name=flask.g.discord_display_name,
+        requester_discord_id=(str(flask.g.discord_id) if flask.g.discord_id else None),
+    )
 
     redirect_url = flask.url_for("suggestions")
     if flask.request.headers.get("HX-Request") == "true":
@@ -976,7 +1053,7 @@ def suggestion_staff_create() -> werkzeug.Response | str:
     )
     try:
         try:
-            rainwave_library.models.suggestions.suggestion_create(
+            suggestion_id = rainwave_library.models.suggestions.suggestion_create(
                 storage_cnx,
                 title=title,
                 description=description,
@@ -999,6 +1076,15 @@ def suggestion_staff_create() -> werkzeug.Response | str:
             )
     finally:
         storage_cnx.close()
+
+    _suggestion_created_announce(
+        suggestion_id,
+        title=title,
+        channel_id=channel_id,
+        kind=kind,
+        requester_name=requester_name,
+        requester_discord_id=requester_discord_id,
+    )
 
     redirect_url = flask.url_for("suggestions")
     if flask.request.headers.get("HX-Request") == "true":
