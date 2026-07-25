@@ -116,7 +116,7 @@ def _user_menu() -> htpy.Renderable:
                 htpy.li[htpy.span(".dropdown-item-text.fw-semibold")[display_name]],
                 htpy.li[
                     htpy.span(".dropdown-item-text.text-secondary")[
-                        "member (impersonating)" if impersonator else role
+                        role, impersonator and " (impersonating)"
                     ]
                 ],
                 htpy.li[htpy.hr(".dropdown-divider")],
