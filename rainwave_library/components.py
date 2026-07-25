@@ -3032,6 +3032,56 @@ def suggestion_schedule_release_duration(
     )
 
 
+def _suggestion_schedule_release_target(
+    suggestion_id: str,
+    *,
+    target_path: str | None = None,
+    message: str = "Choose a release date to preview the target folder.",
+    error: bool = False,
+    initial_load: bool = False,
+) -> htpy.Element:
+    triggers = "change from:closest form, input changed delay:300ms from:closest form"
+    if initial_load:
+        triggers = f"load, {triggers}"
+    return htpy.div(
+        "#suggestion-release-target.form-text.mt-2",
+        aria_live="polite",
+        hx_get=flask.url_for(
+            "suggestion_schedule_release_target",
+            suggestion_id=suggestion_id,
+        ),
+        hx_include="closest form",
+        hx_swap="outerHTML",
+        hx_target="this",
+        hx_trigger=triggers,
+        role="status",
+    )[
+        htpy.div(".fw-semibold")["Target folder"],
+        (
+            htpy.code(".d-block.text-break.user-select-all")[target_path]
+            if target_path is not None
+            else htpy.span(class_="text-danger" if error else None)[message]
+        ),
+    ]
+
+
+def suggestion_schedule_release_target(
+    suggestion_id: str,
+    *,
+    target_path: str | None = None,
+    message: str = "Choose a release date to preview the target folder.",
+    error: bool = False,
+) -> str:
+    return str(
+        _suggestion_schedule_release_target(
+            suggestion_id,
+            target_path=target_path,
+            message=message,
+            error=error,
+        )
+    )
+
+
 def _suggestion_schedule_release_form(
     suggestion: SuggestionDetail,
     *,
@@ -3177,6 +3227,10 @@ def _suggestion_schedule_release_form(
                         value=(
                             suggestion.title if folder_name is None else folder_name
                         ),
+                    ),
+                    _suggestion_schedule_release_target(
+                        suggestion.id,
+                        initial_load=True,
                     ),
                 ],
             ],

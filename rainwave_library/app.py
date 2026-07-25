@@ -1216,6 +1216,52 @@ def suggestion_schedule_release_duration(suggestion_id: str) -> str:
     )
 
 
+@app.route(
+    "/suggestions/<suggestion_id>/schedule-release/target",
+    methods=["GET"],
+)
+@secure
+def suggestion_schedule_release_target(suggestion_id: str) -> str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx,
+            suggestion_id,
+        )
+    finally:
+        storage_cnx.close()
+    if suggestion is None:
+        flask.abort(404)
+
+    release_date = flask.request.args.get("release-date", "")
+    if not release_date:
+        return rainwave_library.components.suggestion_schedule_release_target(
+            suggestion_id
+        )
+
+    try:
+        target = rainwave_library.models.storage.suggestion_release_target_get(
+            app.config["LIBRARY_ROOT"],
+            release_date,
+            flask.request.args.get("channel-folder", ""),
+            flask.request.args.get("folder-name", ""),
+            include_genre=flask.request.args.get("include-genre") == "1",
+            genre=flask.request.args.get("genre", ""),
+        )
+    except ValueError as error:
+        return rainwave_library.components.suggestion_schedule_release_target(
+            suggestion_id,
+            message=str(error),
+            error=True,
+        )
+    return rainwave_library.components.suggestion_schedule_release_target(
+        suggestion_id,
+        target_path=str(target),
+    )
+
+
 @app.route("/suggestions/<suggestion_id>/schedule-release", methods=["POST"])
 @secure
 def suggestion_schedule_release(suggestion_id: str) -> werkzeug.Response | str:

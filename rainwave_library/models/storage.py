@@ -288,16 +288,15 @@ def _suggestion_release_genre_folder_get(genre: str) -> str:
     return _suggestion_release_path_name_get(f"~{genre_name}", "category")
 
 
-def suggestion_release_schedule(
+def suggestion_release_target_get(
     library_root: pathlib.Path,
-    suggestion_id: str,
     release_date: str,
     channel_folder: str,
     folder_name: str,
     *,
     include_genre: bool = False,
     genre: str = "",
-) -> str:
+) -> pathlib.Path:
     try:
         parsed_release_date = datetime.date.fromisoformat(release_date)
     except ValueError:
@@ -314,31 +313,49 @@ def suggestion_release_schedule(
         _suggestion_release_genre_folder_get(genre) if include_genre else None
     )
 
-    source = suggestion_staging_folder_get(library_root, suggestion_id)
-    if not suggestion_staging_files_get(library_root, suggestion_id):
-        msg = "Upload at least one file before scheduling the release."
-        raise ValueError(msg)
-
     upcoming_root = _upcoming_music_root_get(library_root)
     destination_parent = (
         upcoming_root / parsed_release_date.isoformat() / channel_folder
     )
     if genre_folder is not None:
         destination_parent /= genre_folder
-    destination = destination_parent / final_folder_name
-    if not destination.resolve().is_relative_to(upcoming_root):
+    destination = (destination_parent / final_folder_name).resolve()
+    if not destination.is_relative_to(upcoming_root):
         msg = "Invalid upcoming music destination."
         raise ValueError(msg)
+    return destination
+
+
+def suggestion_release_schedule(
+    library_root: pathlib.Path,
+    suggestion_id: str,
+    release_date: str,
+    channel_folder: str,
+    folder_name: str,
+    *,
+    include_genre: bool = False,
+    genre: str = "",
+) -> str:
+    upcoming_root = _upcoming_music_root_get(library_root)
+    destination = suggestion_release_target_get(
+        library_root,
+        release_date,
+        channel_folder,
+        folder_name,
+        include_genre=include_genre,
+        genre=genre,
+    )
     if destination.exists():
         msg = "That upcoming music destination already exists."
         raise ValueError(msg)
 
+    source = suggestion_staging_folder_get(library_root, suggestion_id)
+    if not suggestion_staging_files_get(library_root, suggestion_id):
+        msg = "Upload at least one file before scheduling the release."
+        raise ValueError(msg)
+
     created_directories = []
-    destination_parts = (
-        parsed_release_date.isoformat(),
-        channel_folder,
-        *((genre_folder,) if genre_folder is not None else ()),
-    )
+    destination_parts = destination.parent.relative_to(upcoming_root).parts
     for directory in (
         upcoming_root,
         *(
