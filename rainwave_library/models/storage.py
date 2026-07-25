@@ -272,11 +272,10 @@ def _suggestion_release_path_name_get(name: str, label: str) -> str:
 
 
 def _suggestion_release_folder_name_get(
-    suggestion_title: str,
     folder_name: str,
 ) -> str:
     return _suggestion_release_path_name_get(
-        folder_name.strip() or suggestion_title.strip(),
+        folder_name.strip(),
         "final folder name",
     )
 
@@ -292,10 +291,9 @@ def _suggestion_release_genre_folder_get(genre: str) -> str:
 def suggestion_release_schedule(
     library_root: pathlib.Path,
     suggestion_id: str,
-    suggestion_title: str,
     release_date: str,
     channel_folder: str,
-    folder_name: str = "",
+    folder_name: str,
     *,
     include_genre: bool = False,
     genre: str = "",
@@ -311,10 +309,7 @@ def suggestion_release_schedule(
     if channel_folder not in UPCOMING_CHANNEL_FOLDERS:
         msg = "Choose a valid channel folder."
         raise ValueError(msg)
-    final_folder_name = _suggestion_release_folder_name_get(
-        suggestion_title,
-        folder_name,
-    )
+    final_folder_name = _suggestion_release_folder_name_get(folder_name)
     genre_folder = (
         _suggestion_release_genre_folder_get(genre) if include_genre else None
     )

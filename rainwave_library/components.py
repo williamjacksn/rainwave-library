@@ -3037,7 +3037,7 @@ def _suggestion_schedule_release_form(
     *,
     release_date: str = "",
     channel_folder: str | None = None,
-    folder_name: str = "",
+    folder_name: str | None = None,
     include_genre: bool = False,
     genre: str = "",
     staged_duration_seconds: float = 0.0,
@@ -3168,15 +3168,16 @@ def _suggestion_schedule_release_form(
                     htpy.label(
                         ".form-label",
                         for_="suggestion-release-folder-name",
-                    )["Final folder name (optional)"],
+                    )["Final folder name"],
                     htpy.input(
                         "#suggestion-release-folder-name.form-control",
                         name="folder-name",
-                        placeholder=suggestion.title,
+                        required=True,
                         type="text",
-                        value=folder_name,
+                        value=(
+                            suggestion.title if folder_name is None else folder_name
+                        ),
                     ),
-                    htpy.div(".form-text")["Leave blank to use the suggestion name."],
                 ],
             ],
         ],
@@ -3198,7 +3199,7 @@ def suggestion_schedule_release_form(
     *,
     release_date: str = "",
     channel_folder: str | None = None,
-    folder_name: str = "",
+    folder_name: str | None = None,
     include_genre: bool = False,
     genre: str = "",
     staged_duration_seconds: float = 0.0,

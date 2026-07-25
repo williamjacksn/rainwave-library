@@ -1258,7 +1258,6 @@ def suggestion_schedule_release(suggestion_id: str) -> werkzeug.Response | str:
         destination = rainwave_library.models.storage.suggestion_release_schedule(
             app.config["LIBRARY_ROOT"],
             suggestion_id,
-            suggestion.title,
             release_date,
             channel_folder,
             folder_name,
