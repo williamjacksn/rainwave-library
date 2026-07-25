@@ -121,6 +121,7 @@ def _user_menu() -> htpy.Renderable:
                 ],
                 htpy.li[htpy.hr(".dropdown-divider")],
                 role == "staff"
+                and not impersonator
                 and htpy.li[
                     htpy.a(
                         ".dropdown-item",

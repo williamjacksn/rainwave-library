@@ -522,6 +522,8 @@ def assume_member() -> werkzeug.Response:
 @app.route("/impersonate", methods=["GET", "POST"])
 @secure
 def impersonate_user() -> werkzeug.Response | str:
+    if flask.session.get("impersonator"):
+        flask.abort(409, "Stop impersonating the current user before starting again.")
     if flask.request.method == "GET":
         return rainwave_library.components.impersonate_user()
 
@@ -536,30 +538,94 @@ def impersonate_user() -> werkzeug.Response | str:
         app.config["STORAGE_CNX"]
     )
     try:
-        display_name = rainwave_library.models.suggestions.suggestion_user_name_get(
-            storage_cnx,
-            discord_user_id,
+        bot_token = rainwave_library.models.storage.setting_get(
+            storage_cnx, "discord/bot-token"
         )
     finally:
         storage_cnx.close()
-    if display_name is None:
-        display_name = (
-            rainwave_library.models.rainwave.get_listener_name_by_discord_user_id(
-                app.config["RAINWAVE_DATABASE"],
+
+    guild_id = app.config["DISCORD_GUILD_ID"]
+    if not bot_token or not guild_id:
+        return rainwave_library.components.impersonate_user(
+            discord_user_id=discord_user_id,
+            error="Discord impersonation is not configured.",
+        )
+    try:
+        member = rainwave_library.models.discord.get_guild_member(
+            bot_token,
+            guild_id,
+            discord_user_id,
+        )
+    except httpx.HTTPStatusError as error:
+        if error.response.status_code == 404:
+            message = "That user is not a member of the configured Discord guild."
+        else:
+            app.logger.exception(
+                "Could not look up Discord guild member %s",
                 discord_user_id,
             )
+            message = "Discord could not look up that guild member."
+        return rainwave_library.components.impersonate_user(
+            discord_user_id=discord_user_id,
+            error=message,
         )
-    display_name = display_name or f"Discord user {discord_user_id}"
+    except (httpx.HTTPError, ValueError):
+        app.logger.exception(
+            "Could not look up Discord guild member %s",
+            discord_user_id,
+        )
+        return rainwave_library.components.impersonate_user(
+            discord_user_id=discord_user_id,
+            error="Discord could not look up that guild member.",
+        )
+
+    user = member.get("user")
+    roles = member.get("roles")
+    if (
+        not isinstance(user, dict)
+        or str(user.get("id") or "") != discord_user_id
+        or not isinstance(roles, list)
+    ):
+        app.logger.error(
+            "Discord returned incomplete guild member data for user %s",
+            discord_user_id,
+        )
+        return rainwave_library.components.impersonate_user(
+            discord_user_id=discord_user_id,
+            error="Discord returned incomplete guild member information.",
+        )
+
+    username = user.get("username")
+    display_name = (
+        member.get("nick")
+        or user.get("global_name")
+        or username
+        or f"Discord user {discord_user_id}"
+    )
+    guild_avatar = member.get("avatar")
+    user_avatar = user.get("avatar")
+    if guild_avatar:
+        avatar_url = (
+            f"https://cdn.discordapp.com/guilds/{guild_id}/users/"
+            f"{discord_user_id}/avatars/{guild_avatar}.png"
+        )
+    elif user_avatar:
+        avatar_url = (
+            f"https://cdn.discordapp.com/avatars/{discord_user_id}/{user_avatar}.png"
+        )
+    else:
+        avatar_url = None
+    role = "staff" if app.config["DISCORD_STAFF_ROLE_ID"] in roles else "member"
 
     impersonator = {key: flask.session.get(key) for key in _IDENTITY_SESSION_KEYS}
     flask.session["impersonator"] = impersonator
     flask.session.update(
         {
             "discord_id": discord_user_id,
-            "discord_username": None,
+            "discord_username": username,
             "discord_display_name": display_name,
-            "discord_avatar_url": None,
-            "role": "member",
+            "discord_avatar_url": avatar_url,
+            "role": role,
         }
     )
     app.logger.info(
