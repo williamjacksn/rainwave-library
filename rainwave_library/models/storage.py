@@ -10,25 +10,9 @@ import typing
 import mutagen
 import mutagen.mp3
 
-log = logging.getLogger(__name__)
+from rainwave_library.models.rainwave import ChannelRootFolder
 
-UPCOMING_CHANNEL_FOLDERS = {
-    "game-all": "Game",
-    "game-chill-all": "Game, Chill",
-    "game-only": "Game only",
-    "ocr-all": "OC ReMix",
-    "ocr-chill-all": "OC ReMix, Chill",
-    "ocr-chip-all": "OC ReMix, Chiptune",
-    "ocr-game-all": "OC ReMix, Game",
-    "ocr-only": "OC ReMix only",
-    "cover-all": "Covers",
-    "cover-chill-all": "Covers, Chill",
-    "cover-chip-all": "Covers, Chiptune",
-    "cover-only": "Covers only",
-    "chip-all": "Chiptune",
-    "chip-only": "Chiptune only",
-    "chill-only": "Chill",
-}
+log = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -305,9 +289,11 @@ def suggestion_release_target_get(
     if parsed_release_date <= datetime.date.today():
         msg = "The release date must be in the future."
         raise ValueError(msg)
-    if channel_folder not in UPCOMING_CHANNEL_FOLDERS:
+    try:
+        root_folder = ChannelRootFolder(channel_folder)
+    except ValueError:
         msg = "Choose a valid channel folder."
-        raise ValueError(msg)
+        raise ValueError(msg) from None
     final_folder_name = _suggestion_release_folder_name_get(folder_name)
     genre_folder = (
         _suggestion_release_genre_folder_get(genre) if include_genre else None
@@ -315,7 +301,7 @@ def suggestion_release_target_get(
 
     upcoming_root = _upcoming_music_root_get(library_root)
     destination_parent = (
-        upcoming_root / parsed_release_date.isoformat() / channel_folder
+        upcoming_root / parsed_release_date.isoformat() / root_folder.value
     )
     if genre_folder is not None:
         destination_parent /= genre_folder

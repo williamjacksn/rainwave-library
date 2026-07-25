@@ -10,6 +10,7 @@ from rainwave_library.models.mp3 import ID3_TAG_LABELS, Mp3TagValues
 from rainwave_library.models.rainwave import (
     Album,
     Artist,
+    ChannelRootFolder,
     Listener,
     Song,
     channel_badge,
@@ -17,7 +18,6 @@ from rainwave_library.models.rainwave import (
     length_display,
 )
 from rainwave_library.models.storage import (
-    UPCOMING_CHANNEL_FOLDERS,
     UpcomingMusicDirectory,
     UpcomingMusicEntry,
 )
@@ -2931,11 +2931,11 @@ def _suggestion_release_default_channel_folder(
     suggestion: SuggestionDetail,
 ) -> str | None:
     channel_folders = {
-        1: "game-all",
-        2: "ocr-all",
-        3: "cover-all",
-        4: "chip-all",
-        6: "chill-only",
+        1: ChannelRootFolder.GAME_ALL.value,
+        2: ChannelRootFolder.OCR_ALL.value,
+        3: ChannelRootFolder.COVERS_ALL.value,
+        4: ChannelRootFolder.CHIPTUNE_ALL.value,
+        6: ChannelRootFolder.CHILL_ONLY.value,
     }
     channel_ids = (
         (suggestion.primary_channel_id,)
@@ -3156,10 +3156,10 @@ def _suggestion_schedule_release_form(
                         )["Choose a channel folder"],
                         [
                             htpy.option(
-                                selected=folder == selected_channel_folder,
-                                value=folder,
-                            )[f"{label} ({folder})"]
-                            for folder, label in UPCOMING_CHANNEL_FOLDERS.items()
+                                selected=folder.value == selected_channel_folder,
+                                value=folder.value,
+                            )[f"{folder.label} ({folder.value})"]
+                            for folder in ChannelRootFolder
                         ],
                     ],
                 ],

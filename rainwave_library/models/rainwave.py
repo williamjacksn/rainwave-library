@@ -1,4 +1,5 @@
 import datetime
+import enum
 import os
 import pathlib
 from typing import TypedDict, cast
@@ -24,6 +25,32 @@ channels: dict[int | str, str] = {
     "6": "Chill",
     "a": "Fallback",
 }
+
+
+class ChannelRootFolder(enum.StrEnum):
+    label: str
+
+    def __new__(cls, value: str, label: str) -> "ChannelRootFolder":
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member.label = label
+        return member
+
+    GAME_ALL = ("game-all", "Game")
+    GAME_CHILL_ALL = ("game-chill-all", "Game, Chill")
+    GAME_ONLY = ("game-only", "Game only")
+    OCR_ALL = ("ocr-all", "OC ReMix")
+    OCR_CHILL_ALL = ("ocr-chill-all", "OC ReMix, Chill")
+    OCR_CHIP_ALL = ("ocr-chip-all", "OC ReMix, Chiptune")
+    OCR_GAME_ALL = ("ocr-game-all", "OC ReMix, Game")
+    OCR_ONLY = ("ocr-only", "OC ReMix only")
+    COVERS_ALL = ("cover-all", "Covers")
+    COVERS_CHILL_ALL = ("cover-chill-all", "Covers, Chill")
+    COVERS_CHIP_ALL = ("cover-chip-all", "Covers, Chiptune")
+    COVERS_ONLY = ("cover-only", "Covers only")
+    CHIPTUNE_ALL = ("chip-all", "Chiptune")
+    CHIPTUNE_ONLY = ("chip-only", "Chiptune only")
+    CHILL_ONLY = ("chill-only", "Chill")
 
 
 def channel_badge(channel_id: int) -> htpy.Element:
