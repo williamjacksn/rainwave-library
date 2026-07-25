@@ -12,7 +12,6 @@ import time
 import typing
 import urllib.parse
 
-import click
 import flask
 import httpx
 import mutagen.id3
@@ -107,26 +106,6 @@ def secure(f: typing.Callable) -> typing.Callable:
         return f(*args, **kwargs)
 
     return decorated_function
-
-
-@app.cli.command("trello-import")
-@click.argument("board_id")
-def trello_import_command(board_id: str) -> None:
-    storage_cnx = rainwave_library.models.storage.connection_get(
-        app.config["STORAGE_CNX"]
-    )
-    try:
-        rainwave_library.models.storage.migrate(storage_cnx)
-        result = rainwave_library.models.suggestions.trello_import(
-            storage_cnx, board_id
-        )
-    finally:
-        storage_cnx.close()
-    click.echo(
-        f"Imported {result.suggestions} suggestions, {result.channels} channels, "
-        f"{result.links} links, {result.tags} tags, and {result.activities} "
-        f"activities; skipped {result.skipped} cards."
-    )
 
 
 @app.before_request
