@@ -60,12 +60,30 @@ def get_client(handle: str, password: str) -> BlueskyClient:
 
 def main() -> None:
     import rainwave_library.app
+    import rainwave_library.models.storage
 
     notch.make_log("bsky")
-    b = get_client(
-        rainwave_library.app.app.config["BLUESKY_HANDLE"],
-        rainwave_library.app.app.config["BLUESKY_PASSWORD"],
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        rainwave_library.app.app.config["STORAGE_CNX"]
     )
+    try:
+        handle = (
+            rainwave_library.models.storage.setting_get(
+                storage_cnx,
+                "bluesky/handle",
+            )
+            or ""
+        )
+        password = (
+            rainwave_library.models.storage.setting_get(
+                storage_cnx,
+                "bluesky/password",
+            )
+            or ""
+        )
+    finally:
+        storage_cnx.close()
+    b = get_client(handle, password)
     print(b.post("Test post"))
 
 

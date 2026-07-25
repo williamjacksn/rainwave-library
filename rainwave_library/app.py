@@ -52,13 +52,6 @@ try:
         rainwave_library.models.storage.setting_get(storage_cnx, "app/url-scheme")
         or "https"
     )
-    app.config["BLUESKY_HANDLE"] = (
-        rainwave_library.models.storage.setting_get(storage_cnx, "bluesky/handle") or ""
-    )
-    app.config["BLUESKY_PASSWORD"] = (
-        rainwave_library.models.storage.setting_get(storage_cnx, "bluesky/password")
-        or ""
-    )
     app.config["DISCORD_GUILD_ID"] = rainwave_library.models.storage.setting_get(
         storage_cnx, "discord/guild-id"
     )
@@ -484,9 +477,27 @@ def authorize() -> werkzeug.Response:
 def bluesky() -> werkzeug.Response | str:
     if flask.request.method == "GET":
         return rainwave_library.components.bluesky_post()
-    b = rainwave_library.models.bsky.get_client(
-        app.config["BLUESKY_HANDLE"], app.config["BLUESKY_PASSWORD"]
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
     )
+    try:
+        handle = (
+            rainwave_library.models.storage.setting_get(
+                storage_cnx,
+                "bluesky/handle",
+            )
+            or ""
+        )
+        password = (
+            rainwave_library.models.storage.setting_get(
+                storage_cnx,
+                "bluesky/password",
+            )
+            or ""
+        )
+    finally:
+        storage_cnx.close()
+    b = rainwave_library.models.bsky.get_client(handle, password)
     b.post(flask.request.values["body"])
     return flask.redirect(flask.url_for("index"))
 
