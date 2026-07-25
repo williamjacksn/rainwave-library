@@ -2555,6 +2555,20 @@ def _suggestion_bulk_tag_form(suggestion_id: str) -> htpy.Element:
     ]
 
 
+def _suggestion_music_file_details(
+    size: int,
+    duration_seconds: float | None,
+) -> htpy.Element:
+    duration = (
+        length_display(int(duration_seconds)) if duration_seconds is not None else "—"
+    )
+    return htpy.div(".small.text-secondary")[
+        duration,
+        " · ",
+        f"{size:,} bytes",
+    ]
+
+
 def _suggestion_music_file_table(
     suggestion_id: str,
     files: tuple[tuple[str, int], ...],
@@ -2585,7 +2599,7 @@ def _suggestion_music_file_table(
                         htpy.code(".text-break")[path],
                         _suggestion_music_play_button(suggestion_id, path),
                     ],
-                    htpy.div(".small.text-secondary")[f"{size:,} bytes"],
+                    _suggestion_music_file_details(size, tags.duration_seconds),
                     tags.error
                     and htpy.div(".small.text-danger", role="status")[tags.error],
                 ],
@@ -2613,7 +2627,10 @@ def _suggestion_music_file_table(
                                 htpy.code(".text-break")[path],
                                 _suggestion_music_play_button(suggestion_id, path),
                             ],
-                            htpy.div(".small.text-secondary")[f"{size:,} bytes"],
+                            _suggestion_music_file_details(
+                                size,
+                                tags.duration_seconds,
+                            ),
                             tags.error
                             and htpy.div(".small.text-danger", role="status")[
                                 tags.error

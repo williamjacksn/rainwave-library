@@ -4,6 +4,7 @@ import pathlib
 import typing
 
 import mutagen.id3
+import mutagen.mp3
 
 log = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ class Mp3TagValues:
     www: tuple[str, ...] = ()
     comment: tuple[str, ...] = ()
     error: str | None = None
+    duration_seconds: float | None = None
 
 
 def most_common_genre_get(tag_values: typing.Iterable[Mp3TagValues]) -> str:
@@ -57,14 +59,30 @@ def _text_frame_values(tags: mutagen.id3.ID3, frame_id: str) -> tuple[str, ...]:
     return tuple(values)
 
 
+def mp3_duration_seconds_get(filename: str | pathlib.Path) -> float | None:
+    try:
+        mp3 = mutagen.mp3.MP3(filename)
+    except (mutagen.MutagenError, OSError) as error:
+        log.warning("Unable to read MP3 duration from %s: %s", filename, error)
+        return None
+    return mp3.info.length if mp3.info is not None else None
+
+
 def id3_tag_values_get(filename: str | pathlib.Path) -> Mp3TagValues:
+    duration_seconds = mp3_duration_seconds_get(filename)
     try:
         tags = mutagen.id3.ID3(filename)
     except mutagen.id3.ID3NoHeaderError:
-        return Mp3TagValues(error="No ID3 tags found.")
+        return Mp3TagValues(
+            error="No ID3 tags found.",
+            duration_seconds=duration_seconds,
+        )
     except (mutagen.MutagenError, OSError) as error:
         log.warning("Unable to read ID3 tags from %s: %s", filename, error)
-        return Mp3TagValues(error="Could not read ID3 tags.")
+        return Mp3TagValues(
+            error="Could not read ID3 tags.",
+            duration_seconds=duration_seconds,
+        )
 
     www = tuple(
         url
@@ -78,6 +96,7 @@ def id3_tag_values_get(filename: str | pathlib.Path) -> Mp3TagValues:
         genre=_text_frame_values(tags, "TCON"),
         www=www,
         comment=_text_frame_values(tags, "COMM"),
+        duration_seconds=duration_seconds,
     )
 
 
