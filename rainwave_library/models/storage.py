@@ -84,7 +84,7 @@ def _upcoming_music_path_get(
     return root, resolved_candidate, parts
 
 
-def _upcoming_music_mp3_duration_get(
+def _mp3_duration_get(
     directory: pathlib.Path,
     root: pathlib.Path,
 ) -> float:
@@ -112,17 +112,45 @@ def _upcoming_music_mp3_duration_get(
                             duration_seconds += mp3.info.length
                 except (mutagen.MutagenError, OSError) as error:
                     log.warning(
-                        "Unable to read upcoming music file %s: %s",
+                        "Unable to read MP3 file %s: %s",
                         child,
                         error,
                     )
         except OSError as error:
             log.warning(
-                "Unable to read upcoming music folder %s: %s",
+                "Unable to read folder %s while calculating MP3 duration: %s",
                 current_directory,
                 error,
             )
     return duration_seconds
+
+
+def upcoming_music_date_mp3_duration_get(
+    library_root: pathlib.Path,
+    release_date: str,
+) -> float:
+    try:
+        parsed_release_date = datetime.date.fromisoformat(release_date)
+    except ValueError:
+        msg = "Choose a valid release date."
+        raise ValueError(msg) from None
+
+    root = _upcoming_music_root_get(library_root)
+    date_directory = root / parsed_release_date.isoformat()
+    if not date_directory.exists():
+        return 0.0
+    try:
+        resolved_date_directory = date_directory.resolve(strict=True)
+    except OSError as error:
+        msg = "The upcoming music date folder could not be read."
+        raise ValueError(msg) from error
+    if (
+        not resolved_date_directory.is_relative_to(root)
+        or not resolved_date_directory.is_dir()
+    ):
+        msg = "The upcoming music date path is not a folder."
+        raise ValueError(msg)
+    return _mp3_duration_get(resolved_date_directory, root)
 
 
 def upcoming_music_directory_get(
@@ -162,7 +190,7 @@ def upcoming_music_directory_get(
                     is_directory=is_directory,
                     size=None if is_directory else resolved_child.stat().st_size,
                     duration_seconds=(
-                        _upcoming_music_mp3_duration_get(resolved_child, root)
+                        _mp3_duration_get(resolved_child, root)
                         if is_directory
                         else None
                     ),
@@ -354,6 +382,16 @@ def suggestion_staging_folder_get(
         msg = "Invalid suggestion staging directory."
         raise ValueError(msg)
     return suggestion_root
+
+
+def suggestion_staging_mp3_duration_get(
+    library_root: pathlib.Path,
+    suggestion_id: str,
+) -> float:
+    suggestion_root = suggestion_staging_folder_get(library_root, suggestion_id)
+    if not suggestion_root.is_dir():
+        return 0.0
+    return _mp3_duration_get(suggestion_root, suggestion_root)
 
 
 def suggestion_staging_files_get(

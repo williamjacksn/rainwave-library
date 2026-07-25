@@ -2974,6 +2974,64 @@ def _suggestion_release_default_channel_folder(
     )
 
 
+def _duration_hms(duration_seconds: float) -> str:
+    total_seconds = int(duration_seconds)
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours}:{minutes:02d}:{seconds:02d}"
+
+
+def _suggestion_schedule_release_duration(
+    staged_duration_seconds: float,
+    *,
+    release_date: str = "",
+    upcoming_duration_seconds: float | None = None,
+) -> htpy.Element:
+    selected_date_duration = (
+        upcoming_duration_seconds
+        if release_date and upcoming_duration_seconds is not None
+        else None
+    )
+    return htpy.div(
+        "#suggestion-release-duration.alert.alert-secondary.py-2",
+        aria_live="polite",
+        role="status",
+    )[
+        htpy.div[
+            htpy.strong["MP3 duration to be moved: "],
+            _duration_hms(staged_duration_seconds),
+        ],
+        selected_date_duration is not None
+        and htpy.fragment[
+            htpy.div[
+                htpy.strong["Already in "],
+                htpy.code[f"~upcoming/{release_date}"],
+                htpy.strong[": "],
+                _duration_hms(selected_date_duration),
+            ],
+            htpy.div[
+                htpy.strong["Total after this release: "],
+                _duration_hms(selected_date_duration + staged_duration_seconds),
+            ],
+        ],
+    ]
+
+
+def suggestion_schedule_release_duration(
+    staged_duration_seconds: float,
+    *,
+    release_date: str = "",
+    upcoming_duration_seconds: float | None = None,
+) -> str:
+    return str(
+        _suggestion_schedule_release_duration(
+            staged_duration_seconds,
+            release_date=release_date,
+            upcoming_duration_seconds=upcoming_duration_seconds,
+        )
+    )
+
+
 def _suggestion_schedule_release_form(
     suggestion: SuggestionDetail,
     *,
@@ -2982,6 +3040,8 @@ def _suggestion_schedule_release_form(
     folder_name: str = "",
     include_genre: bool = False,
     genre: str = "",
+    staged_duration_seconds: float = 0.0,
+    upcoming_duration_seconds: float | None = None,
     error: str | None = None,
 ) -> htpy.Element:
     url = flask.url_for(
@@ -3023,6 +3083,11 @@ def _suggestion_schedule_release_form(
                 htpy.strong[suggestion.title],
                 " will be moved into the upcoming music folder.",
             ],
+            _suggestion_schedule_release_duration(
+                staged_duration_seconds,
+                release_date=release_date,
+                upcoming_duration_seconds=upcoming_duration_seconds,
+            ),
             htpy.div(".g-3.row")[
                 htpy.div(".col-12.col-md-6")[
                     htpy.label(
@@ -3031,6 +3096,13 @@ def _suggestion_schedule_release_form(
                     )["Release date"],
                     htpy.input(
                         "#suggestion-release-date.form-control",
+                        hx_get=flask.url_for(
+                            "suggestion_schedule_release_duration",
+                            suggestion_id=suggestion.id,
+                        ),
+                        hx_swap="outerHTML",
+                        hx_target="#suggestion-release-duration",
+                        hx_trigger="change",
                         min=minimum_release_date,
                         name="release-date",
                         required=True,
@@ -3132,6 +3204,8 @@ def suggestion_schedule_release_form(
     folder_name: str = "",
     include_genre: bool = False,
     genre: str = "",
+    staged_duration_seconds: float = 0.0,
+    upcoming_duration_seconds: float | None = None,
     error: str | None = None,
 ) -> str:
     return str(
@@ -3142,6 +3216,8 @@ def suggestion_schedule_release_form(
             folder_name=folder_name,
             include_genre=include_genre,
             genre=genre,
+            staged_duration_seconds=staged_duration_seconds,
+            upcoming_duration_seconds=upcoming_duration_seconds,
             error=error,
         )
     )
@@ -3149,6 +3225,7 @@ def suggestion_schedule_release_form(
 
 def _suggestion_schedule_release_modal(
     suggestion: SuggestionDetail,
+    staged_duration_seconds: float,
 ) -> htpy.Element:
     return htpy.div(
         "#suggestion-schedule-release-modal.fade.modal",
@@ -3157,7 +3234,10 @@ def _suggestion_schedule_release_modal(
         tabindex="-1",
     )[
         htpy.div(".modal-dialog.modal-dialog-centered.modal-lg")[
-            _suggestion_schedule_release_form(suggestion)
+            _suggestion_schedule_release_form(
+                suggestion,
+                staged_duration_seconds=staged_duration_seconds,
+            )
         ]
     ]
 
@@ -3177,6 +3257,7 @@ def suggestion_page(
     *,
     folder_path: str | None = None,
     music_tags: dict[str, Mp3TagValues] | None = None,
+    staged_mp3_duration_seconds: float = 0.0,
 ) -> str:
     channel_badges: htpy.Node = (
         htpy.fragment[
@@ -3261,7 +3342,10 @@ def suggestion_page(
                 )
             ]
         ],
-        _suggestion_schedule_release_modal(suggestion),
+        _suggestion_schedule_release_modal(
+            suggestion,
+            staged_mp3_duration_seconds,
+        ),
         htpy.div("#audio"),
     ]
     return str(_base(content))
@@ -5353,9 +5437,6 @@ def _upcoming_music_entry(entry: UpcomingMusicEntry) -> htpy.Element:
         if entry.is_directory
         else flask.url_for("upcoming_music_file", path=entry.relative_path)
     )
-    duration_seconds = int(entry.duration_seconds or 0)
-    duration_hours, duration_remainder = divmod(duration_seconds, 3600)
-    duration_minutes, duration_seconds = divmod(duration_remainder, 60)
     return htpy.a(
         ".align-items-center.d-flex.gap-3.list-group-item.list-group-item-action",
         download=None if entry.is_directory else entry.name,
@@ -5369,7 +5450,7 @@ def _upcoming_music_entry(entry: UpcomingMusicEntry) -> htpy.Element:
         htpy.div(".flex-grow-1.text-break")[entry.name],
         htpy.span(".small.text-nowrap.text-secondary")[
             (
-                f"{duration_hours}:{duration_minutes:02d}:{duration_seconds:02d} MP3"
+                f"{_duration_hms(entry.duration_seconds or 0)} MP3"
                 if entry.is_directory
                 else f"{entry.size or 0:,} bytes"
             )
