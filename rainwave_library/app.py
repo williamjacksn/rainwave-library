@@ -184,10 +184,11 @@ def _suggestion_comment_announce(
         if commenter_discord_id
         else commenter_name or "Unknown commenter"
     )
+    channel_name = _suggestion_channel_name(suggestion)
     content = "\n".join(
         (
             f"<@{suggestion.requester_discord_id}> there is a new comment on your "
-            f"suggestion **{suggestion.title}**",
+            f"suggestion **{suggestion.title}** for the {channel_name} channel.",
             f"{commenter} said: {body.strip()}",
         )
     )
