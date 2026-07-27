@@ -69,7 +69,6 @@ class SuggestionActivity:
     old_value: str | None
     new_value: str | None
     created_at: str
-    trello_action_id: str | None
     trello_member_id: str | None
 
 
@@ -546,7 +545,6 @@ def suggestion_get(
             old_value=activity["old_value"],
             new_value=activity["new_value"],
             created_at=activity["created_at"],
-            trello_action_id=activity["trello_action_id"],
             trello_member_id=activity["trello_member_id"],
         )
         for activity in con.execute(

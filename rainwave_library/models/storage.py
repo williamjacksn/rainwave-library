@@ -1366,6 +1366,57 @@ def _migration_13(con: sqlite3.Connection) -> None:
     )
 
 
+def _migration_14(con: sqlite3.Connection) -> None:
+    con.executescript(
+        """
+        create table _migration_14_suggestion_activity (
+            activity_id text primary key not null,
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            activity_type text not null,
+            actor_name text,
+            actor_discord_id text,
+            body text,
+            old_value text,
+            new_value text,
+            created_at text not null,
+            trello_member_id text
+        ) without rowid;
+
+        insert into _migration_14_suggestion_activity (
+            activity_id,
+            suggestion_id,
+            activity_type,
+            actor_name,
+            actor_discord_id,
+            body,
+            old_value,
+            new_value,
+            created_at,
+            trello_member_id
+        )
+        select
+            activity_id,
+            suggestion_id,
+            activity_type,
+            actor_name,
+            actor_discord_id,
+            body,
+            old_value,
+            new_value,
+            created_at,
+            trello_member_id
+        from suggestion_activity;
+
+        drop table suggestion_activity;
+        alter table _migration_14_suggestion_activity rename to suggestion_activity;
+
+        create index suggestion_activity_suggestion_idx
+            on suggestion_activity (suggestion_id, created_at);
+        """
+    )
+
+
 MIGRATIONS = (
     _migration_1,
     _migration_2,
@@ -1380,6 +1431,7 @@ MIGRATIONS = (
     _migration_11,
     _migration_12,
     _migration_13,
+    _migration_14,
 )
 
 

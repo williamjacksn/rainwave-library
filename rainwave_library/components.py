@@ -2004,11 +2004,6 @@ def _suggestion_activity_item(activity: SuggestionActivity) -> htpy.Element:
             htpy.span(".small.text-secondary")[activity.created_at],
         ],
         _suggestion_activity_details(activity),
-        activity.trello_action_id
-        and htpy.div(".small.text-secondary")[
-            "Trello action: ",
-            htpy.code[activity.trello_action_id],
-        ],
     ]
 
 
