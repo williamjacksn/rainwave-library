@@ -1596,6 +1596,32 @@ def _suggestion_status_badge(status: str) -> htpy.Element:
     ]
 
 
+def _suggestion_user_identity(
+    name: str | None,
+    discord_id: str | None,
+    avatar_url: str | None,
+    *,
+    empty_placeholder: bool = True,
+) -> htpy.Fragment:
+    return htpy.fragment[
+        avatar_url
+        and htpy.img(
+            ".me-1.object-fit-cover.rounded-circle",
+            alt="",
+            height=24,
+            loading="lazy",
+            src=avatar_url,
+            width=24,
+        ),
+        name or (empty_placeholder and htpy.span(".text-secondary")["—"]),
+        discord_id
+        and htpy.i(
+            ".bi-discord.ms-1",
+            title=f"Discord user {discord_id}",
+        ),
+    ]
+
+
 def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
     editable = flask.session.get("role") == "staff"
     claimable = (
@@ -1640,11 +1666,10 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             ],
             htpy.div(".small.mt-1")[
                 htpy.strong["Suggested by: "],
-                suggestion.requester_name or htpy.span(".text-secondary")["—"],
-                suggestion.requester_discord_id
-                and htpy.i(
-                    ".bi-discord.ms-1",
-                    title=f"Discord user {suggestion.requester_discord_id}",
+                _suggestion_user_identity(
+                    suggestion.requester_name,
+                    suggestion.requester_discord_id,
+                    suggestion.requester_avatar_url,
                 ),
             ],
             suggestion.requested_at
@@ -1654,11 +1679,11 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             (suggestion.claimed_by_name or claimable or releasable)
             and htpy.div(".small.mt-1")[
                 htpy.strong["Claimed by: "],
-                suggestion.claimed_by_name,
-                suggestion.claimed_by_discord_id
-                and htpy.i(
-                    ".bi-discord.ms-1",
-                    title=f"Discord user {suggestion.claimed_by_discord_id}",
+                _suggestion_user_identity(
+                    suggestion.claimed_by_name,
+                    suggestion.claimed_by_discord_id,
+                    suggestion.claimed_by_avatar_url,
+                    empty_placeholder=not claimable,
                 ),
                 claimable
                 and htpy.button(
@@ -1696,11 +1721,10 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
         htpy.td(".d-none.d-md-table-cell")[htpy.div(".fw-semibold")[suggestion.title],],
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[kind_label],
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[
-            suggestion.requester_name or htpy.span(".text-secondary")["—"],
-            suggestion.requester_discord_id
-            and htpy.i(
-                ".bi-discord.ms-1",
-                title=f"Discord user {suggestion.requester_discord_id}",
+            _suggestion_user_identity(
+                suggestion.requester_name,
+                suggestion.requester_discord_id,
+                suggestion.requester_avatar_url,
             ),
         ],
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[
@@ -1709,12 +1733,11 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             else htpy.span(".text-secondary")["—"]
         ],
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[
-            suggestion.claimed_by_name
-            or (not claimable and htpy.span(".text-secondary")["—"]),
-            suggestion.claimed_by_discord_id
-            and htpy.i(
-                ".bi-discord.ms-1",
-                title=f"Discord user {suggestion.claimed_by_discord_id}",
+            _suggestion_user_identity(
+                suggestion.claimed_by_name,
+                suggestion.claimed_by_discord_id,
+                suggestion.claimed_by_avatar_url,
+                empty_placeholder=not claimable,
             ),
             claimable
             and htpy.button(

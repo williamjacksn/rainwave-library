@@ -46,9 +46,11 @@ class Suggestion:
     description: str
     requester_name: str | None
     requester_discord_id: str | None
+    requester_avatar_url: str | None
     requested_at: str | None
     claimed_by_name: str | None
     claimed_by_discord_id: str | None
+    claimed_by_avatar_url: str | None
     channel_ids: tuple[int, ...]
 
 
@@ -144,9 +146,11 @@ def _suggestion_from_row(row: sqlite3.Row) -> Suggestion:
         description=row["description"],
         requester_name=row["requester_name"],
         requester_discord_id=row["requester_discord_id"],
+        requester_avatar_url=row["requester_avatar_url"],
         requested_at=row["requested_at"],
         claimed_by_name=row["claimed_by_name"],
         claimed_by_discord_id=row["claimed_by_discord_id"],
+        claimed_by_avatar_url=row["claimed_by_avatar_url"],
         channel_ids=tuple(
             sorted(
                 int(channel_id)
@@ -254,15 +258,21 @@ def suggestions_get(
             s.description,
             s.requester_name,
             s.requester_discord_id,
+            requester.avatar_url requester_avatar_url,
             s.requested_at,
             s.claimed_by_name,
             s.claimed_by_discord_id,
+            claimant.avatar_url claimed_by_avatar_url,
             (
                 select group_concat(channel_id, ',')
                 from suggestion_channels sc
                 where sc.suggestion_id = s.suggestion_id
             ) channel_ids
         from suggestions s
+        left join users requester
+            on requester.discord_id = s.requester_discord_id
+        left join users claimant
+            on claimant.discord_id = s.claimed_by_discord_id
         where (
                 :status_0 is null
                 or s.status in (
@@ -494,6 +504,8 @@ def suggestion_get(
         """
         select
             s.*,
+            requester.avatar_url requester_avatar_url,
+            claimant.avatar_url claimed_by_avatar_url,
             (
                 select group_concat(channel_id, ',')
                 from suggestion_channels sc
@@ -507,6 +519,10 @@ def suggestion_get(
                 limit 1
             ) primary_channel_id
         from suggestions s
+        left join users requester
+            on requester.discord_id = s.requester_discord_id
+        left join users claimant
+            on claimant.discord_id = s.claimed_by_discord_id
         where s.suggestion_id = ?
         """,
         (suggestion_id,),
@@ -565,7 +581,9 @@ def suggestion_get(
         channel_ids=suggestion.channel_ids,
         primary_channel_id=row["primary_channel_id"],
         requester_discord_id=row["requester_discord_id"],
+        requester_avatar_url=row["requester_avatar_url"],
         claimed_by_discord_id=row["claimed_by_discord_id"],
+        claimed_by_avatar_url=row["claimed_by_avatar_url"],
         claimed_at=row["claimed_at"],
         resolved_at=row["resolved_at"],
         created_at=row["created_at"],
