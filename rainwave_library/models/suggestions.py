@@ -144,11 +144,11 @@ def _suggestion_from_row(row: sqlite3.Row) -> Suggestion:
         kind=row["kind"],
         status=row["status"],
         description=row["description"],
-        requester_name=row["requester_name"],
+        requester_name=row["requester_display_name"],
         requester_discord_id=row["requester_discord_id"],
         requester_avatar_url=row["requester_avatar_url"],
         requested_at=row["requested_at"],
-        claimed_by_name=row["claimed_by_name"],
+        claimed_by_name=row["claimed_by_display_name"],
         claimed_by_discord_id=row["claimed_by_discord_id"],
         claimed_by_avatar_url=row["claimed_by_avatar_url"],
         channel_ids=tuple(
@@ -256,11 +256,17 @@ def suggestions_get(
             s.kind,
             s.status,
             s.description,
-            s.requester_name,
+            coalesce(
+                nullif(trim(requester.display_name), ''),
+                s.requester_name
+            ) requester_display_name,
             s.requester_discord_id,
             requester.avatar_url requester_avatar_url,
             s.requested_at,
-            s.claimed_by_name,
+            coalesce(
+                nullif(trim(claimant.display_name), ''),
+                s.claimed_by_name
+            ) claimed_by_display_name,
             s.claimed_by_discord_id,
             claimant.avatar_url claimed_by_avatar_url,
             (
@@ -504,6 +510,14 @@ def suggestion_get(
         """
         select
             s.*,
+            coalesce(
+                nullif(trim(requester.display_name), ''),
+                s.requester_name
+            ) requester_display_name,
+            coalesce(
+                nullif(trim(claimant.display_name), ''),
+                s.claimed_by_name
+            ) claimed_by_display_name,
             requester.avatar_url requester_avatar_url,
             claimant.avatar_url claimed_by_avatar_url,
             (
