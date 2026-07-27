@@ -5521,7 +5521,7 @@ def songs_play(song: Song) -> str:
     metadata = htpy.fragment[
         htpy.strong[htpy.i(".bi-disc"), " ", song.album_name],
         htpy.br,
-        htpy.strong[htpy.i(".bi-music-not-beamed"), " ", song.title],
+        htpy.strong[htpy.i(".bi-music-note-beamed"), " ", song.title],
         htpy.br,
         htpy.strong[htpy.i(".bi-person"), " ", song.artist_tag],
     ]
