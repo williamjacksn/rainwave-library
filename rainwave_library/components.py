@@ -173,6 +173,7 @@ def albums_detail(album: Album, songs: list[Song]) -> str:
                 ],
             ]
         ],
+        htpy.div("#audio"),
     ]
     return str(_base(content))
 
