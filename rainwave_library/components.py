@@ -1598,7 +1598,6 @@ def _suggestion_status_badge(status: str) -> htpy.Element:
 
 def _suggestion_user_identity(
     name: str | None,
-    discord_id: str | None,
     avatar_url: str | None,
     *,
     empty_placeholder: bool = True,
@@ -1614,11 +1613,6 @@ def _suggestion_user_identity(
             width=24,
         ),
         name or (empty_placeholder and htpy.span(".text-secondary")["—"]),
-        discord_id
-        and htpy.i(
-            ".bi-discord.ms-1",
-            title=f"Discord user {discord_id}",
-        ),
     ]
 
 
@@ -1668,7 +1662,6 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                 htpy.strong["Suggested by: "],
                 _suggestion_user_identity(
                     suggestion.requester_name,
-                    suggestion.requester_discord_id,
                     suggestion.requester_avatar_url,
                 ),
             ],
@@ -1681,7 +1674,6 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                 htpy.strong["Claimed by: "],
                 _suggestion_user_identity(
                     suggestion.claimed_by_name,
-                    suggestion.claimed_by_discord_id,
                     suggestion.claimed_by_avatar_url,
                     empty_placeholder=not claimable,
                 ),
@@ -1723,7 +1715,6 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[
             _suggestion_user_identity(
                 suggestion.requester_name,
-                suggestion.requester_discord_id,
                 suggestion.requester_avatar_url,
             ),
         ],
@@ -1735,7 +1726,6 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
         htpy.td(".d-none.d-md-table-cell.text-nowrap")[
             _suggestion_user_identity(
                 suggestion.claimed_by_name,
-                suggestion.claimed_by_discord_id,
                 suggestion.claimed_by_avatar_url,
                 empty_placeholder=not claimable,
             ),
