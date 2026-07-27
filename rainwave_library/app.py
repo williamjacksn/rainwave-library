@@ -539,84 +539,155 @@ def impersonate_user() -> werkzeug.Response | str:
         app.config["STORAGE_CNX"]
     )
     try:
-        bot_token = rainwave_library.models.storage.setting_get(
-            storage_cnx, "discord/bot-token"
+        stored_user = rainwave_library.models.storage.user_get(
+            storage_cnx,
+            discord_user_id,
+        )
+        use_stored_user = bool(
+            stored_user
+            and stored_user.username
+            and stored_user.display_name
+            and stored_user.role in {"member", "staff"}
+        )
+        bot_token = (
+            None
+            if use_stored_user
+            else rainwave_library.models.storage.setting_get(
+                storage_cnx,
+                "discord/bot-token",
+            )
+        )
+        guild_id = (
+            None
+            if use_stored_user
+            else rainwave_library.models.storage.setting_get(
+                storage_cnx,
+                "discord/guild-id",
+            )
+        )
+        staff_role_id = (
+            None
+            if use_stored_user
+            else rainwave_library.models.storage.setting_get(
+                storage_cnx,
+                "discord/staff-role-id",
+            )
         )
     finally:
         storage_cnx.close()
 
-    guild_id = app.config["DISCORD_GUILD_ID"]
-    if not bot_token or not guild_id:
-        return rainwave_library.components.impersonate_user(
-            discord_user_id=discord_user_id,
-            error="Discord impersonation is not configured.",
-        )
-    try:
-        member = rainwave_library.models.discord.get_guild_member(
-            bot_token,
-            guild_id,
-            discord_user_id,
-        )
-    except httpx.HTTPStatusError as error:
-        if error.response.status_code == 404:
-            message = "That user is not a member of the configured Discord guild."
-        else:
+    if use_stored_user and stored_user is not None:
+        username = stored_user.username
+        display_name = stored_user.display_name
+        avatar_url = stored_user.avatar_url
+        role = stored_user.role
+    else:
+        if not bot_token or not guild_id:
+            return rainwave_library.components.impersonate_user(
+                discord_user_id=discord_user_id,
+                error="Discord impersonation is not configured.",
+            )
+        try:
+            member = rainwave_library.models.discord.get_guild_member(
+                bot_token,
+                guild_id,
+                discord_user_id,
+            )
+        except httpx.HTTPStatusError as error:
+            if error.response.status_code == 404:
+                message = "That user is not a member of the configured Discord guild."
+            else:
+                app.logger.exception(
+                    "Could not look up Discord guild member %s",
+                    discord_user_id,
+                )
+                message = "Discord could not look up that guild member."
+            return rainwave_library.components.impersonate_user(
+                discord_user_id=discord_user_id,
+                error=message,
+            )
+        except (httpx.HTTPError, ValueError):
             app.logger.exception(
                 "Could not look up Discord guild member %s",
                 discord_user_id,
             )
-            message = "Discord could not look up that guild member."
-        return rainwave_library.components.impersonate_user(
-            discord_user_id=discord_user_id,
-            error=message,
-        )
-    except (httpx.HTTPError, ValueError):
-        app.logger.exception(
-            "Could not look up Discord guild member %s",
-            discord_user_id,
-        )
-        return rainwave_library.components.impersonate_user(
-            discord_user_id=discord_user_id,
-            error="Discord could not look up that guild member.",
-        )
+            return rainwave_library.components.impersonate_user(
+                discord_user_id=discord_user_id,
+                error="Discord could not look up that guild member.",
+            )
 
-    user = member.get("user")
-    roles = member.get("roles")
-    if (
-        not isinstance(user, dict)
-        or str(user.get("id") or "") != discord_user_id
-        or not isinstance(roles, list)
-    ):
-        app.logger.error(
-            "Discord returned incomplete guild member data for user %s",
-            discord_user_id,
-        )
-        return rainwave_library.components.impersonate_user(
-            discord_user_id=discord_user_id,
-            error="Discord returned incomplete guild member information.",
-        )
+        user = member.get("user")
+        roles = member.get("roles")
+        if (
+            not isinstance(user, dict)
+            or str(user.get("id") or "") != discord_user_id
+            or not isinstance(roles, list)
+        ):
+            app.logger.error(
+                "Discord returned incomplete guild member data for user %s",
+                discord_user_id,
+            )
+            return rainwave_library.components.impersonate_user(
+                discord_user_id=discord_user_id,
+                error="Discord returned incomplete guild member information.",
+            )
 
-    username = user.get("username")
-    display_name = (
-        member.get("nick")
-        or user.get("global_name")
-        or username
-        or f"Discord user {discord_user_id}"
-    )
-    guild_avatar = member.get("avatar")
-    user_avatar = user.get("avatar")
-    if guild_avatar:
-        avatar_url = (
-            f"https://cdn.discordapp.com/guilds/{guild_id}/users/"
-            f"{discord_user_id}/avatars/{guild_avatar}.png"
+        username_value = user.get("username")
+        username = (
+            username_value
+            if isinstance(username_value, str) and username_value
+            else None
         )
-    elif user_avatar:
-        avatar_url = (
-            f"https://cdn.discordapp.com/avatars/{discord_user_id}/{user_avatar}.png"
+        display_name = next(
+            (
+                value
+                for value in (
+                    member.get("nick"),
+                    user.get("global_name"),
+                    username,
+                )
+                if isinstance(value, str) and value
+            ),
+            None,
         )
-    else:
-        avatar_url = None
-    role = "staff" if app.config["DISCORD_STAFF_ROLE_ID"] in roles else "member"
+        if username is None or display_name is None:
+            app.logger.error(
+                "Discord returned incomplete guild member data for user %s",
+                discord_user_id,
+            )
+            return rainwave_library.components.impersonate_user(
+                discord_user_id=discord_user_id,
+                error="Discord returned incomplete guild member information.",
+            )
+        guild_avatar = member.get("avatar")
+        user_avatar = user.get("avatar")
+        if isinstance(guild_avatar, str) and guild_avatar:
+            avatar_url = (
+                f"https://cdn.discordapp.com/guilds/{guild_id}/users/"
+                f"{discord_user_id}/avatars/{guild_avatar}.png"
+            )
+        elif isinstance(user_avatar, str) and user_avatar:
+            avatar_url = (
+                f"https://cdn.discordapp.com/avatars/{discord_user_id}/"
+                f"{user_avatar}.png"
+            )
+        else:
+            avatar_url = None
+        role = "staff" if staff_role_id in roles else "member"
+        storage_cnx = rainwave_library.models.storage.connection_get(
+            app.config["STORAGE_CNX"]
+        )
+        try:
+            rainwave_library.models.storage.user_upsert(
+                storage_cnx,
+                discord_user_id,
+                username=username,
+                display_name=display_name,
+                avatar_url=avatar_url,
+                role=role,
+            )
+        finally:
+            storage_cnx.close()
 
     impersonator = {key: flask.session.get(key) for key in _IDENTITY_SESSION_KEYS}
     flask.session["impersonator"] = impersonator

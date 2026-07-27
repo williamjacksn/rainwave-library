@@ -16,6 +16,17 @@ log = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
+class User:
+    discord_id: str
+    username: str | None
+    display_name: str | None
+    avatar_url: str | None
+    role: str
+    created_at: str
+    updated_at: str
+
+
+@dataclasses.dataclass(frozen=True)
 class UpcomingMusicEntry:
     name: str
     relative_path: str
@@ -613,6 +624,24 @@ def settings_get(con: sqlite3.Connection) -> list[tuple[str, str, bool]]:
         "select key, value, protected from settings order by key"
     ).fetchall()
     return [(row["key"], row["value"], bool(row["protected"])) for row in rows]
+
+
+def user_get(con: sqlite3.Connection, discord_id: str) -> User | None:
+    row = con.execute(
+        "select * from users where discord_id = ?",
+        (discord_id.strip(),),
+    ).fetchone()
+    if row is None:
+        return None
+    return User(
+        discord_id=row["discord_id"],
+        username=row["username"],
+        display_name=row["display_name"],
+        avatar_url=row["avatar_url"],
+        role=row["role"],
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
+    )
 
 
 def user_upsert(
