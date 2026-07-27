@@ -5328,7 +5328,7 @@ def suggestions_index(
         ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
-                htpy.div(".table-responsive")[
+                htpy.div[
                     htpy.table(
                         ".align-middle.table.table-bordered.table-sm.table-striped"
                     )[
