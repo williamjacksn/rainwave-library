@@ -665,60 +665,111 @@ def authorize() -> werkzeug.Response:
     if flask.session.get("state") != flask.request.values.get("state"):
         return flask.Response("State mismatch", 401)
     flask.session.pop("impersonator", None)
-    token_endpoint = "https://discord.com/api/v10/oauth2/token"  # noqa: S105
-    data = {
-        "client_id": app.config["OPENID_CLIENT_ID"],
-        "client_secret": app.config["OPENID_CLIENT_SECRET"],
-        "code": flask.request.values.get("code"),
-        "grant_type": "authorization_code",
-        "redirect_uri": external_url_for("authorize"),
-    }
-    resp = httpx.post(token_endpoint, data=data).json()
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        client_id = (
+            rainwave_library.models.storage.setting_get(
+                storage_cnx,
+                "openid/client-id",
+            )
+            or ""
+        )
+        client_secret = (
+            rainwave_library.models.storage.setting_get(
+                storage_cnx,
+                "openid/client-secret",
+            )
+            or ""
+        )
+        guild_id = (
+            rainwave_library.models.storage.setting_get(
+                storage_cnx,
+                "discord/guild-id",
+            )
+            or ""
+        )
+        staff_role = (
+            rainwave_library.models.storage.setting_get(
+                storage_cnx,
+                "discord/staff-role-id",
+            )
+            or ""
+        )
+    finally:
+        storage_cnx.close()
+    resp = rainwave_library.models.discord.exchange_authorization_code(
+        client_id,
+        client_secret,
+        flask.request.values.get("code", ""),
+        external_url_for("authorize"),
+    )
     access_token = resp.get("access_token")
-    guild_id = app.config["DISCORD_GUILD_ID"]
-    guild_member_url = f"https://discord.com/api/v10/users/@me/guilds/{guild_id}/member"
-    headers = {"Authorization": f"Bearer {access_token}"}
-    resp = httpx.get(guild_member_url, headers=headers).json()
-    if "roles" not in resp:
+    if not isinstance(access_token, str) or not access_token:
         return flask.redirect(flask.url_for("index"))
-    user = resp.get("user", {})
+    resp = rainwave_library.models.discord.get_current_user_guild_member(
+        access_token,
+        guild_id,
+    )
+    user_roles = resp.get("roles")
+    if not isinstance(user_roles, list):
+        return flask.redirect(flask.url_for("index"))
+    user = resp.get("user")
+    if not isinstance(user, dict):
+        return flask.redirect(flask.url_for("index"))
     user_id = user.get("id")
-    username = user.get("username")
-    display_name = resp.get("nick") or user.get("global_name") or username
+    if not isinstance(user_id, str) or not user_id:
+        return flask.redirect(flask.url_for("index"))
+    username_value = user.get("username")
+    username = username_value if isinstance(username_value, str) else None
+    display_name = next(
+        (
+            value
+            for value in (resp.get("nick"), user.get("global_name"), username)
+            if isinstance(value, str) and value
+        ),
+        None,
+    )
     guild_avatar = resp.get("avatar")
     user_avatar = user.get("avatar")
-    if guild_avatar:
+    if isinstance(guild_avatar, str) and guild_avatar:
         avatar_url = f"https://cdn.discordapp.com/guilds/{guild_id}/users/{user_id}/avatars/{guild_avatar}.png"
-    elif user_avatar:
+    elif isinstance(user_avatar, str) and user_avatar:
         avatar_url = f"https://cdn.discordapp.com/avatars/{user_id}/{user_avatar}.png"
     else:
         avatar_url = None
+    app.logger.debug(f"Sign in attempt from {username} with roles {user_roles}")
+    app.logger.debug(f"Staff role is {staff_role}")
+    if staff_role in user_roles:
+        app.logger.debug(f"{username} is staff")
+        role = "staff"
+    else:
+        app.logger.debug(f"{username} is member")
+        role = "member"
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        rainwave_library.models.storage.user_upsert(
+            storage_cnx,
+            user_id,
+            username=username,
+            display_name=display_name,
+            avatar_url=avatar_url,
+            role=role,
+        )
+    finally:
+        storage_cnx.close()
     flask.session.update(
         {
             "discord_id": user_id,
             "discord_username": username,
             "discord_display_name": display_name,
             "discord_avatar_url": avatar_url,
+            "role": role,
         }
     )
-    user_roles = resp.get("roles")
-    app.logger.debug(f"Sign in attempt from {username} with roles {user_roles}")
-    staff_role = app.config["DISCORD_STAFF_ROLE_ID"]
-    app.logger.debug(f"Staff role is {staff_role}")
-    if staff_role in user_roles:
-        app.logger.debug(f"{username} is staff")
-        flask.session.update(
-            {
-                "role": "staff",
-            }
-        )
-    else:
-        app.logger.debug(f"{username} is member")
-        flask.session.update(
-            {
-                "role": "member",
-            }
-        )
     return flask.redirect(flask.url_for("index"))
 
 

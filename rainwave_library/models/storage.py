@@ -615,6 +615,60 @@ def settings_get(con: sqlite3.Connection) -> list[tuple[str, str, bool]]:
     return [(row["key"], row["value"], bool(row["protected"])) for row in rows]
 
 
+def user_upsert(
+    con: sqlite3.Connection,
+    discord_id: str,
+    *,
+    username: str | None,
+    display_name: str | None,
+    avatar_url: str | None,
+    role: str,
+) -> None:
+    discord_id = discord_id.strip()
+    if not discord_id:
+        msg = "A Discord user ID is required."
+        raise ValueError(msg)
+    if role not in {"member", "staff"}:
+        msg = "Invalid user role."
+        raise ValueError(msg)
+
+    try:
+        con.execute(
+            """
+            insert into users (
+                discord_id,
+                username,
+                display_name,
+                avatar_url,
+                role
+            ) values (
+                :discord_id,
+                :username,
+                :display_name,
+                :avatar_url,
+                :role
+            )
+            on conflict (discord_id) do update set
+                username = excluded.username,
+                display_name = excluded.display_name,
+                avatar_url = excluded.avatar_url,
+                role = excluded.role,
+                updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            """,
+            {
+                "discord_id": discord_id,
+                "username": username,
+                "display_name": display_name,
+                "avatar_url": avatar_url,
+                "role": role,
+            },
+        )
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+
+
 def user_version_get(con: sqlite3.Connection) -> int:
     return con.execute("pragma user_version").fetchone()[0]
 
@@ -1587,6 +1641,25 @@ def _migration_15(con: sqlite3.Connection) -> None:
     )
 
 
+def _migration_16(con: sqlite3.Connection) -> None:
+    con.execute(
+        """
+        create table users (
+            discord_id text primary key not null,
+            username text,
+            display_name text,
+            avatar_url text,
+            role text not null default 'member'
+                check (role in ('member', 'staff')),
+            created_at text not null
+                default (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+            updated_at text not null
+                default (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        ) without rowid
+        """
+    )
+
+
 MIGRATIONS = (
     _migration_1,
     _migration_2,
@@ -1603,6 +1676,7 @@ MIGRATIONS = (
     _migration_13,
     _migration_14,
     _migration_15,
+    _migration_16,
 )
 
 
