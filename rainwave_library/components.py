@@ -1655,7 +1655,25 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                                 hx_target="closest tr",
                                 type="button",
                             )[htpy.i(".bi-pencil.me-2"), "Edit suggestion"]
-                        ]
+                        ],
+                        claimable
+                        and htpy.li[
+                            htpy.button(
+                                ".dropdown-item",
+                                hx_confirm=(
+                                    "Are you sure you want to claim "
+                                    f"{suggestion.title}?"
+                                ),
+                                hx_disabled_elt="this",
+                                hx_post=flask.url_for(
+                                    "suggestion_claim",
+                                    suggestion_id=suggestion.id,
+                                ),
+                                hx_swap="outerHTML",
+                                hx_target="closest tr",
+                                type="button",
+                            )[htpy.i(".bi-person-check.me-2"), "Claim suggestion"]
+                        ],
                     ],
                 ]
                 if editable
@@ -1710,6 +1728,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                 and htpy.button(
                     ".btn.btn-link.ms-1.p-0.text-decoration-none",
                     aria_label=f"Claim {suggestion.title}",
+                    hx_confirm=(f"Are you sure you want to claim {suggestion.title}?"),
                     hx_disabled_elt="this",
                     hx_post=flask.url_for(
                         "suggestion_claim", suggestion_id=suggestion.id
@@ -1762,6 +1781,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             and htpy.button(
                 ".btn.btn-link.p-0.text-decoration-none",
                 aria_label=f"Claim {suggestion.title}",
+                hx_confirm=f"Are you sure you want to claim {suggestion.title}?",
                 hx_disabled_elt="this",
                 hx_post=flask.url_for("suggestion_claim", suggestion_id=suggestion.id),
                 hx_swap="outerHTML",
