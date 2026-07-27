@@ -1630,20 +1630,48 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
         and bool(suggestion.claimed_by_discord_id)
         and suggestion.claimed_by_discord_id == str(flask.g.discord_id or "")
     )
-    action = "Edit" if editable else "View details for"
-    action_title = "Edit suggestion" if editable else "View suggestion details"
     kind_label = Suggestion.kind_labels.get(suggestion.kind, suggestion.kind)
     return htpy.tr()[
         htpy.td(".text-center.text-nowrap")[
-            htpy.a(
-                ".text-decoration-none",
-                aria_label=f"{action} {suggestion.title}",
-                href="#",
-                hx_get=flask.url_for("suggestion_details", suggestion_id=suggestion.id),
-                hx_swap="outerHTML",
-                hx_target="closest tr",
-                title=action_title,
-            )[htpy.i(".bi-pencil" if editable else ".bi-eye")],
+            (
+                htpy.div(".dropdown")[
+                    htpy.button(
+                        ".btn.btn-outline-primary.btn-sm",
+                        aria_expanded="false",
+                        aria_label=f"Actions for {suggestion.title}",
+                        data_bs_toggle="dropdown",
+                        title="Suggestion actions",
+                        type="button",
+                    )[htpy.i(".bi-list")],
+                    htpy.ul(".dropdown-menu")[
+                        htpy.li[
+                            htpy.button(
+                                ".dropdown-item",
+                                hx_get=flask.url_for(
+                                    "suggestion_details",
+                                    suggestion_id=suggestion.id,
+                                ),
+                                hx_swap="outerHTML",
+                                hx_target="closest tr",
+                                type="button",
+                            )[htpy.i(".bi-pencil.me-2"), "Edit suggestion"]
+                        ]
+                    ],
+                ]
+                if editable
+                else htpy.a(
+                    ".text-decoration-none",
+                    aria_label=f"View details for {suggestion.title}",
+                    href="#",
+                    hx_get=flask.url_for(
+                        "suggestion_details",
+                        suggestion_id=suggestion.id,
+                    ),
+                    hx_swap="outerHTML",
+                    hx_target="closest tr",
+                    title="View suggestion details",
+                )[htpy.i(".bi-eye")]
+            ),
         ],
         htpy.td(".d-table-cell.d-md-none")[
             htpy.div(".fw-semibold.text-break")[suggestion.title],
