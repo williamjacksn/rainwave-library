@@ -34,6 +34,16 @@ def get_current_user_guild_member(access_token: str, guild_id: str) -> dict:
     return response.json()
 
 
+def get_user(bot_token: str, user_id: str) -> dict:
+    response = httpx.get(
+        f"{_API_ROOT}/users/{user_id}",
+        headers={"Authorization": f"Bot {bot_token}"},
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def get_guild_member(bot_token: str, guild_id: str, user_id: str) -> dict:
     response = httpx.get(
         f"{_API_ROOT}/guilds/{guild_id}/members/{user_id}",
