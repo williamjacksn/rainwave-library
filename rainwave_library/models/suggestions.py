@@ -77,12 +77,8 @@ class SuggestionDetail(Suggestion):
     primary_channel_id: int | None
     claimed_at: str | None
     resolved_at: str | None
-    resolution_notes: str | None
-    sort_order: float
     created_at: str
     updated_at: str
-    trello_card_id: str | None
-    trello_url: str | None
     links: tuple[SuggestionLink, ...]
     activities: tuple[SuggestionActivity, ...]
 
@@ -230,7 +226,7 @@ def suggestions_get(
                 when 'declined' then 5
             end
             """,
-            "s.sort_order",
+            "s.requested_at",
             "s.title collate nocase",
         ),
         "title": ("s.title collate nocase",),
@@ -572,12 +568,8 @@ def suggestion_get(
         claimed_by_discord_id=row["claimed_by_discord_id"],
         claimed_at=row["claimed_at"],
         resolved_at=row["resolved_at"],
-        resolution_notes=row["resolution_notes"],
-        sort_order=float(row["sort_order"]),
         created_at=row["created_at"],
         updated_at=row["updated_at"],
-        trello_card_id=row["trello_card_id"],
-        trello_url=row["trello_url"],
         links=links,
         activities=activities,
     )

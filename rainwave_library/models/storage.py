@@ -1417,6 +1417,176 @@ def _migration_14(con: sqlite3.Connection) -> None:
     )
 
 
+def _migration_15(con: sqlite3.Connection) -> None:
+    con.executescript(
+        """
+        create temp table _migration_15_suggestions as
+            select * from suggestions;
+        create temp table _migration_15_suggestion_channels as
+            select * from suggestion_channels;
+        create temp table _migration_15_suggestion_links as
+            select * from suggestion_links;
+        create temp table _migration_15_suggestion_activity as
+            select * from suggestion_activity;
+
+        drop table suggestion_activity;
+        drop table suggestion_links;
+        drop table suggestion_channels;
+        drop table suggestions;
+
+        create table suggestions (
+            suggestion_id text primary key not null,
+            title text not null,
+            kind text not null default 'new-album'
+                check (
+                    kind in (
+                        'new-album',
+                        'add-to-existing-album',
+                        'metadata-update',
+                        'removal'
+                    )
+                ),
+            status text not null default 'new'
+                check (
+                    status in (
+                        'new', 'claimed', 'accepted', 'uploaded', 'declined'
+                    )
+                ),
+            description text not null default '',
+            requester_name text,
+            requester_discord_id text,
+            requested_at text,
+            claimed_by_name text,
+            claimed_by_discord_id text,
+            claimed_at text,
+            resolved_at text,
+            created_at text not null,
+            updated_at text not null
+        ) without rowid;
+
+        create index suggestions_status_idx
+            on suggestions (status, requested_at);
+        create index suggestions_claimed_by_idx
+            on suggestions (claimed_by_discord_id, claimed_by_name);
+
+        insert into suggestions (
+            suggestion_id,
+            title,
+            kind,
+            status,
+            description,
+            requester_name,
+            requester_discord_id,
+            requested_at,
+            claimed_by_name,
+            claimed_by_discord_id,
+            claimed_at,
+            resolved_at,
+            created_at,
+            updated_at
+        )
+        select
+            suggestion_id,
+            title,
+            kind,
+            status,
+            description,
+            requester_name,
+            requester_discord_id,
+            requested_at,
+            claimed_by_name,
+            claimed_by_discord_id,
+            claimed_at,
+            resolved_at,
+            created_at,
+            updated_at
+        from _migration_15_suggestions;
+
+        create table suggestion_channels (
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            channel_id integer not null,
+            is_primary integer not null default 0
+                check (is_primary in (0, 1)),
+            primary key (suggestion_id, channel_id)
+        ) without rowid;
+
+        insert into suggestion_channels (suggestion_id, channel_id, is_primary)
+        select suggestion_id, channel_id, is_primary
+        from _migration_15_suggestion_channels;
+
+        create table suggestion_links (
+            link_id text primary key not null,
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            url text not null,
+            label text,
+            unique (suggestion_id, url)
+        ) without rowid;
+
+        insert into suggestion_links (
+            link_id,
+            suggestion_id,
+            url,
+            label
+        )
+        select
+            link_id,
+            suggestion_id,
+            url,
+            label
+        from _migration_15_suggestion_links;
+
+        create table suggestion_activity (
+            activity_id text primary key not null,
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            activity_type text not null,
+            actor_name text,
+            actor_discord_id text,
+            body text,
+            old_value text,
+            new_value text,
+            created_at text not null,
+            trello_member_id text
+        ) without rowid;
+
+        create index suggestion_activity_suggestion_idx
+            on suggestion_activity (suggestion_id, created_at);
+
+        insert into suggestion_activity (
+            activity_id,
+            suggestion_id,
+            activity_type,
+            actor_name,
+            actor_discord_id,
+            body,
+            old_value,
+            new_value,
+            created_at,
+            trello_member_id
+        )
+        select
+            activity_id,
+            suggestion_id,
+            activity_type,
+            actor_name,
+            actor_discord_id,
+            body,
+            old_value,
+            new_value,
+            created_at,
+            trello_member_id
+        from _migration_15_suggestion_activity;
+
+        drop table _migration_15_suggestion_activity;
+        drop table _migration_15_suggestion_links;
+        drop table _migration_15_suggestion_channels;
+        drop table _migration_15_suggestions;
+        """
+    )
+
+
 MIGRATIONS = (
     _migration_1,
     _migration_2,
@@ -1432,6 +1602,7 @@ MIGRATIONS = (
     _migration_12,
     _migration_13,
     _migration_14,
+    _migration_15,
 )
 
 
