@@ -1674,6 +1674,24 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                                 type="button",
                             )[htpy.i(".bi-person-check.me-2"), "Claim suggestion"]
                         ],
+                        releasable
+                        and htpy.li[
+                            htpy.button(
+                                ".dropdown-item.text-danger",
+                                hx_confirm=(
+                                    "Are you sure you want to release your claim on "
+                                    f"{suggestion.title}?"
+                                ),
+                                hx_disabled_elt="this",
+                                hx_post=flask.url_for(
+                                    "suggestion_release",
+                                    suggestion_id=suggestion.id,
+                                ),
+                                hx_swap="outerHTML",
+                                hx_target="closest tr",
+                                type="button",
+                            )[htpy.i(".bi-person-dash.me-2"), "Release claim"]
+                        ],
                     ],
                 ]
                 if editable
@@ -1742,6 +1760,10 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                 and htpy.button(
                     ".btn.btn-link.ms-1.p-0.text-danger.text-decoration-none",
                     aria_label=f"Release claim on {suggestion.title}",
+                    hx_confirm=(
+                        "Are you sure you want to release your claim on "
+                        f"{suggestion.title}?"
+                    ),
                     hx_disabled_elt="this",
                     hx_post=flask.url_for(
                         "suggestion_release", suggestion_id=suggestion.id
@@ -1793,6 +1815,10 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             and htpy.button(
                 ".btn.btn-link.ms-1.p-0.text-danger.text-decoration-none",
                 aria_label=f"Release claim on {suggestion.title}",
+                hx_confirm=(
+                    "Are you sure you want to release your claim on "
+                    f"{suggestion.title}?"
+                ),
                 hx_disabled_elt="this",
                 hx_post=flask.url_for(
                     "suggestion_release", suggestion_id=suggestion.id
