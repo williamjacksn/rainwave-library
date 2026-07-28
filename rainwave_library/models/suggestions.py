@@ -827,6 +827,74 @@ def suggestion_release(
     return released
 
 
+def suggestion_accept(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    *,
+    actor_name: str | None,
+    actor_discord_id: str | None,
+    comment: str = "",
+) -> bool:
+    comment = comment.strip()
+    try:
+        existing = con.execute(
+            """
+            select status
+            from suggestions
+            where suggestion_id = ?
+            """,
+            (suggestion_id,),
+        ).fetchone()
+        if existing is None or existing["status"] not in ("new", "claimed"):
+            con.rollback()
+            return False
+
+        old_status = str(existing["status"])
+        cursor = con.execute(
+            """
+            update suggestions
+            set
+                status = 'accepted',
+                updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            where suggestion_id = :suggestion_id
+                and status = :old_status
+            """,
+            {
+                "suggestion_id": suggestion_id,
+                "old_status": old_status,
+            },
+        )
+        if cursor.rowcount != 1:
+            con.rollback()
+            return False
+
+        _activity_insert(
+            con,
+            suggestion_id,
+            activity_type="updated-status",
+            actor_name=actor_name,
+            actor_discord_id=actor_discord_id,
+            old_value=old_status,
+            new_value="accepted",
+        )
+        if comment:
+            _activity_insert(
+                con,
+                suggestion_id,
+                activity_type="comment",
+                actor_name=actor_name,
+                actor_discord_id=actor_discord_id,
+                body=comment,
+            )
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+
+    log.info("Accepted suggestion %s", suggestion_id)
+    return True
+
+
 def suggestion_decline(
     con: sqlite3.Connection,
     suggestion_id: str,

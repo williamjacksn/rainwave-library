@@ -1659,7 +1659,7 @@ def _suggestion_user_identity(
 
 def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
     editable = flask.session.get("role") == "staff"
-    declinable = editable and suggestion.status in ("new", "claimed")
+    resolvable = editable and suggestion.status in ("new", "claimed")
     claimable = (
         editable
         and suggestion.status == "new"
@@ -1733,7 +1733,22 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                                 type="button",
                             )[htpy.i(".bi-person-dash.me-2"), "Release claim"]
                         ],
-                        declinable
+                        resolvable
+                        and htpy.li[
+                            htpy.button(
+                                ".dropdown-item.text-success",
+                                data_bs_target="#modal-lg",
+                                data_bs_toggle="modal",
+                                hx_get=flask.url_for(
+                                    "suggestion_accept",
+                                    suggestion_id=suggestion.id,
+                                ),
+                                hx_swap="outerHTML",
+                                hx_target="#modal-lg-content",
+                                type="button",
+                            )[htpy.i(".bi-check-circle.me-2"), "Accept suggestion"]
+                        ],
+                        resolvable
                         and htpy.li[
                             htpy.button(
                                 ".dropdown-item.text-danger",
@@ -1914,8 +1929,21 @@ def _suggestion_detail_table(
     ]
 
 
-def _suggestion_decline_form(suggestion: SuggestionDetail) -> htpy.Element:
-    url = flask.url_for("suggestion_decline", suggestion_id=suggestion.id)
+def _suggestion_resolution_form(
+    suggestion: SuggestionDetail,
+    *,
+    resolution: str,
+) -> htpy.Element:
+    if resolution not in {"accept", "decline"}:
+        msg = "Invalid suggestion resolution."
+        raise ValueError(msg)
+    accepting = resolution == "accept"
+    resolved_status = "accepted" if accepting else "declined"
+    action_label = "Accept suggestion" if accepting else "Decline suggestion"
+    url = flask.url_for(
+        "suggestion_accept" if accepting else "suggestion_decline",
+        suggestion_id=suggestion.id,
+    )
     claim_details: htpy.Node
     if suggestion.claimed_by_name or suggestion.claimed_by_discord_id:
         claim_details = _suggestion_user_identity(
@@ -1948,9 +1976,7 @@ def _suggestion_decline_form(suggestion: SuggestionDetail) -> htpy.Element:
         **{"hx-on:htmx:after-request": after_request},
     )[
         htpy.div(".modal-header")[
-            htpy.h5("#suggestion-decline-modal-title.modal-title")[
-                "Decline suggestion"
-            ],
+            htpy.h5(f"#suggestion-{resolution}-modal-title.modal-title")[action_label],
             htpy.button(
                 ".btn-close",
                 aria_label="Close",
@@ -1959,7 +1985,10 @@ def _suggestion_decline_form(suggestion: SuggestionDetail) -> htpy.Element:
             ),
         ],
         htpy.div(".modal-body")[
-            htpy.p["Review the suggestion and claim details before declining it."],
+            htpy.p[
+                "Review the suggestion and claim details before "
+                f"{'accepting' if accepting else 'declining'} it."
+            ],
             _suggestion_detail_table(
                 [
                     ("Suggestion title", suggestion.title),
@@ -1986,16 +2015,16 @@ def _suggestion_decline_form(suggestion: SuggestionDetail) -> htpy.Element:
             htpy.div(".mt-3")[
                 htpy.label(
                     ".form-label",
-                    for_="suggestion-decline-comment",
+                    for_=f"suggestion-{resolution}-comment",
                 )["Comment (optional)"],
                 htpy.textarea(
-                    "#suggestion-decline-comment.form-control",
+                    f"#suggestion-{resolution}-comment.form-control",
                     name="comment",
                     rows=4,
                 ),
                 htpy.div(".form-text")[
                     "The comment will be added at the same time as the suggestion "
-                    "is declined."
+                    f"is {resolved_status}."
                 ],
             ],
         ],
@@ -2005,11 +2034,27 @@ def _suggestion_decline_form(suggestion: SuggestionDetail) -> htpy.Element:
                 data_bs_dismiss="modal",
                 type="button",
             )["Cancel"],
-            htpy.button(".btn.btn-danger", type="submit")[
-                htpy.i(".bi-x-circle"), " Decline suggestion"
+            htpy.button(
+                ".btn.btn-success" if accepting else ".btn.btn-danger",
+                type="submit",
+            )[
+                htpy.i(".bi-check-circle" if accepting else ".bi-x-circle"),
+                f" {action_label}",
             ],
         ],
     ]
+
+
+def _suggestion_accept_form(suggestion: SuggestionDetail) -> htpy.Element:
+    return _suggestion_resolution_form(suggestion, resolution="accept")
+
+
+def suggestion_accept_form(suggestion: SuggestionDetail) -> str:
+    return str(_suggestion_accept_form(suggestion))
+
+
+def _suggestion_decline_form(suggestion: SuggestionDetail) -> htpy.Element:
+    return _suggestion_resolution_form(suggestion, resolution="decline")
 
 
 def suggestion_decline_form(suggestion: SuggestionDetail) -> str:

@@ -242,8 +242,34 @@ def _suggestion_channel_name(
     return rainwave_library.models.rainwave.channels.get(channel_id, "Unknown")
 
 
+def _suggestion_announcement_comment_add(
+    content: str,
+    mentioned_user_ids: tuple[str, ...],
+    *,
+    comment: str,
+    commenter_name: str | None,
+    commenter_discord_id: str | None,
+) -> tuple[str, tuple[str, ...]]:
+    if not comment.strip():
+        return content, mentioned_user_ids
+
+    commenter = (
+        f"<@{commenter_discord_id}>"
+        if commenter_discord_id
+        else commenter_name or "A staff member"
+    )
+    content += f"\n\n{commenter} said: {comment.strip()}"
+    if commenter_discord_id and commenter_discord_id not in mentioned_user_ids:
+        mentioned_user_ids += (commenter_discord_id,)
+    return content, mentioned_user_ids
+
+
 def _suggestion_accepted_announce(
     suggestion: rainwave_library.models.suggestions.SuggestionDetail,
+    *,
+    comment: str = "",
+    commenter_name: str | None = None,
+    commenter_discord_id: str | None = None,
 ) -> None:
     channel_name = _suggestion_channel_name(suggestion)
     if suggestion.requester_discord_id:
@@ -262,6 +288,13 @@ def _suggestion_accepted_announce(
     if suggestion.kind in {"new-album", "add-to-existing-album"}:
         content += " New music will be added to Rainwave in a future update."
 
+    content, mentioned_user_ids = _suggestion_announcement_comment_add(
+        content,
+        mentioned_user_ids,
+        comment=comment,
+        commenter_name=commenter_name,
+        commenter_discord_id=commenter_discord_id,
+    )
     _suggestion_discord_message_send(
         suggestion.id,
         content,
@@ -290,15 +323,13 @@ def _suggestion_declined_announce(
         )
         mentioned_user_ids = ()
 
-    if comment.strip():
-        commenter = (
-            f"<@{commenter_discord_id}>"
-            if commenter_discord_id
-            else commenter_name or "A staff member"
-        )
-        content += f"\n\n{commenter} said: {comment.strip()}"
-        if commenter_discord_id and commenter_discord_id not in mentioned_user_ids:
-            mentioned_user_ids += (commenter_discord_id,)
+    content, mentioned_user_ids = _suggestion_announcement_comment_add(
+        content,
+        mentioned_user_ids,
+        comment=comment,
+        commenter_name=commenter_name,
+        commenter_discord_id=commenter_discord_id,
+    )
 
     _suggestion_discord_message_send(
         suggestion.id,
@@ -2465,6 +2496,52 @@ def suggestion_decline(suggestion_id: str) -> werkzeug.Response | str:
     if suggestion is None:
         flask.abort(404)
     _suggestion_declined_announce(
+        suggestion,
+        comment=comment,
+        commenter_name=flask.g.discord_display_name,
+        commenter_discord_id=(str(flask.g.discord_id) if flask.g.discord_id else None),
+    )
+    if flask.request.headers.get("HX-Request") == "true":
+        return rainwave_library.components.suggestion_row(suggestion)
+    return flask.redirect(flask.url_for("suggestions"))
+
+
+@app.route("/suggestions/<suggestion_id>/accept", methods=["GET", "POST"])
+@secure
+def suggestion_accept(suggestion_id: str) -> werkzeug.Response | str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+        if suggestion is None:
+            flask.abort(404)
+        if suggestion.status not in ("new", "claimed"):
+            flask.abort(409, "Only new or claimed suggestions can be accepted.")
+        if flask.request.method == "GET":
+            return rainwave_library.components.suggestion_accept_form(suggestion)
+
+        comment = flask.request.form.get("comment", "")
+        accepted = rainwave_library.models.suggestions.suggestion_accept(
+            storage_cnx,
+            suggestion_id,
+            actor_name=flask.g.discord_display_name,
+            actor_discord_id=(str(flask.g.discord_id) if flask.g.discord_id else None),
+            comment=comment,
+        )
+        if not accepted:
+            flask.abort(409, "This suggestion is no longer available to accept.")
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+    finally:
+        storage_cnx.close()
+
+    if suggestion is None:
+        flask.abort(404)
+    _suggestion_accepted_announce(
         suggestion,
         comment=comment,
         commenter_name=flask.g.discord_display_name,
