@@ -164,49 +164,6 @@ def _suggestion_created_announce(
     )
 
 
-def _suggestion_comment_announce(
-    suggestion: rainwave_library.models.suggestions.SuggestionDetail,
-    *,
-    commenter_name: str | None,
-    commenter_discord_id: str | None,
-    body: str,
-) -> None:
-    if not suggestion.requester_discord_id:
-        app.logger.warning(
-            "Could not announce a comment on suggestion %s because the requester "
-            "does not have a Discord ID",
-            suggestion.id,
-        )
-        return
-
-    commenter = (
-        f"<@{commenter_discord_id}>"
-        if commenter_discord_id
-        else commenter_name or "Unknown commenter"
-    )
-    channel_name = _suggestion_channel_name(suggestion)
-    content = "\n".join(
-        (
-            f"<@{suggestion.requester_discord_id}> there is a new comment on your "
-            f"suggestion **{suggestion.title}** for the {channel_name} channel.",
-            f"{commenter} said: {body.strip()}",
-        )
-    )
-    mentioned_user_ids = tuple(
-        dict.fromkeys(
-            (
-                suggestion.requester_discord_id,
-                *([commenter_discord_id] if commenter_discord_id else []),
-            )
-        )
-    )
-    _suggestion_discord_message_send(
-        suggestion.id,
-        content,
-        mentioned_user_ids,
-    )
-
-
 def _suggestion_channel_name(
     suggestion: rainwave_library.models.suggestions.SuggestionDetail,
 ) -> str:
@@ -2221,13 +2178,13 @@ def suggestion_comment(suggestion_id: str) -> werkzeug.Response | str:
         return rainwave_library.components.suggestion_comment_form(suggestion_id)
 
     body = flask.request.form.get("body", "")
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         try:
             added = rainwave_library.models.suggestions.suggestion_comment_add(
-                storage_cnx,
+                storage_cnx_,
                 suggestion_id,
                 actor_name=flask.g.discord_display_name,
                 actor_discord_id=(
@@ -2247,19 +2204,13 @@ def suggestion_comment(suggestion_id: str) -> werkzeug.Response | str:
         if not added:
             flask.abort(404)
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx, suggestion_id
+            storage_cnx_, suggestion_id
         )
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
 
     if suggestion is None:
         flask.abort(404)
-    _suggestion_comment_announce(
-        suggestion,
-        commenter_name=flask.g.discord_display_name,
-        commenter_discord_id=(str(flask.g.discord_id) if flask.g.discord_id else None),
-        body=body,
-    )
     return rainwave_library.components.suggestion_activity_block(suggestion)
 
 
