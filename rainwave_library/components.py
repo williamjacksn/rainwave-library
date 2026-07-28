@@ -1642,8 +1642,8 @@ def _suggestion_user_identity(
     avatar_url: str | None,
     *,
     empty_placeholder: bool = True,
-) -> htpy.Fragment:
-    return htpy.fragment[
+) -> htpy.Element:
+    return htpy.span(".fw-medium")[
         avatar_url
         and htpy.img(
             ".me-1.object-fit-cover.rounded-circle",
