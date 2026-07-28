@@ -2381,9 +2381,6 @@ def _suggestion_activity_block(
     )
     return htpy.div(id=f"suggestion-activity-{suggestion.id}")[
         htpy.div(".d-flex.flex-wrap.gap-2.mb-3")[
-            htpy.div(id=f"suggestion-comment-{suggestion.id}")[
-                _suggestion_comment_button(suggestion.id)
-            ],
             htpy.button(
                 ".btn.btn-outline-primary.btn-sm",
                 hx_disabled_elt="this",
@@ -2394,6 +2391,9 @@ def _suggestion_activity_block(
             )[
                 htpy.i(".bi-chat-square-text"),
                 " Show all activity" if comments_only else " Show only comments",
+            ],
+            htpy.div(id=f"suggestion-comment-{suggestion.id}")[
+                _suggestion_comment_button(suggestion.id)
             ],
         ],
         htpy.div(".list-group")[
