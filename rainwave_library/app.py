@@ -207,32 +207,6 @@ def _suggestion_comment_announce(
     )
 
 
-def _suggestion_claim_announce(
-    suggestion: rainwave_library.models.suggestions.SuggestionDetail,
-) -> None:
-    if not suggestion.requester_discord_id or not suggestion.claimed_by_discord_id:
-        app.logger.warning(
-            "Could not announce the claim on suggestion %s because a Discord ID "
-            "is missing",
-            suggestion.id,
-        )
-        return
-
-    content = (
-        f"<@{suggestion.requester_discord_id}> your suggestion "
-        f"**{suggestion.title}** was claimed by "
-        f"<@{suggestion.claimed_by_discord_id}>."
-    )
-    mentioned_user_ids = (suggestion.requester_discord_id,)
-    if suggestion.claimed_by_discord_id != suggestion.requester_discord_id:
-        mentioned_user_ids += (suggestion.claimed_by_discord_id,)
-    _suggestion_discord_message_send(
-        suggestion.id,
-        content,
-        mentioned_user_ids,
-    )
-
-
 def _suggestion_channel_name(
     suggestion: rainwave_library.models.suggestions.SuggestionDetail,
 ) -> str:
@@ -2406,29 +2380,28 @@ def suggestion_link_delete(suggestion_id: str, link_id: str) -> str:
 @app.route("/suggestions/<suggestion_id>/claim", methods=["POST"])
 @secure
 def suggestion_claim(suggestion_id: str) -> str:
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         claimed = rainwave_library.models.suggestions.suggestion_claim(
-            storage_cnx,
+            storage_cnx_,
             suggestion_id,
             flask.g.discord_display_name or "",
             str(flask.g.discord_id or ""),
         )
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx, suggestion_id
+            storage_cnx_, suggestion_id
         )
     except ValueError as error:
         flask.abort(400, str(error))
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
 
     if suggestion is None:
         flask.abort(404)
     if not claimed:
         flask.abort(409, "This suggestion is no longer available to claim.")
-    _suggestion_claim_announce(suggestion)
     return rainwave_library.components.suggestion_row(suggestion)
 
 
