@@ -2301,9 +2301,11 @@ def _suggestion_activity_item(activity: SuggestionActivity) -> htpy.Element:
 def _suggestion_comment_button(suggestion_id: str) -> htpy.Element:
     return htpy.button(
         ".btn.btn-outline-primary.btn-sm",
+        data_bs_target="#modal-lg",
+        data_bs_toggle="modal",
         hx_get=flask.url_for("suggestion_comment", suggestion_id=suggestion_id),
-        hx_swap="innerHTML",
-        hx_target=f"#suggestion-comment-{suggestion_id}",
+        hx_swap="outerHTML",
+        hx_target="#modal-lg-content",
         type="button",
     )[htpy.i(".bi-chat-left-text"), " Add a comment"]
 
@@ -2313,48 +2315,71 @@ def suggestion_comment_button(suggestion_id: str) -> str:
 
 
 def _suggestion_comment_form(
-    suggestion_id: str,
+    suggestion: SuggestionDetail,
     body: str = "",
     error: str | None = None,
 ) -> htpy.Element:
-    url = flask.url_for("suggestion_comment", suggestion_id=suggestion_id)
+    url = flask.url_for("suggestion_comment", suggestion_id=suggestion.id)
+    after_request = (
+        "if (event.detail.successful && "
+        "!event.detail.xhr.getResponseHeader('HX-Retarget')) {"
+        "bootstrap.Modal.getOrCreateInstance("
+        "document.getElementById('modal-lg')).hide();"
+        "}"
+    )
     return htpy.form(
+        "#modal-lg-content.modal-content",
+        action=url,
         hx_disabled_elt="button",
         hx_post=url,
         hx_swap="outerHTML",
-        hx_target=f"#suggestion-activity-{suggestion_id}",
+        hx_target=f"#suggestion-activity-{suggestion.id}",
+        method="post",
+        **{"hx-on:htmx:after-request": after_request},
     )[
-        error and htpy.div(".alert.alert-danger.py-2", role="alert")[error],
-        htpy.textarea(
-            ".form-control",
-            aria_label="Comment",
-            name="body",
-            required=True,
-            rows=3,
-        )[body],
-        htpy.div(".d-flex.gap-2.mt-2")[
-            htpy.button(".btn.btn-outline-success.btn-sm", type="submit")[
-                htpy.i(".bi-send"), " Save comment"
-            ],
+        htpy.div(".modal-header")[
+            htpy.h5(".modal-title")["Add a comment"],
             htpy.button(
-                ".btn.btn-outline-secondary.btn-sm",
-                hx_get=flask.url_for(
-                    "suggestion_comment", suggestion_id=suggestion_id, close=1
-                ),
-                hx_swap="innerHTML",
-                hx_target=f"#suggestion-comment-{suggestion_id}",
+                ".btn-close",
+                aria_label="Close",
+                data_bs_dismiss="modal",
+                type="button",
+            ),
+        ],
+        htpy.div(".modal-body")[
+            error and htpy.div(".alert.alert-danger", role="alert")[error],
+            htpy.p[
+                "Add a comment to ",
+                htpy.strong[suggestion.title],
+                ".",
+            ],
+            htpy.label(".form-label", for_="suggestion-comment-body")["Comment"],
+            htpy.textarea(
+                "#suggestion-comment-body.form-control",
+                name="body",
+                required=True,
+                rows=4,
+            )[body],
+        ],
+        htpy.div(".modal-footer")[
+            htpy.button(
+                ".btn.btn-outline-secondary",
+                data_bs_dismiss="modal",
                 type="button",
             )["Cancel"],
+            htpy.button(".btn.btn-primary", type="submit")[
+                htpy.i(".bi-send"), " Add comment"
+            ],
         ],
     ]
 
 
 def suggestion_comment_form(
-    suggestion_id: str,
+    suggestion: SuggestionDetail,
     body: str = "",
     error: str | None = None,
 ) -> str:
-    return str(_suggestion_comment_form(suggestion_id, body, error))
+    return str(_suggestion_comment_form(suggestion, body, error))
 
 
 def _suggestion_activity_block(
@@ -2392,9 +2417,8 @@ def _suggestion_activity_block(
                 htpy.i(".bi-chat-square-text"),
                 " Show all activity" if comments_only else " Show only comments",
             ],
-            htpy.div(id=f"suggestion-comment-{suggestion.id}")[
-                _suggestion_comment_button(suggestion.id)
-            ],
+            suggestion.status in Suggestion.open_statuses
+            and _suggestion_comment_button(suggestion.id),
         ],
         htpy.div(".list-group")[
             [_suggestion_activity_item(activity) for activity in activities]

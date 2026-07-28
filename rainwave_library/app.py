@@ -2172,16 +2172,23 @@ def suggestion_activity(suggestion_id: str) -> str:
 @app.route("/suggestions/<suggestion_id>/comment", methods=["GET", "POST"])
 @signed_in
 def suggestion_comment(suggestion_id: str) -> werkzeug.Response | str:
-    if flask.request.method == "GET":
-        if "close" in flask.request.args:
-            return rainwave_library.components.suggestion_comment_button(suggestion_id)
-        return rainwave_library.components.suggestion_comment_form(suggestion_id)
-
-    body = flask.request.form.get("body", "")
     storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx_, suggestion_id
+        )
+        if suggestion is None:
+            flask.abort(404)
+        if suggestion.status not in (
+            rainwave_library.models.suggestions.Suggestion.open_statuses
+        ):
+            flask.abort(409, "Comments can only be added to open suggestions.")
+        if flask.request.method == "GET":
+            return rainwave_library.components.suggestion_comment_form(suggestion)
+
+        body = flask.request.form.get("body", "")
         try:
             added = rainwave_library.models.suggestions.suggestion_comment_add(
                 storage_cnx_,
@@ -2195,14 +2202,14 @@ def suggestion_comment(suggestion_id: str) -> werkzeug.Response | str:
         except ValueError as error:
             response = flask.make_response(
                 rainwave_library.components.suggestion_comment_form(
-                    suggestion_id, body=body, error=str(error)
+                    suggestion, body=body, error=str(error)
                 )
             )
-            response.headers["HX-Retarget"] = f"#suggestion-comment-{suggestion_id}"
-            response.headers["HX-Reswap"] = "innerHTML"
+            response.headers["HX-Retarget"] = "#modal-lg-content"
+            response.headers["HX-Reswap"] = "outerHTML"
             return response
         if not added:
-            flask.abort(404)
+            flask.abort(409, "Comments can only be added to open suggestions.")
         suggestion = rainwave_library.models.suggestions.suggestion_get(
             storage_cnx_, suggestion_id
         )

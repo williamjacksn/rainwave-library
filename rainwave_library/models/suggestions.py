@@ -37,6 +37,11 @@ class Suggestion:
         "uploaded",
         "declined",
     )
+    open_statuses: typing.ClassVar[tuple[str, ...]] = (
+        "new",
+        "claimed",
+        "accepted",
+    )
     owner_editable_statuses: typing.ClassVar[tuple[str, ...]] = ("new", "claimed")
 
     id: str
@@ -1218,7 +1223,12 @@ def suggestion_comment_add(
         msg = "A comment cannot be empty."
         raise ValueError(msg)
     exists = con.execute(
-        "select 1 from suggestions where suggestion_id = ?",
+        """
+        select 1
+        from suggestions
+        where suggestion_id = ?
+            and status in ('new', 'claimed', 'accepted')
+        """,
         (suggestion_id,),
     ).fetchone()
     if exists is None:
