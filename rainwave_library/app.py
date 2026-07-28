@@ -94,18 +94,18 @@ def _suggestion_discord_message_send(
     mentioned_user_ids: tuple[str, ...] = (),
 ) -> None:
     try:
-        storage_cnx = rainwave_library.models.storage.connection_get(
+        storage_cnx_ = rainwave_library.models.storage.connection_get(
             app.config["STORAGE_CNX"]
         )
         try:
             bot_token = rainwave_library.models.storage.setting_get(
-                storage_cnx, "discord/bot-token"
+                storage_cnx_, "discord/bot-token"
             )
             discord_channel_id = rainwave_library.models.storage.setting_get(
-                storage_cnx, "discord/music-suggestion-channel-id"
+                storage_cnx_, "discord/music-suggestion-channel-id"
             )
         finally:
-            storage_cnx.close()
+            storage_cnx_.close()
 
         if not bot_token or not discord_channel_id:
             app.logger.warning(
@@ -2408,23 +2408,23 @@ def suggestion_claim(suggestion_id: str) -> str:
 @app.route("/suggestions/<suggestion_id>/release", methods=["POST"])
 @signed_in
 def suggestion_release(suggestion_id: str) -> str:
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         released = rainwave_library.models.suggestions.suggestion_release(
-            storage_cnx,
+            storage_cnx_,
             suggestion_id,
             flask.g.discord_display_name or "",
             str(flask.g.discord_id or ""),
         )
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx, suggestion_id
+            storage_cnx_, suggestion_id
         )
     except ValueError as error:
         flask.abort(400, str(error))
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
 
     if suggestion is None:
         flask.abort(404)
