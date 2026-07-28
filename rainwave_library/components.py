@@ -5182,14 +5182,112 @@ def _staff_suggestion_create_modal() -> htpy.Element:
     ]
 
 
-def suggestions_index(
-    is_staff: bool,
-    claimants: list[str],
-    your_suggestions_active_count: int,
-    your_suggestions_complete_count: int,
-    song_count: int = 0,
-    song_count_as_of: str = "",
-) -> str:
+def _suggestions_sort_options_control() -> htpy.Element:
+    rows_url = flask.url_for("suggestions_rows")
+    return htpy.div(".dropdown")[
+        htpy.button(
+            ".btn.btn-outline-primary.dropdown-toggle",
+            data_bs_toggle="dropdown",
+            title="Sort options",
+            type="button",
+        )[htpy.i(".bi-sort-alpha-down")],
+        htpy.div(".dropdown-menu")[
+            htpy.div(".px-2")[
+                htpy.h6(".dropdown-header")["SORT OPTIONS"],
+                [
+                    htpy.div(".form-check")[
+                        htpy.input(
+                            f"#suggestion-sort-dir-{value}.form-check-input",
+                            checked=value == "desc",
+                            hx_indicator="#suggestion-filters-indicator",
+                            hx_post=rows_url,
+                            name="sort-dir",
+                            type="radio",
+                            value=value,
+                        ),
+                        htpy.label(
+                            ".form-check-label",
+                            for_=f"suggestion-sort-dir-{value}",
+                        )[label],
+                    ]
+                    for value, label in (
+                        ("asc", "Ascending"),
+                        ("desc", "Descending"),
+                    )
+                ],
+                htpy.hr,
+                [
+                    htpy.div(".form-check")[
+                        htpy.input(
+                            f"#suggestion-sort-col-{value}.form-check-input",
+                            checked=value == "requested_at",
+                            hx_indicator=("#suggestion-filters-indicator"),
+                            hx_post=rows_url,
+                            name="sort-col",
+                            type="radio",
+                            value=value,
+                        ),
+                        htpy.label(
+                            ".form-check-label.text-nowrap",
+                            for_=f"suggestion-sort-col-{value}",
+                        )[label],
+                    ]
+                    for value, label in Suggestion.sort_fields
+                ],
+            ]
+        ],
+    ]
+
+
+def _suggestions_claimed_by_filter(claimants: list[str]) -> htpy.Element:
+    rows_url = flask.url_for("suggestions_rows")
+    return htpy.div(".dropdown")[
+        htpy.button(
+            ".btn.btn-outline-primary.dropdown-toggle",
+            data_bs_toggle="dropdown",
+            title="Claimant selection",
+            type="button",
+        )[htpy.i(".bi-person-check")],
+        htpy.div(".dropdown-menu")[
+            htpy.div(".px-2")[
+                htpy.h6(".dropdown-header")["CLAIMED BY"],
+                htpy.div(".form-check")[
+                    htpy.input(
+                        "#suggestion-claimant-unclaimed.form-check-input",
+                        hx_indicator="#suggestion-filters-indicator",
+                        hx_post=rows_url,
+                        name="claimed-by",
+                        type="checkbox",
+                        value="",
+                    ),
+                    htpy.label(
+                        ".form-check-label.text-nowrap",
+                        for_="suggestion-claimant-unclaimed",
+                    )["(unclaimed)"],
+                ],
+                [
+                    htpy.div(".form-check")[
+                        htpy.input(
+                            f"#suggestion-claimant-{index}.form-check-input",
+                            hx_indicator="#suggestion-filters-indicator",
+                            hx_post=rows_url,
+                            name="claimed-by",
+                            type="checkbox",
+                            value=claimant,
+                        ),
+                        htpy.label(
+                            ".form-check-label.text-nowrap",
+                            for_=f"suggestion-claimant-{index}",
+                        )[claimant],
+                    ]
+                    for index, claimant in enumerate(claimants)
+                ],
+            ]
+        ],
+    ]
+
+
+def _suggestions_channel_filter() -> htpy.Element:
     rows_url = flask.url_for("suggestions_rows")
     rainwave_channels = sorted(
         (
@@ -5199,6 +5297,190 @@ def suggestions_index(
         ),
         key=lambda channel: channel[1].casefold(),
     )
+    return htpy.div(".dropdown")[
+        htpy.button(
+            ".btn.btn-outline-primary.dropdown-toggle",
+            data_bs_toggle="dropdown",
+            title="Channel selection",
+            type="button",
+        )[htpy.i(".bi-broadcast-pin")],
+        htpy.div(".dropdown-menu")[
+            htpy.div(".px-2")[
+                htpy.h6(".dropdown-header")["CHANNEL"],
+                htpy.div(".form-check")[
+                    htpy.input(
+                        "#suggestion-channel-unassigned.form-check-input",
+                        checked=True,
+                        hx_indicator="#suggestion-filters-indicator",
+                        hx_post=rows_url,
+                        name="channels",
+                        type="checkbox",
+                        value="unassigned",
+                    ),
+                    htpy.label(
+                        ".form-check-label.text-nowrap",
+                        for_="suggestion-channel-unassigned",
+                    )["(no channel)"],
+                ],
+                [
+                    htpy.div(".form-check")[
+                        htpy.input(
+                            f"#suggestion-channel-{channel_id}.form-check-input",
+                            checked=True,
+                            hx_indicator="#suggestion-filters-indicator",
+                            hx_post=rows_url,
+                            name="channels",
+                            type="checkbox",
+                            value=channel_id,
+                        ),
+                        htpy.label(
+                            ".form-check-label.text-nowrap",
+                            for_=f"suggestion-channel-{channel_id}",
+                        )[channel_badge(channel_id)],
+                    ]
+                    for channel_id, _label in rainwave_channels
+                ],
+            ]
+        ],
+    ]
+
+
+def _suggestions_status_filter() -> htpy.Element:
+    rows_url = flask.url_for("suggestions_rows")
+    return htpy.div(".dropdown")[
+        htpy.button(
+            ".btn.btn-outline-primary.dropdown-toggle",
+            data_bs_toggle="dropdown",
+            title="Status selection",
+            type="button",
+        )[htpy.i(".bi-flag")],
+        htpy.div(".dropdown-menu")[
+            htpy.div(".px-2")[
+                htpy.h6(".dropdown-header")["STATUS"],
+                [
+                    htpy.div(".form-check")[
+                        htpy.input(
+                            f"#status-{status}.form-check-input",
+                            checked=True,
+                            hx_indicator="#suggestion-filters-indicator",
+                            hx_post=rows_url,
+                            name="status",
+                            type="checkbox",
+                            value=status,
+                        ),
+                        htpy.label(
+                            ".form-check-label",
+                            for_=f"status-{status}",
+                        )[status.title()],
+                    ]
+                    for status in Suggestion.statuses
+                ],
+            ]
+        ],
+    ]
+
+
+def _suggestions_type_filter() -> htpy.Element:
+    rows_url = flask.url_for("suggestions_rows")
+    return htpy.div(".dropdown")[
+        htpy.button(
+            ".btn.btn-outline-primary.dropdown-toggle",
+            data_bs_toggle="dropdown",
+            title="Suggestion type selection",
+            type="button",
+        )[htpy.i(".bi-tags")],
+        htpy.div(".dropdown-menu")[
+            htpy.div(".px-2")[
+                htpy.h6(".dropdown-header")["SUGGESTION TYPE"],
+                [
+                    htpy.div(".form-check")[
+                        htpy.input(
+                            f"#suggestion-kind-{kind}.form-check-input",
+                            checked=True,
+                            hx_indicator="#suggestion-filters-indicator",
+                            hx_post=rows_url,
+                            name="kinds",
+                            type="checkbox",
+                            value=kind,
+                        ),
+                        htpy.label(
+                            ".form-check-label.text-nowrap",
+                            for_=f"suggestion-kind-{kind}",
+                        )[label],
+                    ]
+                    for kind, label in Suggestion.kind_labels.items()
+                ],
+            ]
+        ],
+    ]
+
+
+def _suggestions_other_filter_options(
+    is_staff: bool,
+    your_suggestions_active_count: int,
+    your_suggestions_complete_count: int,
+) -> htpy.Element:
+    rows_url = flask.url_for("suggestions_rows")
+    return htpy.div(".dropdown")[
+        htpy.button(
+            ".btn.btn-outline-primary.dropdown-toggle",
+            data_bs_toggle="dropdown",
+            title="Filter options",
+            type="button",
+        )[htpy.i(".bi-list-check")],
+        htpy.div(".dropdown-menu")[
+            htpy.div(".px-2")[
+                htpy.h6(".dropdown-header")["FILTER OPTIONS"],
+                htpy.div(".form-check")[
+                    htpy.input(
+                        "#your-suggestions.form-check-input",
+                        hx_indicator="#suggestion-filters-indicator",
+                        hx_post=rows_url,
+                        name="your-suggestions",
+                        type="checkbox",
+                        value="1",
+                    ),
+                    htpy.label(
+                        ".form-check-label.text-nowrap",
+                        for_="your-suggestions",
+                    )[
+                        "Your suggestions (",
+                        str(your_suggestions_active_count),
+                        " active, ",
+                        str(your_suggestions_complete_count),
+                        " complete",
+                        ")",
+                    ],
+                ],
+                is_staff
+                and htpy.div(".form-check")[
+                    htpy.input(
+                        "#your-claims.form-check-input",
+                        hx_indicator="#suggestion-filters-indicator",
+                        hx_post=rows_url,
+                        name="your-claims",
+                        type="checkbox",
+                        value="1",
+                    ),
+                    htpy.label(
+                        ".form-check-label.text-nowrap",
+                        for_="your-claims",
+                    )["Your claims"],
+                ],
+            ]
+        ],
+    ]
+
+
+def suggestions_index(
+    is_staff: bool,
+    claimants: list[str],
+    your_suggestions_active_count: int,
+    your_suggestions_complete_count: int,
+    song_count: int = 0,
+    song_count_as_of: str = "",
+) -> str:
+    rows_url = flask.url_for("suggestions_rows")
     content = [
         htpy.div(".g-1.pt-3.row")[
             _back_button(flask.url_for("index"), "Home"), _user_menu()
@@ -5244,283 +5526,17 @@ def suggestions_index(
                         type="search",
                     )
                 ],
+                htpy.div(".col-auto")[_suggestions_sort_options_control()],
+                htpy.div(".col-auto")[_suggestions_claimed_by_filter(claimants)],
+                htpy.div(".col-auto")[_suggestions_channel_filter()],
+                htpy.div(".col-auto")[_suggestions_status_filter()],
+                htpy.div(".col-auto")[_suggestions_type_filter()],
                 htpy.div(".col-auto")[
-                    htpy.div(".dropdown")[
-                        htpy.button(
-                            ".btn.btn-outline-primary.dropdown-toggle",
-                            data_bs_toggle="dropdown",
-                            title="Sort options",
-                            type="button",
-                        )[htpy.i(".bi-sort-alpha-down")],
-                        htpy.div(".dropdown-menu")[
-                            htpy.div(".px-2")[
-                                htpy.h6(".dropdown-header")["SORT OPTIONS"],
-                                [
-                                    htpy.div(".form-check")[
-                                        htpy.input(
-                                            f"#suggestion-sort-dir-{value}.form-check-input",
-                                            checked=value == "desc",
-                                            hx_indicator=(
-                                                "#suggestion-filters-indicator"
-                                            ),
-                                            hx_post=rows_url,
-                                            name="sort-dir",
-                                            type="radio",
-                                            value=value,
-                                        ),
-                                        htpy.label(
-                                            ".form-check-label",
-                                            for_=f"suggestion-sort-dir-{value}",
-                                        )[label],
-                                    ]
-                                    for value, label in (
-                                        ("asc", "Ascending"),
-                                        ("desc", "Descending"),
-                                    )
-                                ],
-                                htpy.hr,
-                                [
-                                    htpy.div(".form-check")[
-                                        htpy.input(
-                                            f"#suggestion-sort-col-{value}.form-check-input",
-                                            checked=value == "requested_at",
-                                            hx_indicator=(
-                                                "#suggestion-filters-indicator"
-                                            ),
-                                            hx_post=rows_url,
-                                            name="sort-col",
-                                            type="radio",
-                                            value=value,
-                                        ),
-                                        htpy.label(
-                                            ".form-check-label.text-nowrap",
-                                            for_=f"suggestion-sort-col-{value}",
-                                        )[label],
-                                    ]
-                                    for value, label in Suggestion.sort_fields
-                                ],
-                            ]
-                        ],
-                    ]
-                ],
-                htpy.div(".col-auto")[
-                    htpy.div(".dropdown")[
-                        htpy.button(
-                            ".btn.btn-outline-primary.dropdown-toggle",
-                            data_bs_toggle="dropdown",
-                            title="Claimant selection",
-                            type="button",
-                        )[htpy.i(".bi-person-check")],
-                        htpy.div(".dropdown-menu")[
-                            htpy.div(".px-2")[
-                                htpy.h6(".dropdown-header")["CLAIMED BY"],
-                                htpy.div(".form-check")[
-                                    htpy.input(
-                                        "#suggestion-claimant-unclaimed.form-check-input",
-                                        hx_indicator="#suggestion-filters-indicator",
-                                        hx_post=rows_url,
-                                        name="claimed-by",
-                                        type="checkbox",
-                                        value="",
-                                    ),
-                                    htpy.label(
-                                        ".form-check-label.text-nowrap",
-                                        for_="suggestion-claimant-unclaimed",
-                                    )["(unclaimed)"],
-                                ],
-                                [
-                                    htpy.div(".form-check")[
-                                        htpy.input(
-                                            f"#suggestion-claimant-{index}.form-check-input",
-                                            hx_indicator=(
-                                                "#suggestion-filters-indicator"
-                                            ),
-                                            hx_post=rows_url,
-                                            name="claimed-by",
-                                            type="checkbox",
-                                            value=claimant,
-                                        ),
-                                        htpy.label(
-                                            ".form-check-label.text-nowrap",
-                                            for_=f"suggestion-claimant-{index}",
-                                        )[claimant],
-                                    ]
-                                    for index, claimant in enumerate(claimants)
-                                ],
-                            ]
-                        ],
-                    ]
-                ],
-                htpy.div(".col-auto")[
-                    htpy.div(".dropdown")[
-                        htpy.button(
-                            ".btn.btn-outline-primary.dropdown-toggle",
-                            data_bs_toggle="dropdown",
-                            title="Channel selection",
-                            type="button",
-                        )[htpy.i(".bi-broadcast-pin")],
-                        htpy.div(".dropdown-menu")[
-                            htpy.div(".px-2")[
-                                htpy.h6(".dropdown-header")["CHANNEL"],
-                                htpy.div(".form-check")[
-                                    htpy.input(
-                                        "#suggestion-channel-unassigned.form-check-input",
-                                        checked=True,
-                                        hx_indicator="#suggestion-filters-indicator",
-                                        hx_post=rows_url,
-                                        name="channels",
-                                        type="checkbox",
-                                        value="unassigned",
-                                    ),
-                                    htpy.label(
-                                        ".form-check-label.text-nowrap",
-                                        for_="suggestion-channel-unassigned",
-                                    )["(no channel)"],
-                                ],
-                                [
-                                    htpy.div(".form-check")[
-                                        htpy.input(
-                                            f"#suggestion-channel-{channel_id}.form-check-input",
-                                            checked=True,
-                                            hx_indicator=(
-                                                "#suggestion-filters-indicator"
-                                            ),
-                                            hx_post=rows_url,
-                                            name="channels",
-                                            type="checkbox",
-                                            value=channel_id,
-                                        ),
-                                        htpy.label(
-                                            ".form-check-label.text-nowrap",
-                                            for_=f"suggestion-channel-{channel_id}",
-                                        )[channel_badge(channel_id)],
-                                    ]
-                                    for channel_id, _label in rainwave_channels
-                                ],
-                            ]
-                        ],
-                    ]
-                ],
-                htpy.div(".col-auto")[
-                    htpy.div(".dropdown")[
-                        htpy.button(
-                            ".btn.btn-outline-primary.dropdown-toggle",
-                            data_bs_toggle="dropdown",
-                            title="Status selection",
-                            type="button",
-                        )[htpy.i(".bi-flag")],
-                        htpy.div(".dropdown-menu")[
-                            htpy.div(".px-2")[
-                                htpy.h6(".dropdown-header")["STATUS"],
-                                [
-                                    htpy.div(".form-check")[
-                                        htpy.input(
-                                            f"#status-{status}.form-check-input",
-                                            checked=status in ("new", "claimed"),
-                                            hx_indicator=(
-                                                "#suggestion-filters-indicator"
-                                            ),
-                                            hx_post=rows_url,
-                                            name="status",
-                                            type="checkbox",
-                                            value=status,
-                                        ),
-                                        htpy.label(
-                                            ".form-check-label",
-                                            for_=f"status-{status}",
-                                        )[status.title()],
-                                    ]
-                                    for status in Suggestion.statuses
-                                ],
-                            ]
-                        ],
-                    ]
-                ],
-                htpy.div(".col-auto")[
-                    htpy.div(".dropdown")[
-                        htpy.button(
-                            ".btn.btn-outline-primary.dropdown-toggle",
-                            data_bs_toggle="dropdown",
-                            title="Suggestion type selection",
-                            type="button",
-                        )[htpy.i(".bi-tags")],
-                        htpy.div(".dropdown-menu")[
-                            htpy.div(".px-2")[
-                                htpy.h6(".dropdown-header")["SUGGESTION TYPE"],
-                                [
-                                    htpy.div(".form-check")[
-                                        htpy.input(
-                                            f"#suggestion-kind-{kind}.form-check-input",
-                                            checked=True,
-                                            hx_indicator=(
-                                                "#suggestion-filters-indicator"
-                                            ),
-                                            hx_post=rows_url,
-                                            name="kinds",
-                                            type="checkbox",
-                                            value=kind,
-                                        ),
-                                        htpy.label(
-                                            ".form-check-label.text-nowrap",
-                                            for_=f"suggestion-kind-{kind}",
-                                        )[label],
-                                    ]
-                                    for kind, label in Suggestion.kind_labels.items()
-                                ],
-                            ]
-                        ],
-                    ]
-                ],
-                htpy.div(".col-auto")[
-                    htpy.div(".dropdown")[
-                        htpy.button(
-                            ".btn.btn-outline-primary.dropdown-toggle",
-                            data_bs_toggle="dropdown",
-                            title="Filter options",
-                            type="button",
-                        )[htpy.i(".bi-list-check")],
-                        htpy.div(".dropdown-menu")[
-                            htpy.div(".px-2")[
-                                htpy.h6(".dropdown-header")["FILTER OPTIONS"],
-                                htpy.div(".form-check")[
-                                    htpy.input(
-                                        "#your-suggestions.form-check-input",
-                                        hx_indicator="#suggestion-filters-indicator",
-                                        hx_post=rows_url,
-                                        name="your-suggestions",
-                                        type="checkbox",
-                                        value="1",
-                                    ),
-                                    htpy.label(
-                                        ".form-check-label.text-nowrap",
-                                        for_="your-suggestions",
-                                    )[
-                                        "Your suggestions (",
-                                        str(your_suggestions_active_count),
-                                        " active, ",
-                                        str(your_suggestions_complete_count),
-                                        " complete",
-                                        ")",
-                                    ],
-                                ],
-                                is_staff
-                                and htpy.div(".form-check")[
-                                    htpy.input(
-                                        "#your-claims.form-check-input",
-                                        hx_indicator="#suggestion-filters-indicator",
-                                        hx_post=rows_url,
-                                        name="your-claims",
-                                        type="checkbox",
-                                        value="1",
-                                    ),
-                                    htpy.label(
-                                        ".form-check-label.text-nowrap",
-                                        for_="your-claims",
-                                    )["Your claims"],
-                                ],
-                            ]
-                        ],
-                    ]
+                    _suggestions_other_filter_options(
+                        is_staff,
+                        your_suggestions_active_count,
+                        your_suggestions_complete_count,
+                    )
                 ],
                 htpy.div(".col-auto")[
                     htpy.span(
