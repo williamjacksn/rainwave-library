@@ -57,10 +57,50 @@ def _base(
                 content,
                 htpy.div(".pt-3.row")[htpy.div(".col")[htpy.hr]],
             ],
+            _remote_modal(),
             _bs_script(),
             _hx_script(),
+            _remote_modal_script(),
         ],
     ]
+
+
+def _modal_loading_content() -> htpy.Element:
+    return htpy.div("#modal-lg-content.modal-content")[
+        htpy.div(".modal-body.text-center")[htpy.div(".spinner-border")]
+    ]
+
+
+def _remote_modal() -> htpy.Element:
+    return htpy.div("#modal-lg.modal", data_remote_modal="true")[
+        htpy.div(".modal-dialog.modal-lg")[_modal_loading_content()],
+        htpy.template("#modal-lg-loading-template")[_modal_loading_content()],
+    ]
+
+
+def _remote_modal_script() -> htpy.Element:
+    script = markupsafe.Markup(
+        """
+        document.addEventListener("hidden.bs.modal", (event) => {
+            const modal = event.target;
+            if (
+                !(modal instanceof Element) ||
+                !modal.matches("[data-remote-modal]")
+            ) {
+                return;
+            }
+            const content = modal.querySelector(".modal-content");
+            const template = modal.querySelector("#modal-lg-loading-template");
+            if (
+                content &&
+                template instanceof HTMLTemplateElement
+            ) {
+                content.replaceWith(template.content.cloneNode(true));
+            }
+        });
+        """
+    )
+    return htpy.script[script]
 
 
 def _bi_stylesheet() -> htpy.Renderable:
@@ -1697,24 +1737,15 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                         and htpy.li[
                             htpy.button(
                                 ".dropdown-item.text-danger",
-                                data_bs_target="#suggestion-decline-modal",
+                                data_bs_target="#modal-lg",
                                 data_bs_toggle="modal",
                                 hx_get=flask.url_for(
                                     "suggestion_decline",
                                     suggestion_id=suggestion.id,
                                 ),
-                                hx_swap="innerHTML",
-                                hx_target="#suggestion-decline-modal-dialog",
+                                hx_swap="outerHTML",
+                                hx_target="#modal-lg-content",
                                 type="button",
-                                **{
-                                    "hx-on:htmx:before-request": (
-                                        "document.getElementById("
-                                        "'suggestion-decline-modal-dialog'"
-                                        ").replaceChildren(document.getElementById("
-                                        "'suggestion-decline-modal-loading'"
-                                        ").content.cloneNode(true));"
-                                    )
-                                },
                             )[htpy.i(".bi-x-circle.me-2"), "Decline suggestion"]
                         ],
                     ],
@@ -1903,11 +1934,11 @@ def _suggestion_decline_form(suggestion: SuggestionDetail) -> htpy.Element:
     after_request = (
         "if (event.detail.successful) {"
         "bootstrap.Modal.getOrCreateInstance("
-        "document.getElementById('suggestion-decline-modal')).hide();"
+        "document.getElementById('modal-lg')).hide();"
         "}"
     )
     return htpy.form(
-        "#suggestion-decline-form.modal-content",
+        "#modal-lg-content.modal-content",
         action=url,
         hx_disabled_elt="button",
         hx_post=url,
@@ -5106,29 +5137,6 @@ def _staff_suggestion_create_modal() -> htpy.Element:
     ]
 
 
-def _suggestion_decline_modal() -> htpy.Element:
-    loading_content = htpy.div(".modal-content")[
-        htpy.div(".modal-body.py-5.text-center")[
-            htpy.span(
-                ".spinner-border.spinner-border-sm.text-primary",
-                aria_hidden="true",
-            ),
-            htpy.span(".ms-2")["Loading suggestion details…"],
-        ]
-    ]
-    return htpy.div(
-        "#suggestion-decline-modal.fade.modal",
-        aria_hidden="true",
-        aria_label="Decline suggestion",
-        tabindex="-1",
-    )[
-        htpy.div(
-            "#suggestion-decline-modal-dialog.modal-dialog.modal-dialog-centered.modal-lg"
-        )[loading_content],
-        htpy.template("#suggestion-decline-modal-loading")[loading_content],
-    ]
-
-
 def suggestions_index(
     is_staff: bool,
     claimants: list[str],
@@ -5172,7 +5180,6 @@ def suggestions_index(
         ],
         _suggestion_create_modal(song_count, song_count_as_of),
         is_staff and _staff_suggestion_create_modal(),
-        is_staff and _suggestion_decline_modal(),
         htpy.form(
             "#suggestion-filters",
             hx_include="#suggestion-filters",
