@@ -1619,6 +1619,7 @@ def _suggestion_user_identity(
 
 def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
     editable = flask.session.get("role") == "staff"
+    declinable = editable and suggestion.status in ("new", "claimed")
     claimable = (
         editable
         and suggestion.status == "new"
@@ -1631,7 +1632,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
         and suggestion.claimed_by_discord_id == str(flask.g.discord_id or "")
     )
     kind_label = Suggestion.kind_labels.get(suggestion.kind, suggestion.kind)
-    return htpy.tr()[
+    return htpy.tr(id=f"suggestion-row-{suggestion.id}")[
         htpy.td(".text-center.text-nowrap")[
             (
                 htpy.div(".dropdown")[
@@ -1691,6 +1692,30 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                                 hx_target="closest tr",
                                 type="button",
                             )[htpy.i(".bi-person-dash.me-2"), "Release claim"]
+                        ],
+                        declinable
+                        and htpy.li[
+                            htpy.button(
+                                ".dropdown-item.text-danger",
+                                data_bs_target="#suggestion-decline-modal",
+                                data_bs_toggle="modal",
+                                hx_get=flask.url_for(
+                                    "suggestion_decline",
+                                    suggestion_id=suggestion.id,
+                                ),
+                                hx_swap="innerHTML",
+                                hx_target="#suggestion-decline-modal-dialog",
+                                type="button",
+                                **{
+                                    "hx-on:htmx:before-request": (
+                                        "document.getElementById("
+                                        "'suggestion-decline-modal-dialog'"
+                                        ").replaceChildren(document.getElementById("
+                                        "'suggestion-decline-modal-loading'"
+                                        ").content.cloneNode(true));"
+                                    )
+                                },
+                            )[htpy.i(".bi-x-circle.me-2"), "Decline suggestion"]
                         ],
                     ],
                 ]
@@ -1856,6 +1881,108 @@ def _suggestion_detail_table(
             ]
         ]
     ]
+
+
+def _suggestion_decline_form(suggestion: SuggestionDetail) -> htpy.Element:
+    url = flask.url_for("suggestion_decline", suggestion_id=suggestion.id)
+    claim_details: htpy.Node
+    if suggestion.claimed_by_name or suggestion.claimed_by_discord_id:
+        claim_details = _suggestion_user_identity(
+            suggestion.claimed_by_name or suggestion.claimed_by_discord_id,
+            suggestion.claimed_by_avatar_url,
+        )
+    else:
+        claim_details = htpy.span(".text-secondary")["Unclaimed"]
+    channel_badges: htpy.Node = (
+        htpy.fragment[
+            [channel_badge(channel_id) for channel_id in suggestion.channel_ids]
+        ]
+        if suggestion.channel_ids
+        else htpy.span(".text-secondary")["—"]
+    )
+    after_request = (
+        "if (event.detail.successful) {"
+        "bootstrap.Modal.getOrCreateInstance("
+        "document.getElementById('suggestion-decline-modal')).hide();"
+        "}"
+    )
+    return htpy.form(
+        "#suggestion-decline-form.modal-content",
+        action=url,
+        hx_disabled_elt="button",
+        hx_post=url,
+        hx_swap="outerHTML",
+        hx_target=f"#suggestion-row-{suggestion.id}",
+        method="post",
+        **{"hx-on:htmx:after-request": after_request},
+    )[
+        htpy.div(".modal-header")[
+            htpy.h5("#suggestion-decline-modal-title.modal-title")[
+                "Decline suggestion"
+            ],
+            htpy.button(
+                ".btn-close",
+                aria_label="Close",
+                data_bs_dismiss="modal",
+                type="button",
+            ),
+        ],
+        htpy.div(".modal-body")[
+            htpy.p["Review the suggestion and claim details before declining it."],
+            _suggestion_detail_table(
+                [
+                    ("Suggestion title", suggestion.title),
+                    ("Channel", channel_badges),
+                    (
+                        "Suggested by",
+                        _suggestion_user_identity(
+                            suggestion.requester_name,
+                            suggestion.requester_avatar_url,
+                        ),
+                    ),
+                    ("Status", _suggestion_status_badge(suggestion.status)),
+                    ("Claimed by", claim_details),
+                    (
+                        "Claimed at",
+                        (
+                            suggestion.claimed_at[:10]
+                            if suggestion.claimed_at
+                            else htpy.span(".text-secondary")["—"]
+                        ),
+                    ),
+                ]
+            ),
+            htpy.div(".mt-3")[
+                htpy.label(
+                    ".form-label",
+                    for_="suggestion-decline-comment",
+                )["Comment (optional)"],
+                htpy.textarea(
+                    "#suggestion-decline-comment.form-control",
+                    name="comment",
+                    rows=4,
+                ),
+                htpy.div(".form-text")[
+                    "The comment will be added at the same time as the suggestion "
+                    "is declined."
+                ],
+            ],
+        ],
+        htpy.div(".modal-footer")[
+            htpy.button(
+                ".btn.btn-outline-secondary",
+                data_bs_dismiss="modal",
+                type="button",
+            )["Cancel"],
+            htpy.button(".btn.btn-danger", type="submit")[
+                htpy.i(".bi-x-circle"), " Decline suggestion"
+            ],
+        ],
+    ]
+
+
+def suggestion_decline_form(suggestion: SuggestionDetail) -> str:
+    return str(_suggestion_decline_form(suggestion))
 
 
 def _suggestion_edit_requester_discord_id_field(
@@ -4979,6 +5106,29 @@ def _staff_suggestion_create_modal() -> htpy.Element:
     ]
 
 
+def _suggestion_decline_modal() -> htpy.Element:
+    loading_content = htpy.div(".modal-content")[
+        htpy.div(".modal-body.py-5.text-center")[
+            htpy.span(
+                ".spinner-border.spinner-border-sm.text-primary",
+                aria_hidden="true",
+            ),
+            htpy.span(".ms-2")["Loading suggestion details…"],
+        ]
+    ]
+    return htpy.div(
+        "#suggestion-decline-modal.fade.modal",
+        aria_hidden="true",
+        aria_label="Decline suggestion",
+        tabindex="-1",
+    )[
+        htpy.div(
+            "#suggestion-decline-modal-dialog.modal-dialog.modal-dialog-centered.modal-lg"
+        )[loading_content],
+        htpy.template("#suggestion-decline-modal-loading")[loading_content],
+    ]
+
+
 def suggestions_index(
     is_staff: bool,
     claimants: list[str],
@@ -5022,6 +5172,7 @@ def suggestions_index(
         ],
         _suggestion_create_modal(song_count, song_count_as_of),
         is_staff and _staff_suggestion_create_modal(),
+        is_staff and _suggestion_decline_modal(),
         htpy.form(
             "#suggestion-filters",
             hx_include="#suggestion-filters",

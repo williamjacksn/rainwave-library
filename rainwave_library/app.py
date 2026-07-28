@@ -271,6 +271,10 @@ def _suggestion_accepted_announce(
 
 def _suggestion_declined_announce(
     suggestion: rainwave_library.models.suggestions.SuggestionDetail,
+    *,
+    comment: str = "",
+    commenter_name: str | None = None,
+    commenter_discord_id: str | None = None,
 ) -> None:
     channel_name = _suggestion_channel_name(suggestion)
     if suggestion.requester_discord_id:
@@ -285,6 +289,16 @@ def _suggestion_declined_announce(
             "was declined."
         )
         mentioned_user_ids = ()
+
+    if comment.strip():
+        commenter = (
+            f"<@{commenter_discord_id}>"
+            if commenter_discord_id
+            else commenter_name or "A staff member"
+        )
+        content += f"\n\n{commenter} said: {comment.strip()}"
+        if commenter_discord_id and commenter_discord_id not in mentioned_user_ids:
+            mentioned_user_ids += (commenter_discord_id,)
 
     _suggestion_discord_message_send(
         suggestion.id,
@@ -2413,6 +2427,52 @@ def suggestion_release(suggestion_id: str) -> str:
     if not released:
         flask.abort(409, "Only the claimant can release this suggestion claim.")
     return rainwave_library.components.suggestion_row(suggestion)
+
+
+@app.route("/suggestions/<suggestion_id>/decline", methods=["GET", "POST"])
+@secure
+def suggestion_decline(suggestion_id: str) -> werkzeug.Response | str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+        if suggestion is None:
+            flask.abort(404)
+        if suggestion.status not in ("new", "claimed"):
+            flask.abort(409, "Only new or claimed suggestions can be declined.")
+        if flask.request.method == "GET":
+            return rainwave_library.components.suggestion_decline_form(suggestion)
+
+        comment = flask.request.form.get("comment", "")
+        declined = rainwave_library.models.suggestions.suggestion_decline(
+            storage_cnx,
+            suggestion_id,
+            actor_name=flask.g.discord_display_name,
+            actor_discord_id=(str(flask.g.discord_id) if flask.g.discord_id else None),
+            comment=comment,
+        )
+        if not declined:
+            flask.abort(409, "This suggestion is no longer available to decline.")
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+    finally:
+        storage_cnx.close()
+
+    if suggestion is None:
+        flask.abort(404)
+    _suggestion_declined_announce(
+        suggestion,
+        comment=comment,
+        commenter_name=flask.g.discord_display_name,
+        commenter_discord_id=(str(flask.g.discord_id) if flask.g.discord_id else None),
+    )
+    if flask.request.headers.get("HX-Request") == "true":
+        return rainwave_library.components.suggestion_row(suggestion)
+    return flask.redirect(flask.url_for("suggestions"))
 
 
 @app.route("/suggestions/<suggestion_id>", methods=["POST"])
