@@ -1282,7 +1282,12 @@ def _songs_change_channels_modal(song: Song) -> htpy.Element:
     ]
 
 
-def songs_detail(song: Song) -> str:
+def songs_detail(
+    song: Song,
+    *,
+    file_size_bytes: int | None = None,
+    audio_bitrate_bps: int | None = None,
+) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
             _back_button(flask.url_for("songs"), "Songs"), _user_menu()
@@ -1325,6 +1330,26 @@ def songs_detail(song: Song) -> str:
                         htpy.tr[
                             htpy.th["Length"],
                             htpy.td[length_display(len(song))],
+                        ],
+                        htpy.tr[
+                            htpy.th["File size"],
+                            htpy.td[
+                                (
+                                    f"{file_size_bytes:,} bytes"
+                                    if file_size_bytes is not None
+                                    else htpy.span(".text-secondary")["—"]
+                                )
+                            ],
+                        ],
+                        htpy.tr[
+                            htpy.th["Audio bitrate"],
+                            htpy.td[
+                                (
+                                    f"{audio_bitrate_bps / 1000:.0f} kbps"
+                                    if audio_bitrate_bps is not None
+                                    else htpy.span(".text-secondary")["—"]
+                                )
+                            ],
                         ],
                         htpy.tr[
                             htpy.th["Added on"],

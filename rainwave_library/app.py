@@ -2639,7 +2639,12 @@ def songs() -> str:
 def songs_detail(song_id: int) -> str:
     db = app.config["RAINWAVE_DATABASE"]
     song = rainwave_library.models.rainwave.get_song(db, song_id)
-    return rainwave_library.components.songs_detail(song)
+    file_info = rainwave_library.models.mp3.mp3_file_info_get(song.filename)
+    return rainwave_library.components.songs_detail(
+        song,
+        file_size_bytes=file_info.file_size_bytes,
+        audio_bitrate_bps=file_info.bitrate_bps,
+    )
 
 
 @app.route("/songs/<int:song_id>/change-channels/target", methods=["GET"])

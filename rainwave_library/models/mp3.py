@@ -30,6 +30,34 @@ class Mp3TagValues:
     duration_seconds: float | None = None
 
 
+@dataclasses.dataclass(frozen=True)
+class Mp3FileInfo:
+    file_size_bytes: int | None = None
+    bitrate_bps: int | None = None
+
+
+def mp3_file_info_get(filename: str | pathlib.Path) -> Mp3FileInfo:
+    try:
+        file_size_bytes = pathlib.Path(filename).stat().st_size
+    except OSError as error:
+        log.warning("Unable to read MP3 file size from %s: %s", filename, error)
+        file_size_bytes = None
+
+    try:
+        mp3 = mutagen.mp3.MP3(filename)
+    except (mutagen.MutagenError, OSError) as error:
+        log.warning("Unable to read MP3 bitrate from %s: %s", filename, error)
+        bitrate_bps = None
+    else:
+        bitrate = getattr(mp3.info, "bitrate", None)
+        bitrate_bps = int(bitrate) if bitrate is not None else None
+
+    return Mp3FileInfo(
+        file_size_bytes=file_size_bytes,
+        bitrate_bps=bitrate_bps,
+    )
+
+
 def most_common_genre_get(tag_values: typing.Iterable[Mp3TagValues]) -> str:
     genre_counts: dict[str, int] = {}
     genre_labels: dict[str, str] = {}
