@@ -2276,7 +2276,7 @@ def _suggestion_activity_details(activity: SuggestionActivity) -> htpy.Node:
         len(value or "")
         for value in (activity.body, activity.old_value, activity.new_value)
     )
-    if details_length > 300:
+    if activity.type != "comment" and details_length > 300:
         return htpy.details(".mt-2")[
             htpy.summary["Show details"],
             htpy.div(".mt-2")[details],
