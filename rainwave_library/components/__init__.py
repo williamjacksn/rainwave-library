@@ -31,9 +31,7 @@ from rainwave_library.models.suggestions import (
 
 def _back_button(href: str, label: str) -> htpy.Renderable:
     return htpy.div(".col-auto.me-auto")[
-        htpy.a(".btn.btn-outline-primary", href=href)[
-            htpy.i(".bi-caret-left-fill"), " ", label
-        ]
+        htpy.a(".btn.btn-primary", href=href)[htpy.i(".bi-caret-left-fill"), " ", label]
     ]
 
 
@@ -235,9 +233,9 @@ def albums_index() -> str:
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Albums"]]],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
-                htpy.a(
-                    ".btn.btn-outline-primary", href=flask.url_for("albums_missing_art")
-                )[htpy.i(".bi-image"), " Missing art"]
+                htpy.a(".btn.btn-warning", href=flask.url_for("albums_missing_art"))[
+                    htpy.i(".bi-image"), " Missing art"
+                ]
             ]
         ],
         htpy.form(hx_target="tbody")[
@@ -258,7 +256,7 @@ def albums_index() -> str:
                 htpy.div(".col-auto")[
                     htpy.div(".dropdown")[
                         htpy.button(
-                            ".btn.btn-outline-primary.dropdown-toggle",
+                            ".btn.btn-primary.dropdown-toggle",
                             data_bs_toggle="dropdown",
                             title="Sort options",
                             type="button",
@@ -404,7 +402,7 @@ def artists_detail(
         htpy.div(".pt-3.row")[
             htpy.div(".col-12.col-lg-6")[
                 htpy.button(
-                    ".btn.btn-outline-primary",
+                    ".btn.btn-warning",
                     aria_controls="artist-rename",
                     aria_expanded="true" if rename_result else "false",
                     data_bs_target="#artist-rename",
@@ -439,7 +437,7 @@ def artists_detail(
                                     type="text",
                                     value=artist.name,
                                 ),
-                                htpy.button(".btn.btn-outline-primary", type="submit")[
+                                htpy.button(".btn.btn-warning", type="submit")[
                                     htpy.i(".bi-pencil"), " Rename"
                                 ],
                             ],
@@ -489,7 +487,7 @@ def artists_index() -> str:
                 htpy.div(".col-auto")[
                     htpy.div(".dropdown")[
                         htpy.button(
-                            ".btn.btn-outline-primary.dropdown-toggle",
+                            ".btn.btn-primary.dropdown-toggle",
                             data_bs_toggle="dropdown",
                             title="Sort options",
                             type="button",
@@ -622,7 +620,9 @@ def bluesky_post() -> str:
                             rows=10,
                         ),
                     ],
-                    htpy.button(".btn.btn-outline-primary", type="submit")["Post"],
+                    htpy.button(".btn.btn-primary", type="submit")[
+                        htpy.i(".bi-send"), " Post"
+                    ],
                 ]
             ]
         ],
@@ -657,7 +657,7 @@ def get_ocremix_download() -> str:
     content = htpy.tr[
         htpy.th["File saved"],
         htpy.td[
-            htpy.a(".btn.btn-outline-success", href=flask.url_for("get_ocremix"))[
+            htpy.a(".btn.btn-success", href=flask.url_for("get_ocremix"))[
                 htpy.i(".bi-arrow-counterclockwise"), " Get another"
             ]
         ],
@@ -776,9 +776,9 @@ def get_ocremix_fetch(ocr_info: dict, categories: list[str]) -> str:
         htpy.tr[
             htpy.td,
             htpy.td[
-                htpy.a(
-                    ".btn.btn-outline-success.me-1", href=flask.url_for("get_ocremix")
-                )[htpy.i(".bi-arrow-counterclockwise"), " Start over"],
+                htpy.a(".btn.btn-success.me-1", href=flask.url_for("get_ocremix"))[
+                    htpy.i(".bi-arrow-counterclockwise"), " Start over"
+                ],
                 htpy.button(
                     ".btn.btn-success.me-2",
                     hx_include="form",
@@ -894,7 +894,7 @@ def listeners_index(ranks: list[dict]) -> str:
                 htpy.div(".col-auto")[
                     htpy.div(".dropdown")[
                         htpy.button(
-                            ".btn.btn-outline-primary.dropdown-toggle",
+                            ".btn.btn-primary.dropdown-toggle",
                             data_bs_toggle="dropdown",
                             title="Sort options",
                             type="button",
@@ -954,7 +954,7 @@ def listeners_index(ranks: list[dict]) -> str:
                 htpy.div(".col-auto")[
                     htpy.div(".dropdown")[
                         htpy.button(
-                            ".btn.btn-outline-primary.dropdown-toggle",
+                            ".btn.btn-primary.dropdown-toggle",
                             data_bs_toggle="dropdown",
                             title="Rank selection",
                             type="button",
@@ -1134,7 +1134,7 @@ def impersonate_user(discord_user_id: str = "", error: str | None = None) -> str
                                 "stop impersonating."
                             ],
                             htpy.button(
-                                ".btn.btn-outline-primary.mt-3",
+                                ".btn.btn-warning.mt-3",
                                 type="submit",
                             )[
                                 htpy.i(".bi-person-bounding-box"),
@@ -1248,9 +1248,9 @@ def _songs_change_channels_form(
                 new_filename=new_filename,
             ),
         ],
-        htpy.div(".modal-footer")[
+        htpy.div(".justify-content-between.modal-footer")[
             htpy.button(
-                ".btn.btn-outline-secondary",
+                ".btn.btn-secondary",
                 data_bs_dismiss="modal",
                 type="button",
             )["Cancel"],
@@ -1410,17 +1410,17 @@ def songs_detail(
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
                 htpy.a(
-                    ".btn.btn-outline-success.me-1",
+                    ".btn.btn-success.me-1",
                     href=flask.url_for("songs_edit", song_id=song.id),
                 )[htpy.i(".bi-pencil"), " Edit tags"],
                 htpy.button(
-                    ".btn.btn-outline-primary.me-1",
+                    ".btn.btn-primary.me-1",
                     data_bs_target="#song-change-channels-modal",
                     data_bs_toggle="modal",
                     type="button",
                 )[htpy.i(".bi-arrow-left-right"), " Change channels"],
                 htpy.a(
-                    ".btn.btn-outline-danger",
+                    ".btn.btn-danger",
                     href=flask.url_for("songs_remove", song_id=song.id),
                 )[htpy.i(".bi-file-earmark-break"), " Remove file"],
             ]
@@ -1526,7 +1526,7 @@ def songs_edit(song: Song) -> str:
                     ],
                     htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
                         htpy.div(".col-auto")[
-                            htpy.button(".btn.btn-outline-success", type="submit")[
+                            htpy.button(".btn.btn-success", type="submit")[
                                 htpy.i(".bi-file-earmark-play"), " Save"
                             ]
                         ],
@@ -1849,7 +1849,7 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
             (
                 htpy.div(".dropdown")[
                     htpy.button(
-                        ".btn.btn-outline-primary.btn-sm",
+                        ".btn.btn-secondary.btn-sm",
                         aria_expanded="false",
                         aria_label=f"Actions for {suggestion.title}",
                         data_bs_toggle="dropdown",
@@ -2200,9 +2200,9 @@ def _suggestion_resolution_form(
                 ],
             ],
         ],
-        htpy.div(".modal-footer")[
+        htpy.div(".justify-content-between.modal-footer")[
             htpy.button(
-                ".btn.btn-outline-secondary",
+                ".btn.btn-secondary",
                 data_bs_dismiss="modal",
                 type="button",
             )["Cancel"],
@@ -2396,11 +2396,11 @@ def _suggestion_edit_form(
             ],
         ],
         htpy.div(".d-flex.gap-2.justify-content-between.mt-3")[
-            htpy.button(".btn.btn-outline-success.btn-sm", type="submit")[
+            htpy.button(".btn.btn-success.btn-sm", type="submit")[
                 htpy.i(".bi-file-earmark-play"), " Save suggestion"
             ],
             htpy.button(
-                ".btn.btn-outline-danger.btn-sm",
+                ".btn.btn-danger.btn-sm",
                 hx_confirm=(
                     f'Delete the suggestion "{suggestion.title}"? '
                     "This cannot be undone."
@@ -2472,7 +2472,7 @@ def _suggestion_activity_item(activity: SuggestionActivity) -> htpy.Element:
 
 def _suggestion_comment_button(suggestion_id: str) -> htpy.Element:
     return htpy.button(
-        ".btn.btn-outline-primary.btn-sm",
+        ".btn.btn-primary.btn-sm",
         data_bs_target="#modal-lg",
         data_bs_toggle="modal",
         hx_get=flask.url_for("suggestion_comment", suggestion_id=suggestion_id),
@@ -2533,14 +2533,14 @@ def _suggestion_comment_form(
                 rows=4,
             )[body],
         ],
-        htpy.div(".modal-footer")[
+        htpy.div(".justify-content-between.modal-footer")[
             htpy.button(
-                ".btn.btn-outline-secondary",
+                ".btn.btn-secondary",
                 data_bs_dismiss="modal",
                 type="button",
             )["Cancel"],
             htpy.button(".btn.btn-primary", type="submit")[
-                htpy.i(".bi-send"), " Add comment"
+                htpy.i(".bi-chat-left-text"), " Add comment"
             ],
         ],
     ]
@@ -2579,7 +2579,7 @@ def _suggestion_activity_block(
     return htpy.div(id=f"suggestion-activity-{suggestion.id}")[
         htpy.div(".d-flex.flex-wrap.gap-2.mb-3")[
             htpy.button(
-                ".btn.btn-outline-primary.btn-sm",
+                ".btn.btn-primary.btn-sm",
                 hx_disabled_elt="this",
                 hx_get=activity_url,
                 hx_swap="outerHTML",
@@ -2651,7 +2651,7 @@ def _suggestion_link_item(
 
 def _suggestion_link_button(suggestion_id: str) -> htpy.Element:
     return htpy.button(
-        ".btn.btn-outline-primary.btn-sm",
+        ".btn.btn-primary.btn-sm",
         hx_get=flask.url_for("suggestion_link", suggestion_id=suggestion_id),
         hx_swap="innerHTML",
         hx_target=f"#suggestion-add-link-{suggestion_id}",
@@ -2701,11 +2701,11 @@ def _suggestion_link_form(
             ],
         ],
         htpy.div(".d-flex.gap-2.mt-2")[
-            htpy.button(".btn.btn-outline-success.btn-sm", type="submit")[
+            htpy.button(".btn.btn-success.btn-sm", type="submit")[
                 htpy.i(".bi-plus-lg"), " Save link"
             ],
             htpy.button(
-                ".btn.btn-outline-secondary.btn-sm",
+                ".btn.btn-secondary.btn-sm",
                 hx_get=flask.url_for(
                     "suggestion_link", suggestion_id=suggestion_id, close=1
                 ),
@@ -2820,11 +2820,11 @@ def _suggestion_description_form(
                 rows=6,
             )[suggestion.description if description is None else description],
             htpy.div(".d-flex.gap-2.mt-2")[
-                htpy.button(".btn.btn-outline-success.btn-sm", type="submit")[
-                    htpy.i(".bi-file-earmark-play"), " Save description"
+                htpy.button(".btn.btn-success.btn-sm", type="submit")[
+                    htpy.i(".bi-file-earmark-text"), " Save description"
                 ],
                 htpy.button(
-                    ".btn.btn-outline-secondary.btn-sm",
+                    ".btn.btn-secondary.btn-sm",
                     hx_get=f"{url}?close=1",
                     hx_swap="outerHTML",
                     hx_target=f"#suggestion-description-{suggestion.id}",
@@ -3077,9 +3077,9 @@ def _suggestion_music_tag_modal(
                         "Leave a field blank to remove that tag."
                     ],
                 ],
-                htpy.div(".modal-footer")[
+                htpy.div(".justify-content-between.modal-footer")[
                     htpy.button(
-                        ".btn.btn-outline-secondary",
+                        ".btn.btn-secondary",
                         data_bs_dismiss="modal",
                         type="button",
                     )["Cancel"],
@@ -3087,7 +3087,7 @@ def _suggestion_music_tag_modal(
                         ".btn.btn-primary",
                         data_bs_dismiss="modal",
                         type="submit",
-                    )["Save tags"],
+                    )[htpy.i(".bi-tags"), " Save tags"],
                 ],
             ]
         ]
@@ -3844,9 +3844,9 @@ def _suggestion_schedule_release_form(
                 ],
             ],
         ],
-        htpy.div(".modal-footer")[
+        htpy.div(".justify-content-between.modal-footer")[
             htpy.button(
-                ".btn.btn-outline-secondary",
+                ".btn.btn-secondary",
                 data_bs_dismiss="modal",
                 type="button",
             )["Cancel"],
@@ -4081,7 +4081,7 @@ def suggestion_detail_row(
             htpy.div(".card.my-2")[
                 htpy.div(".align-items-center.card-header.d-flex.gap-2")[
                     htpy.button(
-                        ".btn.btn-outline-secondary.btn-sm",
+                        ".btn.btn-secondary.btn-sm",
                         aria_label="Close suggestion details",
                         hx_get=flask.url_for(
                             "suggestion_row", suggestion_id=suggestion.id
@@ -4153,7 +4153,7 @@ def _suggestion_link_fields(
         ],
         htpy.div(".col-auto")[
             htpy.button(
-                ".btn.btn-outline-danger",
+                ".btn.btn-danger",
                 aria_label="Remove link",
                 hx_get=flask.url_for("suggestion_link_row", close=1),
                 hx_swap="outerHTML",
@@ -4279,7 +4279,7 @@ def _suggestion_create_form(
                 ]
             ],
             htpy.button(
-                ".btn.btn-outline-secondary.btn-sm.mt-2",
+                ".btn.btn-info.btn-sm.mt-2",
                 hx_get=flask.url_for("suggestion_link_row", required=1),
                 hx_swap="beforeend",
                 hx_target="#new-suggestion-links",
@@ -4287,7 +4287,7 @@ def _suggestion_create_form(
             )[htpy.i(".bi-plus-lg"), " Add link"],
         ],
         htpy.div(".mt-3")[
-            htpy.button(".btn.btn-outline-success", type="submit")[
+            htpy.button(".btn.btn-success", type="submit")[
                 htpy.i(".bi-plus-lg"), " Add suggestion"
             ]
         ],
@@ -4451,7 +4451,7 @@ def _staff_suggestion_create_form(
                 ]
             ],
             htpy.button(
-                ".btn.btn-outline-secondary.btn-sm.mt-2",
+                ".btn.btn-info.btn-sm.mt-2",
                 hx_get=flask.url_for("suggestion_link_row", required=1),
                 hx_swap="beforeend",
                 hx_target="#staff-suggestion-links",
@@ -4578,7 +4578,7 @@ def _suggestion_wizard_step1(
         ],
         htpy.div(".d-flex.justify-content-end.mt-3")[
             htpy.button(
-                ".btn.btn-outline-primary",
+                ".btn.btn-primary",
                 name="step",
                 type="submit",
                 value="2",
@@ -4975,14 +4975,11 @@ def _suggestion_wizard_step2(
             "the next step."
         ],
         htpy.div(".d-flex.justify-content-between.mt-3")[
+            htpy.button(".btn.btn-secondary", name="step", type="submit", value="1")[
+                htpy.i(".bi-caret-left-fill"), " Back"
+            ],
             htpy.button(
-                ".btn.btn-outline-secondary",
-                name="step",
-                type="submit",
-                value="1",
-            )[htpy.i(".bi-caret-left-fill"), " Back"],
-            htpy.button(
-                ".btn.btn-outline-primary",
+                ".btn.btn-primary",
                 disabled=over_limit,
                 name="step",
                 type="submit",
@@ -5056,18 +5053,15 @@ def _suggestion_wizard_step3(
         ],
         htpy.div(".d-flex.justify-content-between.mt-3")[
             htpy.button(
-                ".btn.btn-outline-secondary",
+                ".btn.btn-secondary",
                 formnovalidate=True,
                 name="step",
                 type="submit",
                 value="2",
             )[htpy.i(".bi-caret-left-fill"), " Back"],
-            htpy.button(
-                ".btn.btn-outline-primary",
-                name="step",
-                type="submit",
-                value="4",
-            )["Next ", htpy.i(".bi-caret-right-fill")],
+            htpy.button(".btn.btn-primary", name="step", type="submit", value="4")[
+                "Next ", htpy.i(".bi-caret-right-fill")
+            ],
         ],
     ]
 
@@ -5153,7 +5147,7 @@ def _suggestion_wizard_step4(
             ]
         ],
         htpy.button(
-            ".btn.btn-outline-secondary.btn-sm.mt-2",
+            ".btn.btn-info.btn-sm.mt-2",
             hx_get=flask.url_for("suggestion_link_row", required=1),
             hx_swap="beforeend",
             hx_target="#new-suggestion-links",
@@ -5161,14 +5155,14 @@ def _suggestion_wizard_step4(
         )[htpy.i(".bi-plus-lg"), " Add link"],
         htpy.div(".d-flex.justify-content-between.mt-3")[
             htpy.button(
-                ".btn.btn-outline-secondary",
+                ".btn.btn-secondary",
                 formnovalidate=True,
                 name="step",
                 type="submit",
                 value="3",
             )[htpy.i(".bi-caret-left-fill"), " Back"],
             htpy.button(
-                ".btn.btn-outline-primary",
+                ".btn.btn-primary",
                 name="step",
                 type="submit",
                 value="5",
@@ -5231,7 +5225,7 @@ def _suggestion_wizard_step5(
         ),
         htpy.div(".d-flex.justify-content-between.mt-3")[
             htpy.button(
-                ".btn.btn-outline-secondary",
+                ".btn.btn-secondary",
                 formaction=wizard_url,
                 formnovalidate=True,
                 hx_post=wizard_url,
@@ -5382,7 +5376,7 @@ def _suggestions_sort_options_control() -> htpy.Element:
     rows_url = flask.url_for("suggestions_rows")
     return htpy.div(".dropdown")[
         htpy.button(
-            ".btn.btn-outline-primary.dropdown-toggle",
+            ".btn.btn-primary.dropdown-toggle",
             data_bs_toggle="dropdown",
             title="Sort options",
             type="button",
@@ -5439,7 +5433,7 @@ def _suggestions_claimed_by_filter(claimants: list[str]) -> htpy.Element:
     rows_url = flask.url_for("suggestions_rows")
     return htpy.div(".dropdown")[
         htpy.button(
-            ".btn.btn-outline-primary.dropdown-toggle",
+            ".btn.btn-primary.dropdown-toggle",
             data_bs_toggle="dropdown",
             title="Claimant selection",
             type="button",
@@ -5495,7 +5489,7 @@ def _suggestions_channel_filter() -> htpy.Element:
     )
     return htpy.div(".dropdown")[
         htpy.button(
-            ".btn.btn-outline-primary.dropdown-toggle",
+            ".btn.btn-primary.dropdown-toggle",
             data_bs_toggle="dropdown",
             title="Channel selection",
             type="button",
@@ -5545,7 +5539,7 @@ def _suggestions_status_filter() -> htpy.Element:
     rows_url = flask.url_for("suggestions_rows")
     return htpy.div(".dropdown")[
         htpy.button(
-            ".btn.btn-outline-primary.dropdown-toggle",
+            ".btn.btn-primary.dropdown-toggle",
             data_bs_toggle="dropdown",
             title="Status selection",
             type="button",
@@ -5580,7 +5574,7 @@ def _suggestions_type_filter() -> htpy.Element:
     rows_url = flask.url_for("suggestions_rows")
     return htpy.div(".dropdown")[
         htpy.button(
-            ".btn.btn-outline-primary.dropdown-toggle",
+            ".btn.btn-primary.dropdown-toggle",
             data_bs_toggle="dropdown",
             title="Suggestion type selection",
             type="button",
@@ -5619,7 +5613,7 @@ def _suggestions_other_filter_options(
     rows_url = flask.url_for("suggestions_rows")
     return htpy.div(".dropdown")[
         htpy.button(
-            ".btn.btn-outline-primary.dropdown-toggle",
+            ".btn.btn-primary.dropdown-toggle",
             data_bs_toggle="dropdown",
             title="Filter options",
             type="button",
@@ -5685,7 +5679,7 @@ def suggestions_index(
         htpy.div(".g-1.pt-3.row")[
             htpy.div(".col-auto")[
                 htpy.button(
-                    ".btn.btn-outline-success.mb-1",
+                    ".btn.btn-success.mb-1",
                     data_bs_target="#new-suggestion-modal",
                     data_bs_toggle="modal",
                     type="button",
@@ -5694,7 +5688,7 @@ def suggestions_index(
             is_staff
             and htpy.div(".col-auto")[
                 htpy.button(
-                    ".btn.btn-outline-primary.mb-1",
+                    ".btn.btn-success.mb-1",
                     data_bs_target="#staff-suggestion-modal",
                     data_bs_toggle="modal",
                     type="button",
@@ -5709,7 +5703,7 @@ def suggestions_index(
             hx_target="#suggestion-rows",
             onsubmit="return false",
         )[
-            htpy.div(".align-items-center.g-2.pt-3.row")[
+            htpy.div(".align-items-center.g-1.pt-3.row")[
                 htpy.div(".col-12.col-md-5")[
                     htpy.input(
                         ".form-control",
@@ -5841,12 +5835,12 @@ def songs_index() -> str:
         ],
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Songs"]]],
         htpy.form(action=flask.url_for("songs_xlsx"), hx_target="tbody", method="post")[
-            htpy.div(".align-items-center.d-flex.g-2.pt-3.row")[
+            htpy.div(".align-items-center.d-flex.g-1.pt-3.row")[
                 htpy.div(".col-12.col-sm-auto")[search_input],
                 htpy.div(".col-auto")[
                     htpy.div(".dropdown")[
                         htpy.button(
-                            ".btn.btn-outline-primary.dropdown-toggle",
+                            ".btn.btn-primary.dropdown-toggle",
                             data_bs_toggle="dropdown",
                             title="Sort options",
                             type="button",
@@ -5907,7 +5901,7 @@ def songs_index() -> str:
                 htpy.div(".col-auto")[
                     htpy.div(".dropdown")[
                         htpy.button(
-                            ".btn.btn-outline-primary.dropdown-toggle",
+                            ".btn.btn-primary.dropdown-toggle",
                             data_bs_toggle="dropdown",
                             title="Channel selection",
                             type="button",
@@ -5940,7 +5934,7 @@ def songs_index() -> str:
                 htpy.div(".col-auto")[
                     htpy.div(".dropdown")[
                         htpy.button(
-                            ".btn.btn-outline-primary.dropdown-toggle",
+                            ".btn.btn-primary.dropdown-toggle",
                             data_bs_toggle="dropdown",
                             title="Filter options",
                             type="button",
@@ -5967,7 +5961,7 @@ def songs_index() -> str:
                 ],
                 htpy.div(".col-auto")[
                     htpy.button(
-                        ".btn.btn-outline-primary",
+                        ".btn.btn-primary",
                         href="#",
                         name="page",
                         title="Download XLSX",
@@ -6068,7 +6062,7 @@ def songs_remove(song: Song, new_loc: str) -> str:
                             ],
                         ]
                     ],
-                    htpy.button(".btn.btn-outline-danger", type="submit")[
+                    htpy.button(".btn.btn-danger", type="submit")[
                         htpy.i(".bi-file-earmark-break"), " Remove file"
                     ],
                 ]
@@ -6182,7 +6176,7 @@ def _upcoming_music_empty_folder(directory: UpcomingMusicDirectory) -> htpy.Elem
                 type="hidden",
                 value=directory.relative_path,
             ),
-            htpy.button(".btn.btn-outline-danger", type="submit")[
+            htpy.button(".btn.btn-danger", type="submit")[
                 htpy.i(".bi-trash"), " Delete empty folder"
             ],
         ],
@@ -6269,7 +6263,7 @@ def welcome(role: str) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
             htpy.div(".col-auto.me-auto")[
-                htpy.a(".btn.btn-outline-dark.pe-none", href="#")[
+                htpy.a(".btn.btn-secondary", href="#")[
                     htpy.i(".bi-boombox-fill", style="color: #f73"), " Rainwave Library"
                 ]
             ],

@@ -287,7 +287,7 @@ class Listener:
     @property
     def edit_btn(self) -> htpy.Element:
         return htpy.a(
-            ".btn.btn-outline-success",
+            ".btn.btn-success",
             href=flask.url_for("listeners_edit", listener_id=self.id),
         )[htpy.i(".bi-pencil"), " Edit listener"]
 
@@ -311,7 +311,7 @@ class Listener:
                     ],
                 ]
             ],
-            htpy.button(".btn.btn-outline-success", type="submit")[
+            htpy.button(".btn.btn-success", type="submit")[
                 htpy.i(".bi-file-earmark-play"), " Save"
             ],
         ]
@@ -519,19 +519,19 @@ class Song:
             htpy.tr[
                 htpy.td(".p-2.d-table-cell.d-md-none")[
                     htpy.a(
-                        ".btn.btn-outline-primary.mb-1",
+                        ".btn.btn-primary.mb-1",
                         href=flask.url_for("songs_detail", song_id=self.id),
                         title="Song details",
                     )[htpy.i(".bi-info-circle")],
                     htpy.br,
                     htpy.a(
-                        ".btn.btn-outline-primary.mb-1",
+                        ".btn.btn-primary.mb-1",
                         href=self.download_url,
                         title="Download this song",
                     )[htpy.i(".bi-download")],
                     htpy.br,
                     htpy.a(
-                        ".btn.btn-outline-primary",
+                        ".btn.btn-primary",
                         href="#",
                         hx_get=flask.url_for("songs_play", song_id=self.id),
                         hx_target="#audio",
