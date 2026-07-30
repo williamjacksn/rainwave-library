@@ -4031,6 +4031,15 @@ def suggestion_page(
     return str(_base(content))
 
 
+def _suggestion_detail_item(title: str, content: htpy.Node) -> htpy.Element:
+    return htpy.div(".col-auto")[
+        htpy.div(".border-bottom.fw-bold.small.text-body-secondary.text-uppercase")[
+            title
+        ],
+        content,
+    ]
+
+
 def suggestion_detail_row(
     suggestion: SuggestionDetail,
     *,
@@ -4048,51 +4057,6 @@ def suggestion_detail_row(
         ]
         if suggestion.channel_ids
         else htpy.span(".text-secondary")["—"]
-    )
-    summary = _suggestion_detail_table(
-        [
-            ("ID", htpy.code[suggestion.id]),
-            ("Status", _suggestion_status_badge(suggestion.status)),
-            (
-                "Suggestion type",
-                Suggestion.kind_labels.get(suggestion.kind, suggestion.kind),
-            ),
-            ("Channels", channel_badges),
-        ]
-    )
-    people_details = _suggestion_detail_table(
-        [
-            ("Suggested by", _suggestion_value(suggestion.requester_name)),
-            ("Claimed by", _suggestion_value(suggestion.claimed_by_name)),
-        ]
-    )
-    timeline_details = _suggestion_detail_table(
-        [
-            (
-                "Suggested at",
-                _suggestion_value(
-                    suggestion.requested_at[:10]
-                    if suggestion.requested_at is not None
-                    else None
-                ),
-            ),
-            (
-                "Claimed at",
-                _suggestion_value(
-                    suggestion.claimed_at[:10]
-                    if suggestion.claimed_at is not None
-                    else None
-                ),
-            ),
-            (
-                "Completed at",
-                _suggestion_value(
-                    suggestion.resolved_at[:10]
-                    if suggestion.resolved_at is not None
-                    else None
-                ),
-            ),
-        ]
     )
     content = htpy.tr[
         htpy.td(".p-0", colspan=Suggestion.colspan)[
@@ -4116,13 +4080,54 @@ def suggestion_detail_row(
                     not editable
                     and htpy.fragment[
                         htpy.div(".g-3.row")[
-                            htpy.div(".col-12.col-xl-6")[htpy.h6["Summary"], summary],
-                            htpy.div(".col-12.col-xl-6")[
-                                htpy.h6["Timeline"], timeline_details
-                            ],
-                            htpy.div(".col-12.col-xl-6")[
-                                htpy.h6["People"], people_details
-                            ],
+                            _suggestion_detail_item(
+                                "Suggestion type",
+                                Suggestion.kind_labels.get(
+                                    suggestion.kind, suggestion.kind
+                                ),
+                            ),
+                            _suggestion_detail_item("Channel", channel_badges),
+                            _suggestion_detail_item(
+                                "Status", _suggestion_status_badge(suggestion.status)
+                            ),
+                            _suggestion_detail_item(
+                                "Suggested by",
+                                _suggestion_user_identity(
+                                    suggestion.requester_name,
+                                    suggestion.requester_avatar_url,
+                                ),
+                            ),
+                            _suggestion_detail_item(
+                                "Suggested at",
+                                _suggestion_value(
+                                    suggestion.requested_at[:10]
+                                    if suggestion.requested_at is not None
+                                    else None
+                                ),
+                            ),
+                            _suggestion_detail_item(
+                                "Claimed by",
+                                _suggestion_user_identity(
+                                    suggestion.claimed_by_name,
+                                    suggestion.claimed_by_avatar_url,
+                                ),
+                            ),
+                            _suggestion_detail_item(
+                                "Claimed at",
+                                _suggestion_value(
+                                    suggestion.claimed_at[:10]
+                                    if suggestion.claimed_at is not None
+                                    else None
+                                ),
+                            ),
+                            _suggestion_detail_item(
+                                "Completed at",
+                                _suggestion_value(
+                                    suggestion.resolved_at[:10]
+                                    if suggestion.resolved_at is not None
+                                    else None
+                                ),
+                            ),
                         ],
                         _suggestion_description_block(
                             suggestion,
