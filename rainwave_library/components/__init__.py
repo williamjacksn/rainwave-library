@@ -43,7 +43,10 @@ def _base(
     body_class: str | None = None,
     stylesheets: tuple[str, ...] = (),
 ) -> htpy.Renderable:
-    return htpy.html(lang="en")[
+    return htpy.html(
+        data_bs_theme=getattr(flask.g, "color_mode", "light"),
+        lang="en",
+    )[
         htpy.head[
             htpy.title["Rainwave Library"],
             htpy.meta(content="width=device-width, initial-scale=1", name="viewport"),
@@ -160,6 +163,12 @@ def _user_menu() -> htpy.Renderable:
                     ]
                 ],
                 htpy.li[htpy.hr(".dropdown-divider")],
+                htpy.li[
+                    htpy.a(
+                        ".dropdown-item",
+                        href=flask.url_for("user_settings"),
+                    )[htpy.i(".bi-gear.me-2"), "User settings"]
+                ],
                 role == "staff"
                 and not impersonator
                 and htpy.li[
@@ -1625,6 +1634,144 @@ def settings_index(
                                 htpy.div(".form-text")[
                                     "Protected values are hidden on this page. "
                                     "An existing protected setting remains protected."
+                                ],
+                            ],
+                            htpy.button(".btn.btn-primary.mt-3", type="submit")[
+                                htpy.i(".bi-floppy"), " Save setting"
+                            ],
+                        ],
+                    ],
+                ]
+            ]
+        ],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col")[
+                htpy.table(
+                    ".align-middle.d-block.table.table-bordered.table-sm.table-striped"
+                )[
+                    htpy.thead[htpy.tr[htpy.th["Key"], htpy.th["Value"]]],
+                    htpy.tbody[rows],
+                ]
+            ]
+        ],
+    ]
+    return str(_base(content))
+
+
+def user_settings_index(
+    settings: list[tuple[str, str]],
+    *,
+    color_mode: str = "light",
+    color_mode_result: tuple[str, str] | None = None,
+    key: str = "",
+    value: str = "",
+    result: tuple[str, str] | None = None,
+) -> str:
+    rows = [
+        htpy.tr[
+            htpy.td[htpy.code(".user-select-all")[key]],
+            htpy.td(".text-break")[htpy.code(".user-select-all")[value]],
+        ]
+        for key, value in settings
+    ]
+    if not rows:
+        rows.append(
+            htpy.tr[htpy.td(".py-3.text-center", colspan=2)["No settings found."]]
+        )
+    content = [
+        htpy.div(".g-1.pt-3.row")[
+            _back_button(flask.url_for("index"), "Home"), _user_menu()
+        ],
+        htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["User settings"]]],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col-lg-8")[
+                htpy.div(".card")[
+                    htpy.div(".card-header")[htpy.h5(".mb-0")["Color mode"]],
+                    htpy.div(".card-body")[
+                        color_mode_result
+                        and htpy.div(
+                            f".alert.{color_mode_result[0]}",
+                            role="alert",
+                        )[color_mode_result[1]],
+                        htpy.form(
+                            action=flask.url_for("user_settings"),
+                            method="post",
+                        )[
+                            htpy.input(
+                                name="form",
+                                type="hidden",
+                                value="color-mode",
+                            ),
+                            htpy.label(
+                                ".form-label",
+                                for_="user-color-mode",
+                            )["Color mode"],
+                            htpy.select(
+                                "#user-color-mode.form-select",
+                                name="color-mode",
+                                required=True,
+                            )[
+                                htpy.option(
+                                    selected=color_mode == "light",
+                                    value="light",
+                                )["Light"],
+                                htpy.option(
+                                    selected=color_mode == "dark",
+                                    value="dark",
+                                )["Dark"],
+                            ],
+                            htpy.button(".btn.btn-primary.mt-3", type="submit")[
+                                htpy.i(".bi-palette"), " Save color mode"
+                            ],
+                        ],
+                    ],
+                ]
+            ]
+        ],
+        htpy.div(".pt-3.row")[
+            htpy.div(".col-lg-8")[
+                htpy.div(".card")[
+                    htpy.div(".card-header")[
+                        htpy.h5(".mb-0")["Create or replace a setting"]
+                    ],
+                    htpy.div(".card-body")[
+                        result
+                        and htpy.div(f".alert.{result[0]}", role="alert")[result[1]],
+                        htpy.p[
+                            "Saving a key that already exists replaces its value. "
+                            "These settings are associated with your user account."
+                        ],
+                        htpy.form(
+                            action=flask.url_for("user_settings"),
+                            autocomplete="off",
+                            method="post",
+                        )[
+                            htpy.div(".g-3.row")[
+                                htpy.div(".col-md-5")[
+                                    htpy.label(
+                                        ".form-label",
+                                        for_="user-setting-key",
+                                    )["Key"],
+                                    htpy.input(
+                                        "#user-setting-key.form-control",
+                                        name="key",
+                                        required=True,
+                                        type="text",
+                                        value=key,
+                                    ),
+                                ],
+                                htpy.div(".col-md-7")[
+                                    htpy.label(
+                                        ".form-label",
+                                        for_="user-setting-value",
+                                    )["Value"],
+                                    htpy.input(
+                                        "#user-setting-value.form-control",
+                                        name="value",
+                                        required=True,
+                                        type="text",
+                                        value=value,
+                                    ),
                                 ],
                             ],
                             htpy.button(".btn.btn-primary.mt-3", type="submit")[

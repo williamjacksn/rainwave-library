@@ -299,6 +299,18 @@ def before_request() -> None:
     flask.g.discord_username = flask.session.get("discord_username")
     flask.g.discord_display_name = flask.session.get("discord_display_name")
     flask.g.discord_avatar_url = flask.session.get("discord_avatar_url")
+    flask.g.color_mode = rainwave_library.models.storage.USER_COLOR_MODE_DEFAULT
+    if flask.g.discord_id:
+        storage_cnx = rainwave_library.models.storage.connection_get(
+            app.config["STORAGE_CNX"]
+        )
+        try:
+            flask.g.color_mode = rainwave_library.models.storage.user_color_mode_get(
+                storage_cnx,
+                str(flask.g.discord_id),
+            )
+        finally:
+            storage_cnx.close()
 
 
 @app.route("/", methods=["GET"])
@@ -1077,6 +1089,75 @@ def settings() -> str:
         key=key,
         value=value,
         protected=protected,
+        result=result,
+    )
+
+
+@app.route("/user-settings", methods=["GET", "POST"])
+@signed_in
+def user_settings() -> str:
+    discord_id = str(flask.g.discord_id or "").strip()
+    if not discord_id:
+        flask.abort(400, "A Discord user ID is required.")
+
+    key = ""
+    value = ""
+    result: tuple[str, str] | None = None
+    color_mode_result: tuple[str, str] | None = None
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        if flask.request.method == "POST":
+            if flask.request.form.get("form") == "color-mode":
+                color_mode = flask.request.form.get("color-mode", "")
+                try:
+                    rainwave_library.models.storage.user_setting_set(
+                        storage_cnx_,
+                        discord_id,
+                        rainwave_library.models.storage.USER_COLOR_MODE_SETTING_KEY,
+                        color_mode,
+                    )
+                except ValueError as error:
+                    color_mode_result = ("alert-danger", str(error))
+                else:
+                    color_mode_result = ("alert-success", "Color mode updated.")
+            else:
+                key = flask.request.form.get("key", "")
+                value = flask.request.form.get("value", "")
+                try:
+                    created = rainwave_library.models.storage.user_setting_set(
+                        storage_cnx_,
+                        discord_id,
+                        key,
+                        value,
+                    )
+                except ValueError as error:
+                    result = ("alert-danger", str(error))
+                else:
+                    result = (
+                        "alert-success",
+                        f"Setting {'created' if created else 'replaced'}.",
+                    )
+                    key = ""
+                    value = ""
+        color_mode = rainwave_library.models.storage.user_color_mode_get(
+            storage_cnx_,
+            discord_id,
+        )
+        flask.g.color_mode = color_mode
+        settings_ = rainwave_library.models.storage.user_settings_get(
+            storage_cnx_,
+            discord_id,
+        )
+    finally:
+        storage_cnx_.close()
+    return rainwave_library.components.user_settings_index(
+        settings_,
+        color_mode=color_mode,
+        color_mode_result=color_mode_result,
+        key=key,
+        value=value,
         result=result,
     )
 

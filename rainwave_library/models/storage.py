@@ -14,6 +14,10 @@ from rainwave_library.models.rainwave import ChannelRootFolder
 
 log = logging.getLogger(__name__)
 
+USER_COLOR_MODE_SETTING_KEY = "color-mode"
+USER_COLOR_MODES = ("light", "dark")
+USER_COLOR_MODE_DEFAULT = "light"
+
 
 @dataclasses.dataclass(frozen=True)
 class User:
@@ -696,6 +700,93 @@ def user_upsert(
     except Exception:
         con.rollback()
         raise
+
+
+def user_setting_get(
+    con: sqlite3.Connection,
+    discord_id: str,
+    key: str,
+) -> str | None:
+    row = con.execute(
+        """
+        select value
+        from user_settings
+        where discord_id = :discord_id
+            and key = :key
+        """,
+        {
+            "discord_id": discord_id.strip(),
+            "key": key.strip(),
+        },
+    ).fetchone()
+    return str(row["value"]) if row is not None else None
+
+
+def user_setting_set(
+    con: sqlite3.Connection,
+    discord_id: str,
+    key: str,
+    value: str,
+) -> bool:
+    discord_id = discord_id.strip()
+    key = key.strip()
+    if not discord_id:
+        msg = "A Discord user ID is required."
+        raise ValueError(msg)
+    if not key:
+        msg = "Setting key is required."
+        raise ValueError(msg)
+    if not value:
+        msg = "Setting value is required."
+        raise ValueError(msg)
+    if key == USER_COLOR_MODE_SETTING_KEY and value not in USER_COLOR_MODES:
+        msg = "Color mode must be light or dark."
+        raise ValueError(msg)
+
+    created = user_setting_get(con, discord_id, key) is None
+    try:
+        con.execute(
+            """
+            insert into user_settings (discord_id, key, value)
+            values (:discord_id, :key, :value)
+            on conflict (discord_id, key) do update set
+                value = excluded.value
+            """,
+            {
+                "discord_id": discord_id,
+                "key": key,
+                "value": value,
+            },
+        )
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+    return created
+
+
+def user_color_mode_get(
+    con: sqlite3.Connection,
+    discord_id: str,
+) -> str:
+    value = user_setting_get(con, discord_id, USER_COLOR_MODE_SETTING_KEY)
+    return value if value in USER_COLOR_MODES else USER_COLOR_MODE_DEFAULT
+
+
+def user_settings_get(
+    con: sqlite3.Connection,
+    discord_id: str,
+) -> list[tuple[str, str]]:
+    rows = con.execute(
+        """
+        select key, value
+        from user_settings
+        where discord_id = ?
+        order by key
+        """,
+        (discord_id.strip(),),
+    ).fetchall()
+    return [(str(row["key"]), str(row["value"])) for row in rows]
 
 
 def user_version_get(con: sqlite3.Connection) -> int:
@@ -1689,6 +1780,20 @@ def _migration_16(con: sqlite3.Connection) -> None:
     )
 
 
+def _migration_17(con: sqlite3.Connection) -> None:
+    con.execute(
+        """
+        create table user_settings (
+            discord_id text not null
+                references users (discord_id) on delete cascade,
+            key text not null,
+            value text not null,
+            primary key (discord_id, key)
+        ) without rowid
+        """
+    )
+
+
 MIGRATIONS = (
     _migration_1,
     _migration_2,
@@ -1706,6 +1811,7 @@ MIGRATIONS = (
     _migration_14,
     _migration_15,
     _migration_16,
+    _migration_17,
 )
 
 
