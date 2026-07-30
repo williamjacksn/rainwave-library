@@ -2161,8 +2161,12 @@ def suggestion_details(suggestion_id: str) -> str:
         storage_cnx.close()
     if suggestion is None:
         flask.abort(404)
+    editable = (
+        flask.session.get("role") == "staff" and flask.request.args.get("view") != "1"
+    )
     return rainwave_library.components.suggestion_detail_row(
-        suggestion, editable=flask.session.get("role") == "staff"
+        suggestion,
+        editable=editable,
     )
 
 

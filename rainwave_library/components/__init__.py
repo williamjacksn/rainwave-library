@@ -1863,6 +1863,19 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
                                 hx_get=flask.url_for(
                                     "suggestion_details",
                                     suggestion_id=suggestion.id,
+                                    view="1",
+                                ),
+                                hx_swap="outerHTML",
+                                hx_target="closest tr",
+                                type="button",
+                            )[htpy.i(".bi-eye.me-2"), "View suggestion"]
+                        ],
+                        htpy.li[
+                            htpy.button(
+                                ".dropdown-item",
+                                hx_get=flask.url_for(
+                                    "suggestion_details",
+                                    suggestion_id=suggestion.id,
                                 ),
                                 hx_swap="outerHTML",
                                 hx_target="closest tr",
@@ -2726,11 +2739,16 @@ def suggestion_link_form(
     return str(_suggestion_link_form(suggestion_id, url, label, error))
 
 
-def _suggestion_links_block(suggestion: SuggestionDetail) -> htpy.Element:
+def _suggestion_links_block(
+    suggestion: SuggestionDetail,
+    *,
+    is_staff: bool | None = None,
+) -> htpy.Element:
     is_owner = bool(suggestion.requester_discord_id) and (
         suggestion.requester_discord_id == str(flask.g.discord_id or "")
     )
-    is_staff = flask.session.get("role") == "staff"
+    if is_staff is None:
+        is_staff = flask.session.get("role") == "staff"
     can_add_link = is_staff or (
         is_owner and suggestion.status in Suggestion.owner_editable_statuses
     )
@@ -4112,7 +4130,7 @@ def suggestion_detail_row(
                         ),
                     ],
                     htpy.h6(".mt-3")["Links"],
-                    _suggestion_links_block(suggestion),
+                    _suggestion_links_block(suggestion, is_staff=editable),
                     htpy.h6(".mt-3")["Activity"],
                     _suggestion_activity_block(suggestion),
                 ],
