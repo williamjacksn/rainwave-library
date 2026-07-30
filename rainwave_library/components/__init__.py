@@ -4095,9 +4095,9 @@ def suggestion_detail_row(
         ]
     )
     content = htpy.tr[
-        htpy.td(colspan=Suggestion.colspan)[
-            htpy.div(".card.my-2")[
-                htpy.div(".align-items-center.card-header.d-flex.gap-2")[
+        htpy.td(".p-0", colspan=Suggestion.colspan)[
+            htpy.div(".border-0.card.rounded-0")[
+                htpy.div(".align-items-center.card-header.d-flex.gap-2.px-2.rounded-0")[
                     htpy.button(
                         ".btn.btn-secondary.btn-sm",
                         aria_label="Close suggestion details",
@@ -4111,7 +4111,7 @@ def suggestion_detail_row(
                     )[htpy.i(".bi-x-lg")],
                     htpy.h5(".mb-0")[suggestion.title],
                 ],
-                htpy.div(".card-body")[
+                htpy.div(".card-body.p-2")[
                     editable and _suggestion_edit_form(suggestion, edit_result),
                     not editable
                     and htpy.fragment[
