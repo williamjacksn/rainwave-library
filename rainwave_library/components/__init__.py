@@ -5774,13 +5774,13 @@ def suggestions_index(
                 htpy.div(".align-items-center.col-auto.d-flex.ms-auto")[
                     htpy.div("#suggestion-filter-save-result.small"),
                     htpy.button(
-                        ".btn.btn-outline-primary.ms-2",
+                        ".btn.btn-success.ms-2",
                         hx_include="#suggestion-filters",
                         hx_indicator="#suggestion-filters-indicator",
                         hx_post=flask.url_for("suggestion_default_filters"),
                         hx_swap="innerHTML",
                         hx_target="#suggestion-filter-save-result",
-                        title="Use these sort and filter selections by default",
+                        title="Use the current sort and filter selections by default",
                         type="button",
                     )[htpy.i(".bi-bookmark-heart")],
                 ],
