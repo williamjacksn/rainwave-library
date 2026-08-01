@@ -1580,7 +1580,7 @@ def settings_index(
             htpy.div(".col-lg-8")[
                 htpy.div(".card")[
                     htpy.div(".card-header")[
-                        htpy.h5(".mb-0")["Create, replace, or remove a setting"]
+                        htpy.h5(".mb-0")["Create or replace a setting"]
                     ],
                     htpy.div(".card-body")[
                         result
@@ -1733,7 +1733,7 @@ def user_settings_index(
             htpy.div(".col-lg-8")[
                 htpy.div(".card")[
                     htpy.div(".card-header")[
-                        htpy.h5(".mb-0")["Create or replace a setting"]
+                        htpy.h5(".mb-0")["Create, replace, or remove a setting"]
                     ],
                     htpy.div(".card-body")[
                         result
