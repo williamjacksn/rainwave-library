@@ -24,6 +24,7 @@ class Suggestion:
         "removal": "Removal",
     }
     default_kind: typing.ClassVar[str] = "new-album"
+    limited_kinds = ("new-album", "add-to-existing-album")
     sort_fields: typing.ClassVar[tuple[tuple[str, str], ...]] = (
         ("status", "Status"),
         ("title", "Suggestion title"),
@@ -509,7 +510,8 @@ def suggestion_open_count_for_channel(
         select count(*) open_count
         from suggestions s
         where s.requester_discord_id = :requester_discord_id
-            and s.status in ('new', 'claimed', 'accepted')
+            and s.status in ('new', 'claimed')
+            and s.kind in ('new-album', 'add-to-existing-album')
             and exists (
                 select 1
                 from suggestion_channels sc

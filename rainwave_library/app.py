@@ -1300,7 +1300,6 @@ def _suggestion_notice() -> _SuggestionNotice:
 @app.route("/suggestions/wizard", methods=["POST"])
 @signed_in
 def suggestion_wizard() -> str:
-    limits_apply = flask.session.get("role") != "staff"
     step = flask.request.form.get("step", "1")
     channel = flask.request.form.get("channel", "")
     channel_id = (
@@ -1309,6 +1308,10 @@ def suggestion_wizard() -> str:
     kind = flask.request.form.get("kind", "")
     if kind not in rainwave_library.models.suggestions.Suggestion.kinds:
         kind = None
+    limits_apply = (
+        flask.session.get("role") != "staff"
+        and kind in rainwave_library.models.suggestions.Suggestion.limited_kinds
+    )
     title = flask.request.form.get("title", "")
     description = flask.request.form.get("description", "")
     link_pairs = tuple(
@@ -1333,14 +1336,14 @@ def suggestion_wizard() -> str:
                 links=links,
                 **_suggestion_notice(),
             )
-        storage_cnx = rainwave_library.models.storage.connection_get(
+        storage_cnx_ = rainwave_library.models.storage.connection_get(
             app.config["STORAGE_CNX"]
         )
         title_matches: tuple[str, ...] = ()
         try:
             open_count = (
                 rainwave_library.models.suggestions.suggestion_open_count_for_channel(
-                    storage_cnx,
+                    storage_cnx_,
                     str(flask.g.discord_id) if flask.g.discord_id else None,
                     channel_id,
                 )
@@ -1348,13 +1351,13 @@ def suggestion_wizard() -> str:
             if step in {"4", "5"} and kind == "new-album" and title.strip():
                 title_matches = (
                     rainwave_library.models.suggestions.suggestion_title_match_statuses(
-                        storage_cnx,
+                        storage_cnx_,
                         title,
                     )
                 )
         finally:
-            storage_cnx.close()
-        if limits_apply and open_count > 5:
+            storage_cnx_.close()
+        if limits_apply and open_count >= 5:
             return rainwave_library.components.suggestion_wizard_body(
                 2,
                 channel_id=channel_id,

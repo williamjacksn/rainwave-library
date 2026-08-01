@@ -4952,7 +4952,7 @@ def _suggestion_wizard_step2(
     url = flask.url_for("suggestion_wizard")
     channel_label = channels.get(channel_id, "—") if channel_id else "—"
     kind_label = Suggestion.kind_labels.get(kind or "", "—")
-    over_limit = limits_apply and open_count > 5
+    over_limit = limits_apply and open_count >= 5
     return htpy.form(
         hx_disabled_elt="button",
         hx_post=url,
@@ -4971,7 +4971,8 @@ def _suggestion_wizard_step2(
                 htpy.strong[channel_label],
                 " channel.",
             ],
-            htpy.p(".mb-0")[
+            kind in Suggestion.limited_kinds
+            and htpy.p(".mb-0")[
                 "You currently have ",
                 htpy.strong[str(open_count)],
                 f" open suggestion{'' if open_count == 1 else 's'} for the ",
@@ -4979,6 +4980,7 @@ def _suggestion_wizard_step2(
                 " channel.",
             ],
             not limits_apply
+            and kind in Suggestion.limited_kinds
             and htpy.p(".mb-0.mt-1")["Suggestion limits do not apply to staff."],
         ],
         over_limit
