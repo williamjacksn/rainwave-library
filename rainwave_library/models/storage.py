@@ -17,6 +17,7 @@ log = logging.getLogger(__name__)
 USER_COLOR_MODE_SETTING_KEY = "color-mode"
 USER_COLOR_MODES = ("light", "dark")
 USER_COLOR_MODE_DEFAULT = "light"
+USER_SUGGESTION_FILTERS_SETTING_KEY = "suggestion-filters"
 
 
 @dataclasses.dataclass(frozen=True)

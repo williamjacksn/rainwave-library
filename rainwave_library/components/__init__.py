@@ -25,6 +25,7 @@ from rainwave_library.models.suggestions import (
     Suggestion,
     SuggestionActivity,
     SuggestionDetail,
+    SuggestionFilterSet,
     SuggestionLink,
 )
 
@@ -5395,7 +5396,7 @@ def _staff_suggestion_create_modal() -> htpy.Element:
     ]
 
 
-def _suggestions_sort_options_control() -> htpy.Element:
+def _suggestions_sort_options_control(filters: SuggestionFilterSet) -> htpy.Element:
     rows_url = flask.url_for("suggestions_rows")
     return htpy.div(".dropdown")[
         htpy.button(
@@ -5411,7 +5412,7 @@ def _suggestions_sort_options_control() -> htpy.Element:
                     htpy.div(".form-check")[
                         htpy.input(
                             f"#suggestion-sort-dir-{value}.form-check-input",
-                            checked=value == "desc",
+                            checked=value == filters.sort_dir,
                             hx_indicator="#suggestion-filters-indicator",
                             hx_post=rows_url,
                             name="sort-dir",
@@ -5433,7 +5434,7 @@ def _suggestions_sort_options_control() -> htpy.Element:
                     htpy.div(".form-check")[
                         htpy.input(
                             f"#suggestion-sort-col-{value}.form-check-input",
-                            checked=value == "requested_at",
+                            checked=value == filters.sort_col,
                             hx_indicator=("#suggestion-filters-indicator"),
                             hx_post=rows_url,
                             name="sort-col",
@@ -5452,8 +5453,11 @@ def _suggestions_sort_options_control() -> htpy.Element:
     ]
 
 
-def _suggestions_claimed_by_filter(claimants: list[str]) -> htpy.Element:
+def _suggestions_claimed_by_filter(
+    claimants: list[str], filters: SuggestionFilterSet
+) -> htpy.Element:
     rows_url = flask.url_for("suggestions_rows")
+    empty = len(filters.claimed_by) == 0
     return htpy.div(".dropdown")[
         htpy.button(
             ".btn.btn-primary.dropdown-toggle",
@@ -5467,6 +5471,7 @@ def _suggestions_claimed_by_filter(claimants: list[str]) -> htpy.Element:
                 htpy.div(".form-check")[
                     htpy.input(
                         "#suggestion-claimant-unclaimed.form-check-input",
+                        checked="" in filters.claimed_by or empty,
                         hx_indicator="#suggestion-filters-indicator",
                         hx_post=rows_url,
                         name="claimed-by",
@@ -5482,6 +5487,7 @@ def _suggestions_claimed_by_filter(claimants: list[str]) -> htpy.Element:
                     htpy.div(".form-check")[
                         htpy.input(
                             f"#suggestion-claimant-{index}.form-check-input",
+                            checked=claimant in filters.claimed_by or empty,
                             hx_indicator="#suggestion-filters-indicator",
                             hx_post=rows_url,
                             name="claimed-by",
@@ -5500,7 +5506,7 @@ def _suggestions_claimed_by_filter(claimants: list[str]) -> htpy.Element:
     ]
 
 
-def _suggestions_channel_filter() -> htpy.Element:
+def _suggestions_channel_filter(filters: SuggestionFilterSet) -> htpy.Element:
     rows_url = flask.url_for("suggestions_rows")
     rainwave_channels = sorted(
         (
@@ -5510,6 +5516,7 @@ def _suggestions_channel_filter() -> htpy.Element:
         ),
         key=lambda channel: channel[1].casefold(),
     )
+    empty_channel_list = len(filters.channel) == 0
     return htpy.div(".dropdown")[
         htpy.button(
             ".btn.btn-primary.dropdown-toggle",
@@ -5523,7 +5530,7 @@ def _suggestions_channel_filter() -> htpy.Element:
                 htpy.div(".form-check")[
                     htpy.input(
                         "#suggestion-channel-unassigned.form-check-input",
-                        checked=True,
+                        checked="unassigned" in filters.channel or empty_channel_list,
                         hx_indicator="#suggestion-filters-indicator",
                         hx_post=rows_url,
                         name="channels",
@@ -5539,7 +5546,8 @@ def _suggestions_channel_filter() -> htpy.Element:
                     htpy.div(".form-check")[
                         htpy.input(
                             f"#suggestion-channel-{channel_id}.form-check-input",
-                            checked=True,
+                            checked=str(channel_id) in filters.channel
+                            or empty_channel_list,
                             hx_indicator="#suggestion-filters-indicator",
                             hx_post=rows_url,
                             name="channels",
@@ -5558,7 +5566,7 @@ def _suggestions_channel_filter() -> htpy.Element:
     ]
 
 
-def _suggestions_status_filter() -> htpy.Element:
+def _suggestions_status_filter(filters: SuggestionFilterSet) -> htpy.Element:
     rows_url = flask.url_for("suggestions_rows")
     return htpy.div(".dropdown")[
         htpy.button(
@@ -5574,7 +5582,7 @@ def _suggestions_status_filter() -> htpy.Element:
                     htpy.div(".form-check")[
                         htpy.input(
                             f"#status-{status}.form-check-input",
-                            checked=True,
+                            checked=status in filters.status,
                             hx_indicator="#suggestion-filters-indicator",
                             hx_post=rows_url,
                             name="status",
@@ -5593,7 +5601,7 @@ def _suggestions_status_filter() -> htpy.Element:
     ]
 
 
-def _suggestions_type_filter() -> htpy.Element:
+def _suggestions_type_filter(filters: SuggestionFilterSet) -> htpy.Element:
     rows_url = flask.url_for("suggestions_rows")
     return htpy.div(".dropdown")[
         htpy.button(
@@ -5609,7 +5617,7 @@ def _suggestions_type_filter() -> htpy.Element:
                     htpy.div(".form-check")[
                         htpy.input(
                             f"#suggestion-kind-{kind}.form-check-input",
-                            checked=True,
+                            checked=kind in filters.type,
                             hx_indicator="#suggestion-filters-indicator",
                             hx_post=rows_url,
                             name="kinds",
@@ -5630,6 +5638,7 @@ def _suggestions_type_filter() -> htpy.Element:
 
 def _suggestions_other_filter_options(
     is_staff: bool,
+    filters: SuggestionFilterSet,
     your_suggestions_active_count: int,
     your_suggestions_complete_count: int,
 ) -> htpy.Element:
@@ -5647,6 +5656,7 @@ def _suggestions_other_filter_options(
                 htpy.div(".form-check")[
                     htpy.input(
                         "#your-suggestions.form-check-input",
+                        checked=filters.your_suggestions,
                         hx_indicator="#suggestion-filters-indicator",
                         hx_post=rows_url,
                         name="your-suggestions",
@@ -5669,6 +5679,7 @@ def _suggestions_other_filter_options(
                 and htpy.div(".form-check")[
                     htpy.input(
                         "#your-claims.form-check-input",
+                        checked=filters.your_claims,
                         hx_indicator="#suggestion-filters-indicator",
                         hx_post=rows_url,
                         name="your-claims",
@@ -5688,6 +5699,7 @@ def _suggestions_other_filter_options(
 def suggestions_index(
     is_staff: bool,
     claimants: list[str],
+    filters: SuggestionFilterSet,
     your_suggestions_active_count: int,
     your_suggestions_complete_count: int,
     song_count: int = 0,
@@ -5739,14 +5751,17 @@ def suggestions_index(
                         type="search",
                     )
                 ],
-                htpy.div(".col-auto")[_suggestions_sort_options_control()],
-                htpy.div(".col-auto")[_suggestions_claimed_by_filter(claimants)],
-                htpy.div(".col-auto")[_suggestions_channel_filter()],
-                htpy.div(".col-auto")[_suggestions_status_filter()],
-                htpy.div(".col-auto")[_suggestions_type_filter()],
+                htpy.div(".col-auto")[_suggestions_sort_options_control(filters)],
+                htpy.div(".col-auto")[
+                    _suggestions_claimed_by_filter(claimants, filters)
+                ],
+                htpy.div(".col-auto")[_suggestions_channel_filter(filters)],
+                htpy.div(".col-auto")[_suggestions_status_filter(filters)],
+                htpy.div(".col-auto")[_suggestions_type_filter(filters)],
                 htpy.div(".col-auto")[
                     _suggestions_other_filter_options(
                         is_staff,
+                        filters,
                         your_suggestions_active_count,
                         your_suggestions_complete_count,
                     )
@@ -5755,6 +5770,19 @@ def suggestions_index(
                     htpy.span(
                         "#suggestion-filters-indicator.htmx-indicator.spinner-border.spinner-border-sm.text-primary"
                     )
+                ],
+                htpy.div(".align-items-center.col-auto.d-flex.ms-auto")[
+                    htpy.div("#suggestion-filter-save-result.small"),
+                    htpy.button(
+                        ".btn.btn-outline-primary.ms-2",
+                        hx_include="#suggestion-filters",
+                        hx_indicator="#suggestion-filters-indicator",
+                        hx_post=flask.url_for("suggestion_default_filters"),
+                        hx_swap="innerHTML",
+                        hx_target="#suggestion-filter-save-result",
+                        title="Use these sort and filter selections by default",
+                        type="button",
+                    )[htpy.i(".bi-bookmark-heart")],
                 ],
             ]
         ],
@@ -5808,6 +5836,14 @@ def suggestions_index(
     return str(_base(content))
 
 
+def suggestion_default_filters_saved() -> str:
+    return str(
+        htpy.span(".text-success")[
+            htpy.i(".bi-check-circle-fill"), " Default filters saved"
+        ]
+    )
+
+
 def suggestions_rows(suggestions: list[Suggestion], page: int) -> str:
     rows = []
     for index, suggestion in enumerate(suggestions):
@@ -5835,7 +5871,10 @@ def suggestions_rows(suggestions: list[Suggestion], page: int) -> str:
                 ]
             ]
         )
-    return str(htpy.fragment[rows])
+    clear_save_result = page == 1 and htpy.div(
+        "#suggestion-filter-save-result", hx_swap_oob="innerHTML"
+    )
+    return str(htpy.fragment[rows, clear_save_result])
 
 
 def songs_index() -> str:

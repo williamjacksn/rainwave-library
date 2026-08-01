@@ -1,8 +1,9 @@
+import json
 import logging
 import secrets
 import sqlite3
 import typing
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 log = logging.getLogger(__name__)
 
@@ -88,6 +89,97 @@ class SuggestionDetail(Suggestion):
     updated_at: str
     links: tuple[SuggestionLink, ...]
     activities: tuple[SuggestionActivity, ...]
+
+
+@dataclass(frozen=True)
+class SuggestionFilterSet:
+    sort_dir: typing.Literal["asc", "desc"]
+    sort_col: str
+    claimed_by: list[str]
+    channel: list[str]
+    status: list[str]
+    type: list[str]
+    your_suggestions: bool
+    your_claims: bool
+
+    @classmethod
+    def default(cls) -> typing.Self:
+        return cls(
+            sort_dir="desc",
+            sort_col="requested_at",
+            claimed_by=[],
+            channel=["unassigned", "1", "2", "3", "4", "6"],
+            status=list(Suggestion.statuses),
+            type=list(Suggestion.kinds),
+            your_suggestions=False,
+            your_claims=False,
+        )
+
+    @classmethod
+    def from_json(cls, value: str) -> typing.Self:
+        data = json.loads(value)
+        if not isinstance(data, dict):
+            msg = "Suggestion filters must be represented by a JSON object."
+            raise ValueError(msg)
+
+        expected_keys = {
+            "sort_dir",
+            "sort_col",
+            "claimed_by",
+            "channel",
+            "status",
+            "type",
+            "your_suggestions",
+            "your_claims",
+        }
+        if set(data) != expected_keys:
+            msg = "Suggestion filters contain missing or unexpected fields."
+            raise ValueError(msg)
+
+        def string_list(key: str) -> list[str]:
+            items = data[key]
+            if not isinstance(items, list) or not all(
+                isinstance(item, str) for item in items
+            ):
+                msg = f"Suggestion filter {key!r} must be a list of strings."
+                raise ValueError(msg)
+            return items
+
+        sort_dir = data["sort_dir"]
+        sort_col = data["sort_col"]
+        claimed_by = string_list("claimed_by")
+        channel = string_list("channel")
+        statuses = string_list("status")
+        kinds = string_list("type")
+        your_suggestions = data["your_suggestions"]
+        your_claims = data["your_claims"]
+        valid_sort_columns = {field for field, _label in Suggestion.sort_fields}
+        if (
+            sort_dir not in {"asc", "desc"}
+            or not isinstance(sort_col, str)
+            or sort_col not in valid_sort_columns
+            or not set(channel) <= {"unassigned", "1", "2", "3", "4", "6"}
+            or not set(statuses) <= set(Suggestion.statuses)
+            or not set(kinds) <= set(Suggestion.kinds)
+            or not isinstance(your_suggestions, bool)
+            or not isinstance(your_claims, bool)
+        ):
+            msg = "Suggestion filters contain invalid values."
+            raise ValueError(msg)
+
+        return cls(
+            sort_dir=typing.cast(typing.Literal["asc", "desc"], sort_dir),
+            sort_col=sort_col,
+            claimed_by=claimed_by,
+            channel=channel,
+            status=statuses,
+            type=kinds,
+            your_suggestions=your_suggestions,
+            your_claims=your_claims,
+        )
+
+    def to_json(self) -> str:
+        return json.dumps(asdict(self))
 
 
 def id_new() -> str:

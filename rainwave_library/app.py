@@ -1165,28 +1165,112 @@ def user_settings() -> str:
 @app.route("/suggestions", methods=["GET"])
 @signed_in
 def suggestions() -> str:
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    discord_id = str(flask.g.discord_id or "")
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         your_suggestions_active_count, your_suggestions_complete_count = (
             rainwave_library.models.suggestions.suggestion_counts_by_requester(
-                storage_cnx,
-                str(flask.g.discord_id) if flask.g.discord_id else None,
+                storage_cnx_,
+                discord_id or None,
             )
         )
         claimants = rainwave_library.models.suggestions.suggestion_claimants_get(
-            storage_cnx
+            storage_cnx_
+        )
+        saved_filters = rainwave_library.models.storage.user_setting_get(
+            storage_cnx_,
+            discord_id,
+            rainwave_library.models.storage.USER_SUGGESTION_FILTERS_SETTING_KEY,
         )
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
+    filters = rainwave_library.models.suggestions.SuggestionFilterSet.default()
+    if saved_filters:
+        try:
+            filters = rainwave_library.models.suggestions.SuggestionFilterSet.from_json(
+                saved_filters
+            )
+        except (json.JSONDecodeError, ValueError):
+            app.logger.warning(
+                "Ignoring invalid saved suggestion filters for Discord user %s",
+                discord_id,
+            )
     return rainwave_library.components.suggestions_index(
         is_staff=flask.session.get("role") == "staff",
         claimants=claimants,
+        filters=filters,
         your_suggestions_active_count=your_suggestions_active_count,
         your_suggestions_complete_count=your_suggestions_complete_count,
         **_suggestion_notice(),
     )
+
+
+def _suggestion_filter_set_from_request() -> (
+    rainwave_library.models.suggestions.SuggestionFilterSet
+):
+    defaults = rainwave_library.models.suggestions.SuggestionFilterSet.default()
+    sort_dir_value = flask.request.values.get("sort-dir", defaults.sort_dir)
+    sort_dir: typing.Literal["asc", "desc"] = (
+        "asc" if sort_dir_value == "asc" else "desc"
+    )
+    valid_sort_columns = {
+        field
+        for field, _label in rainwave_library.models.suggestions.Suggestion.sort_fields
+    }
+    sort_col_value = flask.request.values.get("sort-col", defaults.sort_col)
+    sort_col = (
+        sort_col_value if sort_col_value in valid_sort_columns else defaults.sort_col
+    )
+    valid_channels = {"unassigned", "1", "2", "3", "4", "6"}
+    channels = [
+        channel
+        for channel in flask.request.values.getlist("channels")
+        if channel in valid_channels
+    ]
+    statuses = [
+        status
+        for status in flask.request.values.getlist("status")
+        if status in rainwave_library.models.suggestions.Suggestion.statuses
+    ]
+    kinds = [
+        kind
+        for kind in flask.request.values.getlist("kinds")
+        if kind in rainwave_library.models.suggestions.Suggestion.kinds
+    ]
+    return rainwave_library.models.suggestions.SuggestionFilterSet(
+        sort_dir=sort_dir,
+        sort_col=sort_col,
+        claimed_by=flask.request.values.getlist("claimed-by"),
+        channel=channels,
+        status=statuses,
+        type=kinds,
+        your_suggestions="your-suggestions" in flask.request.values,
+        your_claims=(
+            flask.session.get("role") == "staff"
+            and "your-claims" in flask.request.values
+        ),
+    )
+
+
+@app.route("/suggestions/default-filters", methods=["POST"])
+@signed_in
+def suggestion_default_filters() -> str:
+    filters = _suggestion_filter_set_from_request()
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        rainwave_library.models.storage.user_setting_set(
+            storage_cnx_,
+            str(flask.g.discord_id or ""),
+            rainwave_library.models.storage.USER_SUGGESTION_FILTERS_SETTING_KEY,
+            filters.to_json(),
+        )
+    finally:
+        storage_cnx_.close()
+    return rainwave_library.components.suggestion_default_filters_saved()
 
 
 class _SuggestionNotice(typing.TypedDict):
@@ -1540,13 +1624,9 @@ def suggestion_link_row() -> str:
 @signed_in
 def suggestions_rows() -> str:
     query = flask.request.values.get("q")
-    statuses = flask.request.values.getlist("status")
+    filters = _suggestion_filter_set_from_request()
     page = max(int(flask.request.values.get("page", 1)), 1)
-    sort_col = flask.request.values.get("sort-col", "requested_at")
-    sort_dir = flask.request.values.get("sort-dir", "desc")
-    claimed_by_names = flask.request.values.getlist("claimed-by")
-    kinds = flask.request.values.getlist("kinds")
-    input_channels = flask.request.values.getlist("channels")
+    input_channels = filters.channel
     include_unassigned_channel = "unassigned" in input_channels
     channel_ids = [
         int(channel_id)
@@ -1555,14 +1635,10 @@ def suggestions_rows() -> str:
     ]
     is_staff = flask.session.get("role") == "staff"
     requester_discord_id = (
-        str(flask.g.discord_id or "")
-        if "your-suggestions" in flask.request.values
-        else None
+        str(flask.g.discord_id or "") if filters.your_suggestions else None
     )
     claimed_by_discord_id = (
-        str(flask.g.discord_id or "")
-        if is_staff and "your-claims" in flask.request.values
-        else None
+        str(flask.g.discord_id or "") if is_staff and filters.your_claims else None
     )
     storage_cnx = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
@@ -1571,15 +1647,15 @@ def suggestions_rows() -> str:
         suggestions_ = rainwave_library.models.suggestions.suggestions_get(
             storage_cnx,
             query,
-            statuses,
+            filters.status,
             page,
             requester_discord_id,
             claimed_by_discord_id,
-            sort_col,
-            sort_dir,
-            claimed_by_names,
+            filters.sort_col,
+            filters.sort_dir,
+            filters.claimed_by,
             channel_ids,
-            kinds,
+            filters.type,
             include_unassigned_channel,
         )
     finally:
