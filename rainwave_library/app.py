@@ -1126,19 +1126,29 @@ def user_settings() -> str:
                 key = flask.request.form.get("key", "")
                 value = flask.request.form.get("value", "")
                 try:
-                    created = rainwave_library.models.storage.user_setting_set(
-                        storage_cnx_,
-                        discord_id,
-                        key,
-                        value,
-                    )
+                    if value:
+                        created = rainwave_library.models.storage.user_setting_set(
+                            storage_cnx_,
+                            discord_id,
+                            key,
+                            value,
+                        )
+                        message = f"Setting {'created' if created else 'replaced'}."
+                    else:
+                        removed = rainwave_library.models.storage.user_setting_delete(
+                            storage_cnx_,
+                            discord_id,
+                            key,
+                        )
+                        message = (
+                            "Setting removed."
+                            if removed
+                            else "The setting did not exist."
+                        )
                 except ValueError as error:
                     result = ("alert-danger", str(error))
                 else:
-                    result = (
-                        "alert-success",
-                        f"Setting {'created' if created else 'replaced'}.",
-                    )
+                    result = ("alert-success", message)
                     key = ""
                     value = ""
         color_mode = rainwave_library.models.storage.user_color_mode_get(

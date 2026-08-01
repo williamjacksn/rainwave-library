@@ -766,6 +766,39 @@ def user_setting_set(
     return created
 
 
+def user_setting_delete(
+    con: sqlite3.Connection,
+    discord_id: str,
+    key: str,
+) -> bool:
+    discord_id = discord_id.strip()
+    key = key.strip()
+    if not discord_id:
+        msg = "A Discord user ID is required."
+        raise ValueError(msg)
+    if not key:
+        msg = "Setting key is required."
+        raise ValueError(msg)
+
+    try:
+        cursor = con.execute(
+            """
+            delete from user_settings
+            where discord_id = :discord_id
+                and key = :key
+            """,
+            {
+                "discord_id": discord_id,
+                "key": key,
+            },
+        )
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+    return cursor.rowcount > 0
+
+
 def user_color_mode_get(
     con: sqlite3.Connection,
     discord_id: str,

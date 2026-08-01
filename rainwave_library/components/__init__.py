@@ -1580,7 +1580,7 @@ def settings_index(
             htpy.div(".col-lg-8")[
                 htpy.div(".card")[
                     htpy.div(".card-header")[
-                        htpy.h5(".mb-0")["Create or replace a setting"]
+                        htpy.h5(".mb-0")["Create, replace, or remove a setting"]
                     ],
                     htpy.div(".card-body")[
                         result
@@ -1740,7 +1740,8 @@ def user_settings_index(
                         and htpy.div(f".alert.{result[0]}", role="alert")[result[1]],
                         htpy.p[
                             "Saving a key that already exists replaces its value. "
-                            "These settings are associated with your user account."
+                            "Leave the value blank to remove the setting. These "
+                            "settings are associated with your user account."
                         ],
                         htpy.form(
                             action=flask.url_for("user_settings"),
@@ -1769,7 +1770,6 @@ def user_settings_index(
                                     htpy.input(
                                         "#user-setting-value.form-control",
                                         name="value",
-                                        required=True,
                                         type="text",
                                         value=value,
                                     ),
