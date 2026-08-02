@@ -1714,15 +1714,15 @@ def _suggestion_staged_files_get(
 @app.route("/suggestions/<suggestion_id>", methods=["GET"])
 @secure
 def suggestion_page(suggestion_id: str) -> str:
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx, suggestion_id
+            storage_cnx_, suggestion_id
         )
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
     if suggestion is None:
         flask.abort(404)
     staged_files, folder_path, music_tags = _suggestion_staged_files_get(suggestion_id)
@@ -1732,16 +1732,12 @@ def suggestion_page(suggestion_id: str) -> str:
             suggestion_id,
         )
     )
-    staged_genre = rainwave_library.models.mp3.most_common_genre_get(
-        music_tags.values()
-    )
     return rainwave_library.components.suggestion_page(
         suggestion,
         staged_files,
         folder_path=str(folder_path),
         music_tags=music_tags,
         staged_mp3_duration_seconds=staged_mp3_duration_seconds,
-        staged_genre=staged_genre,
     )
 
 
@@ -1765,6 +1761,7 @@ def suggestion_schedule_release_duration(suggestion_id: str) -> str:
         flask.abort(404)
 
     release_date = flask.request.args.get("release-date", "")
+    release_immediately = flask.request.args.get("release-immediately") == "1"
     staged_duration_seconds = (
         rainwave_library.models.storage.suggestion_staging_mp3_duration_get(
             app.config["LIBRARY_ROOT"],
@@ -1772,7 +1769,7 @@ def suggestion_schedule_release_duration(suggestion_id: str) -> str:
         )
     )
     upcoming_duration_seconds = None
-    if release_date:
+    if release_date and not release_immediately:
         try:
             upcoming_duration_seconds = (
                 rainwave_library.models.storage.upcoming_music_date_mp3_duration_get(
@@ -1784,6 +1781,7 @@ def suggestion_schedule_release_duration(suggestion_id: str) -> str:
             pass
     return rainwave_library.components.suggestion_schedule_release_duration(
         staged_duration_seconds,
+        release_immediately=release_immediately,
         release_date=release_date,
         upcoming_duration_seconds=upcoming_duration_seconds,
     )
@@ -1809,7 +1807,8 @@ def suggestion_schedule_release_target(suggestion_id: str) -> str:
         flask.abort(404)
 
     release_date = flask.request.args.get("release-date", "")
-    if not release_date:
+    release_immediately = flask.request.args.get("release-immediately") == "1"
+    if not release_date and not release_immediately:
         return rainwave_library.components.suggestion_schedule_release_target(
             suggestion_id
         )
@@ -1819,9 +1818,8 @@ def suggestion_schedule_release_target(suggestion_id: str) -> str:
             app.config["LIBRARY_ROOT"],
             release_date,
             flask.request.args.get("channel-folder", ""),
-            flask.request.args.get("folder-name", ""),
-            include_genre=flask.request.args.get("include-genre") == "1",
-            genre=flask.request.args.get("genre", ""),
+            flask.request.args.get("folder-path", ""),
+            release_immediately=release_immediately,
         )
     except ValueError as error:
         return rainwave_library.components.suggestion_schedule_release_target(
@@ -1838,24 +1836,23 @@ def suggestion_schedule_release_target(suggestion_id: str) -> str:
 @app.route("/suggestions/<suggestion_id>/schedule-release", methods=["POST"])
 @secure
 def suggestion_schedule_release(suggestion_id: str) -> werkzeug.Response | str:
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx,
+            storage_cnx_,
             suggestion_id,
         )
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
     if suggestion is None:
         flask.abort(404)
 
     release_date = flask.request.form.get("release-date", "")
+    release_immediately = flask.request.form.get("release-immediately") == "1"
     channel_folder = flask.request.form.get("channel-folder", "")
-    folder_name = flask.request.form.get("folder-name", "")
-    include_genre = flask.request.form.get("include-genre") == "1"
-    genre = flask.request.form.get("genre", "")
+    folder_path = flask.request.form.get("folder-path", "")
     staged_duration_seconds = (
         rainwave_library.models.storage.suggestion_staging_mp3_duration_get(
             app.config["LIBRARY_ROOT"],
@@ -1863,7 +1860,7 @@ def suggestion_schedule_release(suggestion_id: str) -> werkzeug.Response | str:
         )
     )
     upcoming_duration_seconds = None
-    if release_date:
+    if release_date and not release_immediately:
         try:
             upcoming_duration_seconds = (
                 rainwave_library.models.storage.upcoming_music_date_mp3_duration_get(
@@ -1879,45 +1876,54 @@ def suggestion_schedule_release(suggestion_id: str) -> werkzeug.Response | str:
             suggestion_id,
             release_date,
             channel_folder,
-            folder_name,
-            include_genre=include_genre,
-            genre=genre,
+            folder_path,
+            release_immediately=release_immediately,
         )
     except ValueError as error:
         return rainwave_library.components.suggestion_schedule_release_form(
             suggestion,
             release_date=release_date,
+            release_immediately=release_immediately,
             channel_folder=channel_folder,
-            folder_name=folder_name,
-            include_genre=include_genre,
-            genre=genre,
+            folder_path=folder_path,
             staged_duration_seconds=staged_duration_seconds,
             upcoming_duration_seconds=upcoming_duration_seconds,
             error=str(error),
         )
     except OSError:
         app.logger.exception(
-            "Could not schedule release for suggestion %s",
+            "Could not release suggestion %s",
             suggestion_id,
         )
         return rainwave_library.components.suggestion_schedule_release_form(
             suggestion,
             release_date=release_date,
+            release_immediately=release_immediately,
             channel_folder=channel_folder,
-            folder_name=folder_name,
-            include_genre=include_genre,
-            genre=genre,
+            folder_path=folder_path,
             staged_duration_seconds=staged_duration_seconds,
             upcoming_duration_seconds=upcoming_duration_seconds,
-            error="The suggestion files could not be moved.",
+            error=(
+                "The suggestion files could not be copied."
+                if release_immediately
+                else "The suggestion files could not be moved."
+            ),
         )
 
-    app.logger.info(
-        "Scheduled suggestion %s for release at %s",
-        suggestion_id,
-        destination,
-    )
-    redirect_url = flask.url_for("upcoming_music", path=destination)
+    if release_immediately:
+        app.logger.info(
+            "Released suggestion %s immediately at %s",
+            suggestion_id,
+            destination,
+        )
+        redirect_url = flask.url_for("suggestion_page", suggestion_id=suggestion_id)
+    else:
+        app.logger.info(
+            "Scheduled suggestion %s for release at %s",
+            suggestion_id,
+            destination,
+        )
+        redirect_url = flask.url_for("upcoming_music", path=destination)
     if flask.request.headers.get("HX-Request") == "true":
         response = flask.make_response()
         response.headers["HX-Redirect"] = redirect_url

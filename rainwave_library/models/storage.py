@@ -271,59 +271,58 @@ def _suggestion_release_path_name_get(name: str, label: str) -> str:
     return name
 
 
-def _suggestion_release_folder_name_get(
-    folder_name: str,
-) -> str:
-    return _suggestion_release_path_name_get(
-        folder_name.strip(),
-        "final folder name",
-    )
-
-
-def _suggestion_release_genre_folder_get(genre: str) -> str:
-    genre_name = genre.strip().lstrip("~").strip()
-    if not genre_name:
-        msg = "Enter a category when including a category folder."
+def _suggestion_release_folder_path_get(folder_path: str) -> pathlib.PurePosixPath:
+    normalized_path = folder_path.strip()
+    parts = normalized_path.split("/")
+    if not normalized_path or any(not part for part in parts):
+        msg = "Choose a valid folder path."
         raise ValueError(msg)
-    return _suggestion_release_path_name_get(f"~{genre_name}", "category")
+    return pathlib.PurePosixPath(
+        *(
+            _suggestion_release_path_name_get(part, "folder path segment")
+            for part in parts
+        )
+    )
 
 
 def suggestion_release_target_get(
     library_root: pathlib.Path,
     release_date: str,
     channel_folder: str,
-    folder_name: str,
+    folder_path: str,
     *,
-    include_genre: bool = False,
-    genre: str = "",
+    release_immediately: bool = False,
 ) -> pathlib.Path:
-    try:
-        parsed_release_date = datetime.date.fromisoformat(release_date)
-    except ValueError:
-        msg = "Choose a valid release date."
-        raise ValueError(msg) from None
-    if parsed_release_date <= datetime.date.today():
-        msg = "The release date must be in the future."
-        raise ValueError(msg)
+    parsed_release_date = None
+    if not release_immediately:
+        try:
+            parsed_release_date = datetime.date.fromisoformat(release_date)
+        except ValueError:
+            msg = "Choose a valid release date."
+            raise ValueError(msg) from None
+        if parsed_release_date <= datetime.date.today():
+            msg = "The release date must be in the future."
+            raise ValueError(msg)
     try:
         root_folder = ChannelRootFolder(channel_folder)
     except ValueError:
         msg = "Choose a valid channel folder."
         raise ValueError(msg) from None
-    final_folder_name = _suggestion_release_folder_name_get(folder_name)
-    genre_folder = (
-        _suggestion_release_genre_folder_get(genre) if include_genre else None
-    )
+    release_folder_path = _suggestion_release_folder_path_get(folder_path)
 
-    upcoming_root = _upcoming_music_root_get(library_root)
-    destination_parent = (
-        upcoming_root / parsed_release_date.isoformat() / root_folder.value
+    destination_root = (
+        library_root.resolve()
+        if release_immediately
+        else _upcoming_music_root_get(library_root)
     )
-    if genre_folder is not None:
-        destination_parent /= genre_folder
-    destination = (destination_parent / final_folder_name).resolve()
-    if not destination.is_relative_to(upcoming_root):
-        msg = "Invalid upcoming music destination."
+    destination_parent = destination_root / root_folder.value
+    if parsed_release_date is not None:
+        destination_parent = (
+            destination_root / parsed_release_date.isoformat() / root_folder.value
+        )
+    destination = destination_parent.joinpath(*release_folder_path.parts).resolve()
+    if not destination.is_relative_to(destination_root):
+        msg = "Invalid release destination."
         raise ValueError(msg)
     return destination
 
@@ -333,55 +332,74 @@ def suggestion_release_schedule(
     suggestion_id: str,
     release_date: str,
     channel_folder: str,
-    folder_name: str,
+    folder_path: str,
     *,
-    include_genre: bool = False,
-    genre: str = "",
+    release_immediately: bool = False,
 ) -> str:
-    upcoming_root = _upcoming_music_root_get(library_root)
+    destination_root = (
+        library_root.resolve()
+        if release_immediately
+        else _upcoming_music_root_get(library_root)
+    )
     destination = suggestion_release_target_get(
         library_root,
         release_date,
         channel_folder,
-        folder_name,
-        include_genre=include_genre,
-        genre=genre,
+        folder_path,
+        release_immediately=release_immediately,
     )
-    if destination.exists():
+    if destination.exists() and not release_immediately:
         msg = "That upcoming music destination already exists."
+        raise ValueError(msg)
+    if destination.exists() and not destination.is_dir():
+        msg = "The library destination is not a folder."
         raise ValueError(msg)
 
     source = suggestion_staging_folder_get(library_root, suggestion_id)
     if not suggestion_staging_files_get(library_root, suggestion_id):
-        msg = "Upload at least one file before scheduling the release."
+        msg = "Upload at least one file before releasing the suggestion."
         raise ValueError(msg)
 
     created_directories = []
-    destination_parts = destination.parent.relative_to(upcoming_root).parts
+    destination_parts = destination.parent.relative_to(destination_root).parts
     for directory in (
-        upcoming_root,
+        destination_root,
         *(
-            upcoming_root.joinpath(*destination_parts[:index])
+            destination_root.joinpath(*destination_parts[:index])
             for index in range(1, len(destination_parts) + 1)
         ),
     ):
         if directory.exists():
             if not directory.is_dir():
-                msg = "The upcoming music destination is not a folder."
+                msg = "The release destination is not a folder."
                 raise ValueError(msg)
             continue
         directory.mkdir()
         created_directories.append(directory)
+    immediate_destination_created = False
     try:
-        source.rename(destination)
+        if release_immediately:
+            if not destination.exists():
+                try:
+                    destination.mkdir()
+                except FileExistsError:
+                    if not destination.is_dir():
+                        raise
+                else:
+                    immediate_destination_created = True
+            shutil.copytree(source, destination, dirs_exist_ok=True)
+        else:
+            source.rename(destination)
     except OSError:
+        if immediate_destination_created:
+            shutil.rmtree(destination, ignore_errors=True)
         for directory in reversed(created_directories):
             try:
                 directory.rmdir()
             except OSError:
                 pass
         raise
-    return destination.relative_to(upcoming_root).as_posix()
+    return destination.relative_to(destination_root).as_posix()
 
 
 def suggestion_staging_folder_get(

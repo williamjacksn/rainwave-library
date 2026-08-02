@@ -3612,6 +3612,7 @@ def _duration_hms(duration_seconds: float) -> str:
 def _suggestion_schedule_release_duration(
     staged_duration_seconds: float,
     *,
+    release_immediately: bool = False,
     release_date: str = "",
     upcoming_duration_seconds: float | None = None,
 ) -> htpy.Element:
@@ -3626,7 +3627,11 @@ def _suggestion_schedule_release_duration(
         role="status",
     )[
         htpy.div[
-            htpy.strong["MP3 duration to be moved: "],
+            htpy.strong[
+                "MP3 duration to be copied: "
+                if release_immediately
+                else "MP3 duration to be moved: "
+            ],
             _duration_hms(staged_duration_seconds),
         ],
         selected_date_duration is not None
@@ -3648,12 +3653,14 @@ def _suggestion_schedule_release_duration(
 def suggestion_schedule_release_duration(
     staged_duration_seconds: float,
     *,
+    release_immediately: bool = False,
     release_date: str = "",
     upcoming_duration_seconds: float | None = None,
 ) -> str:
     return str(
         _suggestion_schedule_release_duration(
             staged_duration_seconds,
+            release_immediately=release_immediately,
             release_date=release_date,
             upcoming_duration_seconds=upcoming_duration_seconds,
         )
@@ -3664,7 +3671,10 @@ def _suggestion_schedule_release_target(
     suggestion_id: str,
     *,
     target_path: str | None = None,
-    message: str = "Choose a release date to preview the target folder.",
+    message: str = (
+        "Choose a release date or select release immediately to preview the target "
+        "folder."
+    ),
     error: bool = False,
     initial_load: bool = False,
 ) -> htpy.Element:
@@ -3697,7 +3707,10 @@ def suggestion_schedule_release_target(
     suggestion_id: str,
     *,
     target_path: str | None = None,
-    message: str = "Choose a release date to preview the target folder.",
+    message: str = (
+        "Choose a release date or select release immediately to preview the target "
+        "folder."
+    ),
     error: bool = False,
 ) -> str:
     return str(
@@ -3714,16 +3727,19 @@ def _suggestion_schedule_release_form(
     suggestion: SuggestionDetail,
     *,
     release_date: str = "",
+    release_immediately: bool = False,
     channel_folder: str | None = None,
-    folder_name: str | None = None,
-    include_genre: bool = False,
-    genre: str = "",
+    folder_path: str | None = None,
     staged_duration_seconds: float = 0.0,
     upcoming_duration_seconds: float | None = None,
     error: str | None = None,
 ) -> htpy.Element:
     url = flask.url_for(
         "suggestion_schedule_release",
+        suggestion_id=suggestion.id,
+    )
+    duration_url = flask.url_for(
+        "suggestion_schedule_release_duration",
         suggestion_id=suggestion.id,
     )
     selected_channel_folder = (
@@ -3745,7 +3761,7 @@ def _suggestion_schedule_release_form(
     )[
         htpy.div(".modal-header")[
             htpy.h5("#suggestion-schedule-release-title.modal-title")[
-                "Schedule release"
+                "Release suggestion"
             ],
             htpy.button(
                 ".btn-close",
@@ -3757,16 +3773,48 @@ def _suggestion_schedule_release_form(
         htpy.div(".modal-body")[
             error and htpy.div(".alert.alert-danger", role="alert")[error],
             htpy.p[
-                "All files staged for ",
+                "Files staged for ",
                 htpy.strong[suggestion.title],
-                " will be moved into the upcoming music folder.",
+                " can be moved into the upcoming music folder for a future date or "
+                "copied directly into the library immediately.",
             ],
             _suggestion_schedule_release_duration(
                 staged_duration_seconds,
+                release_immediately=release_immediately,
                 release_date=release_date,
                 upcoming_duration_seconds=upcoming_duration_seconds,
             ),
             htpy.div(".g-3.row")[
+                htpy.div(".col-12")[
+                    htpy.div(".form-check")[
+                        htpy.input(
+                            "#suggestion-release-immediately.form-check-input",
+                            checked=release_immediately,
+                            hx_get=duration_url,
+                            hx_include="closest form",
+                            hx_swap="outerHTML",
+                            hx_target="#suggestion-release-duration",
+                            hx_trigger="change",
+                            name="release-immediately",
+                            onchange=(
+                                "document.getElementById('suggestion-release-date')"
+                                ".required = !this.checked"
+                            ),
+                            type="checkbox",
+                            value="1",
+                        ),
+                        htpy.label(
+                            ".form-check-label",
+                            for_="suggestion-release-immediately",
+                        )["Release immediately"],
+                    ],
+                    htpy.div(".form-text")[
+                        "Copies the staged files directly into the selected channel "
+                        "folder under the library root. If the destination already "
+                        "exists, files are merged into it and matching files are "
+                        "replaced."
+                    ],
+                ],
                 htpy.div(".col-12.col-md-6")[
                     htpy.label(
                         ".form-label",
@@ -3774,20 +3822,20 @@ def _suggestion_schedule_release_form(
                     )["Release date"],
                     htpy.input(
                         "#suggestion-release-date.form-control",
-                        hx_get=flask.url_for(
-                            "suggestion_schedule_release_duration",
-                            suggestion_id=suggestion.id,
-                        ),
+                        hx_get=duration_url,
+                        hx_include="closest form",
                         hx_swap="outerHTML",
                         hx_target="#suggestion-release-duration",
                         hx_trigger="change",
                         min=minimum_release_date,
                         name="release-date",
-                        required=True,
+                        required=not release_immediately,
                         type="date",
                         value=release_date,
                     ),
-                    htpy.div(".form-text")["The release date must be in the future."],
+                    htpy.div(".form-text")[
+                        "Required for scheduled releases and must be in the future."
+                    ],
                 ],
                 htpy.div(".col-12.col-md-6")[
                     htpy.label(
@@ -3814,48 +3862,24 @@ def _suggestion_schedule_release_form(
                     ],
                 ],
                 htpy.div(".col-12")[
-                    htpy.div(".form-check")[
-                        htpy.input(
-                            "#suggestion-release-include-genre.form-check-input",
-                            checked=include_genre,
-                            name="include-genre",
-                            type="checkbox",
-                            value="1",
-                        ),
-                        htpy.label(
-                            ".form-check-label",
-                            for_="suggestion-release-include-genre",
-                        )["Include a category folder"],
-                    ],
-                    htpy.div(".mt-2")[
-                        htpy.input(
-                            "#suggestion-release-genre.form-control",
-                            aria_label="Category",
-                            name="genre",
-                            placeholder="Ambient",
-                            type="text",
-                            value=genre,
-                        ),
-                        htpy.div(".form-text")[
-                            "When selected, enter the category without the leading "
-                            "tilde. For example, Ambient creates ~Ambient."
-                        ],
-                    ],
-                ],
-                htpy.div(".col-12")[
                     htpy.label(
                         ".form-label",
-                        for_="suggestion-release-folder-name",
-                    )["Final folder name"],
+                        for_="suggestion-release-folder-path",
+                    )["Folder path"],
                     htpy.input(
-                        "#suggestion-release-folder-name.form-control",
-                        name="folder-name",
+                        "#suggestion-release-folder-path.form-control",
+                        name="folder-path",
+                        placeholder="~Category/Album Name",
                         required=True,
                         type="text",
                         value=(
-                            suggestion.title if folder_name is None else folder_name
+                            suggestion.title if folder_path is None else folder_path
                         ),
                     ),
+                    htpy.div(".form-text")[
+                        "Separate nested folders with forward slashes. For example, "
+                        "~Category/Album Name."
+                    ],
                     _suggestion_schedule_release_target(
                         suggestion.id,
                         initial_load=True,
@@ -3870,7 +3894,7 @@ def _suggestion_schedule_release_form(
                 type="button",
             )["Cancel"],
             htpy.button(".btn.btn-primary", type="submit")[
-                htpy.i(".bi-calendar-check"), " Schedule release"
+                htpy.i(".bi-check-circle"), " Release suggestion"
             ],
         ],
     ]
@@ -3880,10 +3904,9 @@ def suggestion_schedule_release_form(
     suggestion: SuggestionDetail,
     *,
     release_date: str = "",
+    release_immediately: bool = False,
     channel_folder: str | None = None,
-    folder_name: str | None = None,
-    include_genre: bool = False,
-    genre: str = "",
+    folder_path: str | None = None,
     staged_duration_seconds: float = 0.0,
     upcoming_duration_seconds: float | None = None,
     error: str | None = None,
@@ -3892,10 +3915,9 @@ def suggestion_schedule_release_form(
         _suggestion_schedule_release_form(
             suggestion,
             release_date=release_date,
+            release_immediately=release_immediately,
             channel_folder=channel_folder,
-            folder_name=folder_name,
-            include_genre=include_genre,
-            genre=genre,
+            folder_path=folder_path,
             staged_duration_seconds=staged_duration_seconds,
             upcoming_duration_seconds=upcoming_duration_seconds,
             error=error,
@@ -3906,7 +3928,6 @@ def suggestion_schedule_release_form(
 def _suggestion_schedule_release_modal(
     suggestion: SuggestionDetail,
     staged_duration_seconds: float,
-    staged_genre: str,
 ) -> htpy.Element:
     return htpy.div(
         "#suggestion-schedule-release-modal.fade.modal",
@@ -3917,7 +3938,6 @@ def _suggestion_schedule_release_modal(
         htpy.div(".modal-dialog.modal-dialog-centered.modal-lg")[
             _suggestion_schedule_release_form(
                 suggestion,
-                genre=staged_genre,
                 staged_duration_seconds=staged_duration_seconds,
             )
         ]
@@ -3930,7 +3950,7 @@ def _suggestion_schedule_release_button() -> htpy.Element:
         data_bs_target="#suggestion-schedule-release-modal",
         data_bs_toggle="modal",
         type="button",
-    )[htpy.i(".bi-calendar-plus"), " Schedule release"]
+    )[htpy.i(".bi-calendar-plus"), " Release suggestion"]
 
 
 def suggestion_page(
@@ -3940,7 +3960,6 @@ def suggestion_page(
     folder_path: str | None = None,
     music_tags: dict[str, Mp3TagValues] | None = None,
     staged_mp3_duration_seconds: float = 0.0,
-    staged_genre: str = "",
 ) -> str:
     channel_badges: htpy.Node = (
         htpy.fragment[
@@ -4025,7 +4044,6 @@ def suggestion_page(
         _suggestion_schedule_release_modal(
             suggestion,
             staged_mp3_duration_seconds,
-            staged_genre,
         ),
         htpy.div("#audio"),
     ]
