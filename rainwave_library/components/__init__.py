@@ -2213,6 +2213,19 @@ def _suggestion_resolution_form(
                     f"is {resolved_status}."
                 ],
             ],
+            htpy.div(".form-check.mt-3")[
+                htpy.input(
+                    f"#suggestion-{resolution}-send-discord-notification.form-check-input",
+                    checked=True,
+                    name="send-discord-notification",
+                    type="checkbox",
+                    value="1",
+                ),
+                htpy.label(
+                    ".form-check-label",
+                    for_=f"suggestion-{resolution}-send-discord-notification",
+                )["Send Discord notification"],
+            ],
         ],
         htpy.div(".justify-content-between.modal-footer")[
             htpy.button(

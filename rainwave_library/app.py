@@ -2589,6 +2589,9 @@ def suggestion_decline(suggestion_id: str) -> werkzeug.Response | str:
             return rainwave_library.components.suggestion_decline_form(suggestion)
 
         comment = flask.request.form.get("comment", "")
+        send_discord_notification = (
+            flask.request.form.get("send-discord-notification") == "1"
+        )
         declined = rainwave_library.models.suggestions.suggestion_decline(
             storage_cnx,
             suggestion_id,
@@ -2606,12 +2609,15 @@ def suggestion_decline(suggestion_id: str) -> werkzeug.Response | str:
 
     if suggestion is None:
         flask.abort(404)
-    _suggestion_declined_announce(
-        suggestion,
-        comment=comment,
-        commenter_name=flask.g.discord_display_name,
-        commenter_discord_id=(str(flask.g.discord_id) if flask.g.discord_id else None),
-    )
+    if send_discord_notification:
+        _suggestion_declined_announce(
+            suggestion,
+            comment=comment,
+            commenter_name=flask.g.discord_display_name,
+            commenter_discord_id=(
+                str(flask.g.discord_id) if flask.g.discord_id else None
+            ),
+        )
     if flask.request.headers.get("HX-Request") == "true":
         return rainwave_library.components.suggestion_row(suggestion)
     return flask.redirect(flask.url_for("suggestions"))
@@ -2635,6 +2641,9 @@ def suggestion_accept(suggestion_id: str) -> werkzeug.Response | str:
             return rainwave_library.components.suggestion_accept_form(suggestion)
 
         comment = flask.request.form.get("comment", "")
+        send_discord_notification = (
+            flask.request.form.get("send-discord-notification") == "1"
+        )
         accepted = rainwave_library.models.suggestions.suggestion_accept(
             storage_cnx,
             suggestion_id,
@@ -2652,12 +2661,15 @@ def suggestion_accept(suggestion_id: str) -> werkzeug.Response | str:
 
     if suggestion is None:
         flask.abort(404)
-    _suggestion_accepted_announce(
-        suggestion,
-        comment=comment,
-        commenter_name=flask.g.discord_display_name,
-        commenter_discord_id=(str(flask.g.discord_id) if flask.g.discord_id else None),
-    )
+    if send_discord_notification:
+        _suggestion_accepted_announce(
+            suggestion,
+            comment=comment,
+            commenter_name=flask.g.discord_display_name,
+            commenter_discord_id=(
+                str(flask.g.discord_id) if flask.g.discord_id else None
+            ),
+        )
     if flask.request.headers.get("HX-Request") == "true":
         return rainwave_library.components.suggestion_row(suggestion)
     return flask.redirect(flask.url_for("suggestions"))
