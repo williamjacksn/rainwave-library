@@ -1802,7 +1802,7 @@ def _suggestion_status_badge(status: str) -> htpy.Element:
         "new": "text-bg-primary",
         "claimed": "text-bg-warning",
         "accepted": "text-bg-info",
-        "uploaded": "text-bg-success",
+        "completed": "text-bg-success",
         "declined": "text-bg-danger",
     }
     return htpy.span(f".badge.{status_classes.get(status, 'text-bg-light')}")[

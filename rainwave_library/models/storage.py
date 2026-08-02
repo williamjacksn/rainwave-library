@@ -1,5 +1,6 @@
 import dataclasses
 import datetime
+import json
 import logging
 import os
 import pathlib
@@ -1846,6 +1847,223 @@ def _migration_17(con: sqlite3.Connection) -> None:
     )
 
 
+def _migration_18(con: sqlite3.Connection) -> None:
+    con.executescript(
+        """
+        create temp table _migration_18_suggestions as
+            select * from suggestions;
+        create temp table _migration_18_suggestion_channels as
+            select * from suggestion_channels;
+        create temp table _migration_18_suggestion_links as
+            select * from suggestion_links;
+        create temp table _migration_18_suggestion_activity as
+            select * from suggestion_activity;
+
+        drop table suggestion_activity;
+        drop table suggestion_links;
+        drop table suggestion_channels;
+        drop table suggestions;
+
+        create table suggestions (
+            suggestion_id text primary key not null,
+            title text not null,
+            kind text not null default 'new-album'
+                check (
+                    kind in (
+                        'new-album',
+                        'add-to-existing-album',
+                        'metadata-update',
+                        'removal'
+                    )
+                ),
+            status text not null default 'new'
+                check (
+                    status in (
+                        'new', 'claimed', 'accepted', 'completed', 'declined'
+                    )
+                ),
+            description text not null default '',
+            requester_name text,
+            requester_discord_id text,
+            requested_at text,
+            claimed_by_name text,
+            claimed_by_discord_id text,
+            claimed_at text,
+            resolved_at text,
+            created_at text not null,
+            updated_at text not null
+        ) without rowid;
+
+        create index suggestions_status_idx
+            on suggestions (status, requested_at);
+        create index suggestions_claimed_by_idx
+            on suggestions (claimed_by_discord_id, claimed_by_name);
+
+        insert into suggestions (
+            suggestion_id,
+            title,
+            kind,
+            status,
+            description,
+            requester_name,
+            requester_discord_id,
+            requested_at,
+            claimed_by_name,
+            claimed_by_discord_id,
+            claimed_at,
+            resolved_at,
+            created_at,
+            updated_at
+        )
+        select
+            suggestion_id,
+            title,
+            kind,
+            case status
+                when 'uploaded' then 'completed'
+                else status
+            end,
+            description,
+            requester_name,
+            requester_discord_id,
+            requested_at,
+            claimed_by_name,
+            claimed_by_discord_id,
+            claimed_at,
+            resolved_at,
+            created_at,
+            updated_at
+        from _migration_18_suggestions;
+
+        create table suggestion_channels (
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            channel_id integer not null,
+            is_primary integer not null default 0
+                check (is_primary in (0, 1)),
+            primary key (suggestion_id, channel_id)
+        ) without rowid;
+
+        insert into suggestion_channels (suggestion_id, channel_id, is_primary)
+        select suggestion_id, channel_id, is_primary
+        from _migration_18_suggestion_channels;
+
+        create table suggestion_links (
+            link_id text primary key not null,
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            url text not null,
+            label text,
+            unique (suggestion_id, url)
+        ) without rowid;
+
+        insert into suggestion_links (
+            link_id,
+            suggestion_id,
+            url,
+            label
+        )
+        select
+            link_id,
+            suggestion_id,
+            url,
+            label
+        from _migration_18_suggestion_links;
+
+        create table suggestion_activity (
+            activity_id text primary key not null,
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            activity_type text not null,
+            actor_name text,
+            actor_discord_id text,
+            body text,
+            old_value text,
+            new_value text,
+            created_at text not null,
+            trello_member_id text
+        ) without rowid;
+
+        create index suggestion_activity_suggestion_idx
+            on suggestion_activity (suggestion_id, created_at);
+
+        insert into suggestion_activity (
+            activity_id,
+            suggestion_id,
+            activity_type,
+            actor_name,
+            actor_discord_id,
+            body,
+            old_value,
+            new_value,
+            created_at,
+            trello_member_id
+        )
+        select
+            activity_id,
+            suggestion_id,
+            activity_type,
+            actor_name,
+            actor_discord_id,
+            body,
+            case
+                when activity_type = 'updated-status' and old_value = 'uploaded'
+                then 'completed'
+                else old_value
+            end,
+            case
+                when activity_type = 'updated-status' and new_value = 'uploaded'
+                then 'completed'
+                else new_value
+            end,
+            created_at,
+            trello_member_id
+        from _migration_18_suggestion_activity;
+
+        drop table _migration_18_suggestion_activity;
+        drop table _migration_18_suggestion_links;
+        drop table _migration_18_suggestion_channels;
+        drop table _migration_18_suggestions;
+        """
+    )
+
+    rows = con.execute(
+        """
+        select discord_id, value
+        from user_settings
+        where key = :key
+        """,
+        {"key": USER_SUGGESTION_FILTERS_SETTING_KEY},
+    ).fetchall()
+    for row in rows:
+        try:
+            filters = json.loads(str(row["value"]))
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(filters, dict) or not isinstance(filters.get("status"), list):
+            continue
+        statuses = filters["status"]
+        migrated_statuses = [
+            "completed" if status == "uploaded" else status for status in statuses
+        ]
+        if migrated_statuses == statuses:
+            continue
+        filters["status"] = migrated_statuses
+        con.execute(
+            """
+            update user_settings
+            set value = :value
+            where discord_id = :discord_id
+                and key = :key
+            """,
+            {
+                "discord_id": row["discord_id"],
+                "key": USER_SUGGESTION_FILTERS_SETTING_KEY,
+                "value": json.dumps(filters),
+            },
+        )
+
+
 MIGRATIONS = (
     _migration_1,
     _migration_2,
@@ -1864,6 +2082,7 @@ MIGRATIONS = (
     _migration_15,
     _migration_16,
     _migration_17,
+    _migration_18,
 )
 
 

@@ -36,7 +36,7 @@ class Suggestion:
         "new",
         "claimed",
         "accepted",
-        "uploaded",
+        "completed",
         "declined",
     )
     open_statuses: typing.ClassVar[tuple[str, ...]] = (
@@ -324,7 +324,7 @@ def suggestions_get(
                 when 'new' then 1
                 when 'claimed' then 2
                 when 'accepted' then 3
-                when 'uploaded' then 4
+                when 'completed' then 4
                 when 'declined' then 5
             end
             """,
@@ -488,7 +488,7 @@ def suggestion_counts_by_requester(
                 where status in ('new', 'claimed', 'accepted')
             ) active_count,
             count(*) filter (
-                where status in ('uploaded', 'declined')
+                where status in ('completed', 'declined')
             ) complete_count
         from suggestions
         where requester_discord_id = ?
@@ -1126,10 +1126,10 @@ def suggestion_update(
                 kind = :kind,
                 status = :status,
                 resolved_at = case
-                    when :status in ('uploaded', 'declined')
+                    when :status in ('completed', 'declined')
                         and status != :status
                     then strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-                    when :status not in ('uploaded', 'declined')
+                    when :status not in ('completed', 'declined')
                     then null
                     else resolved_at
                 end,
