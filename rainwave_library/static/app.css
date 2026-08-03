@@ -26,3 +26,7 @@
 .table-cell-fit {
     width: 1%;
 }
+
+.suggestion-image-preview {
+    max-height: calc(100vh - 9rem);
+}

@@ -72,7 +72,7 @@ def _modal_loading_content() -> htpy.Element:
 
 
 def _remote_modal() -> htpy.Element:
-    return htpy.div("#modal-lg.modal", data_remote_modal="true")[
+    return htpy.div("#modal-lg.fade.modal", data_remote_modal="true")[
         htpy.div(".modal-dialog.modal-lg")[_modal_loading_content()],
         htpy.template("#modal-lg-loading-template")[_modal_loading_content()],
     ]
@@ -2924,14 +2924,15 @@ def _suggestion_file_item(
             and htpy.button(
                 ".btn.btn-link.p-0",
                 aria_label=f"Preview {path}",
-                data_bs_target="#suggestion-image-preview-modal",
+                data_bs_target="#modal-lg",
                 data_bs_toggle="modal",
-                data_preview_name=path,
-                data_preview_url=flask.url_for(
-                    "suggestion_file_preview",
+                hx_get=flask.url_for(
+                    "suggestion_file_preview_modal",
                     suggestion_id=suggestion_id,
                     path=path,
                 ),
+                hx_swap="outerHTML",
+                hx_target="#modal-lg-content",
                 title="Preview image",
                 type="button",
             )[htpy.i(".bi-eye")],
@@ -3333,67 +3334,31 @@ def suggestion_file_player(suggestion_id: str, path: str) -> str:
     )
 
 
-def _suggestion_image_preview_modal() -> htpy.Element:
-    preview_script = markupsafe.Markup(
-        """
-        (() => {
-            const modal = document.getElementById(
-                "suggestion-image-preview-modal"
-            );
-            if (!modal) return;
-            const image = document.getElementById(
-                "suggestion-image-preview-image"
-            );
-            const title = document.getElementById(
-                "suggestion-image-preview-title"
-            );
-            modal.addEventListener("show.bs.modal", (event) => {
-                const trigger = event.relatedTarget;
-                if (!(trigger instanceof HTMLElement)) return;
-                const name = trigger.dataset.previewName || "Image preview";
-                image.src = trigger.dataset.previewUrl || "";
-                image.alt = name;
-                title.textContent = name;
-            });
-            modal.addEventListener("hidden.bs.modal", () => {
-                image.removeAttribute("src");
-                image.alt = "";
-            });
-        })();
-        """
+def suggestion_image_preview_modal(suggestion_id: str, path: str) -> str:
+    return str(
+        htpy.div("#modal-lg-content.bg-dark.modal-content.text-white")[
+            htpy.div(".border-0.modal-header")[
+                htpy.h5(".mb-0.modal-title")[path],
+                htpy.button(
+                    ".btn-close.btn-close-white",
+                    aria_label="Close",
+                    data_bs_dismiss="modal",
+                    type="button",
+                ),
+            ],
+            htpy.div(".modal-body.p-2.text-center")[
+                htpy.img(
+                    ".img-fluid.suggestion-image-preview",
+                    alt=path,
+                    src=flask.url_for(
+                        "suggestion_file_preview",
+                        suggestion_id=suggestion_id,
+                        path=path,
+                    ),
+                )
+            ],
+        ]
     )
-    return htpy.div[
-        htpy.div(
-            "#suggestion-image-preview-modal.fade.modal",
-            aria_hidden="true",
-            aria_labelledby="suggestion-image-preview-title",
-            tabindex="-1",
-        )[
-            htpy.div(".modal-dialog.modal-dialog-centered.modal-xl")[
-                htpy.div(".bg-dark.modal-content.text-white")[
-                    htpy.div(".border-0.modal-header")[
-                        htpy.h5("#suggestion-image-preview-title.mb-0.modal-title")[
-                            "Image preview"
-                        ],
-                        htpy.button(
-                            ".btn-close.btn-close-white",
-                            aria_label="Close",
-                            data_bs_dismiss="modal",
-                            type="button",
-                        ),
-                    ],
-                    htpy.div(".modal-body.p-2.text-center")[
-                        htpy.img(
-                            "#suggestion-image-preview-image.img-fluid",
-                            alt="",
-                            style="max-height: calc(100vh - 9rem)",
-                        )
-                    ],
-                ]
-            ]
-        ],
-        htpy.script[preview_script],
-    ]
 
 
 def _collapsible_card_header(
@@ -3556,8 +3521,6 @@ def _suggestion_files_card(
             if staged_files
             else htpy.p(".mb-0.mt-3.text-secondary")["No staged files."],
         ],
-        any(_suggestion_file_category(path) == "images" for path, _ in staged_files)
-        and _suggestion_image_preview_modal(),
     ]
 
 

@@ -2172,15 +2172,15 @@ def _suggestion_staged_file_get(
     if extension not in allowed_extensions:
         flask.abort(404)
 
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx, suggestion_id
+            storage_cnx_, suggestion_id
         )
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
     if suggestion is None:
         flask.abort(404)
 
@@ -2217,6 +2217,16 @@ def suggestion_file_preview(suggestion_id: str) -> flask.Response:
     )
     response.headers["X-Content-Type-Options"] = "nosniff"
     return response
+
+
+@app.route("/suggestions/<suggestion_id>/files/preview-modal", methods=["GET"])
+@secure
+def suggestion_file_preview_modal(suggestion_id: str) -> str:
+    relative_path, _ = _suggestion_staged_file_get(suggestion_id, {".jpg", ".png"})
+    return rainwave_library.components.suggestion_image_preview_modal(
+        suggestion_id,
+        relative_path,
+    )
 
 
 @app.route("/suggestions/<suggestion_id>/files/play", methods=["GET"])
