@@ -22,3 +22,7 @@
     color: var(--rw-orange);
     font-size: 1.7rem;
 }
+
+.table-cell-fit {
+    width: 1%;
+}

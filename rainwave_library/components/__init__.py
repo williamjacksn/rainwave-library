@@ -36,12 +36,7 @@ def _back_button(href: str, label: str) -> htpy.Renderable:
     ]
 
 
-def _base(
-    content: htpy.Node,
-    *,
-    body_class: str | None = None,
-    stylesheets: tuple[str, ...] = (),
-) -> htpy.Renderable:
+def _base(content: htpy.Node, *, body_class: str | None = None) -> htpy.Renderable:
     return htpy.html(
         data_bs_theme=getattr(flask.g, "color_mode", "light"),
         lang="en",
@@ -52,7 +47,10 @@ def _base(
             _favicon(),
             _bs_stylesheet(),
             _bi_stylesheet(),
-            [htpy.link(href=href, rel="stylesheet") for href in stylesheets],
+            htpy.link(
+                href=flask.url_for("static", filename="app.css"),
+                rel="stylesheet",
+            ),
         ],
         htpy.body(class_=body_class)[
             htpy.div(".container-fluid")[
@@ -1095,13 +1093,7 @@ def sign_in() -> str:
             ],
         ]
     ]
-    return str(
-        _base(
-            content,
-            body_class="sign-in-body",
-            stylesheets=(flask.url_for("static", filename="sign-in.css"),),
-        )
-    )
+    return str(_base(content, body_class="sign-in-body"))
 
 
 def impersonate_user(discord_user_id: str = "", error: str | None = None) -> str:
@@ -3128,7 +3120,7 @@ def _suggestion_music_tag_modal(
 
 def _suggestion_music_play_button(suggestion_id: str, path: str) -> htpy.Element:
     return htpy.button(
-        ".btn.btn-link.p-0",
+        ".btn.btn-lg.btn-primary",
         aria_label=f"Play {path}",
         hx_get=flask.url_for(
             "suggestion_file_play",
@@ -3138,7 +3130,7 @@ def _suggestion_music_play_button(suggestion_id: str, path: str) -> htpy.Element
         hx_target="#audio",
         title="Play MP3",
         type="button",
-    )[htpy.i(".bi-play")]
+    )[htpy.i(".bi-play-fill")]
 
 
 def _suggestion_music_delete_button(suggestion_id: str, path: str) -> htpy.Element:
@@ -3242,11 +3234,11 @@ def _suggestion_music_file_table(
         }
         rows.append(
             htpy.tr[
+                htpy.td(".table-cell-fit.text-center.text-nowrap")[
+                    _suggestion_music_play_button(suggestion_id, path)
+                ],
                 htpy.td[
-                    htpy.div(".align-items-start.d-flex.gap-2")[
-                        htpy.code(".text-break")[path],
-                        _suggestion_music_play_button(suggestion_id, path),
-                    ],
+                    htpy.code(".text-break")[path],
                     _suggestion_music_file_details(size, tags.duration_seconds),
                     tags.error
                     and htpy.div(".small.text-danger", role="status")[tags.error],
@@ -3258,7 +3250,7 @@ def _suggestion_music_file_table(
                     )
                     for tag_names in tag_groups
                 ],
-                htpy.td(".text-center")[
+                htpy.td(".table-cell-fit.text-center")[
                     htpy.div(".d-flex.gap-2.justify-content-center")[
                         _suggestion_music_edit_button(row_index, path),
                         _suggestion_music_delete_button(suggestion_id, path),
@@ -3270,11 +3262,9 @@ def _suggestion_music_file_table(
             htpy.article(".card.mb-3")[
                 htpy.div(".card-header")[
                     htpy.div(".align-items-start.d-flex.gap-3.justify-content-between")[
+                        _suggestion_music_play_button(suggestion_id, path),
                         htpy.div(".flex-grow-1", style="min-width: 0")[
-                            htpy.div(".align-items-start.d-flex.gap-2")[
-                                htpy.code(".text-break")[path],
-                                _suggestion_music_play_button(suggestion_id, path),
-                            ],
+                            htpy.code(".text-break")[path],
                             _suggestion_music_file_details(
                                 size,
                                 tags.duration_seconds,
