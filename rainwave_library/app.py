@@ -3262,7 +3262,10 @@ def songs_xlsx() -> flask.Response:
         for j, col_name in enumerate(headers):
             if col_name == "channels":
                 col_data = ", ".join(
-                    [rainwave_library.components.channels[c] for c in row.channel_ids]
+                    [
+                        rainwave_library.models.rainwave.channels[c]
+                        for c in row.channel_ids
+                    ]
                 )
                 col_widths[j] = max(col_widths[j], len(col_data))
                 worksheet.write(i, j, col_data)
@@ -3275,7 +3278,7 @@ def songs_xlsx() -> flask.Response:
                 col_widths[j] = max(10, col_widths[j], len(col_data))
                 worksheet.write(i, j, col_data)
             elif col_name == "song_length":
-                col_data = rainwave_library.components.length_display(len(row))
+                col_data = rainwave_library.models.rainwave.length_display(len(row))
                 col_widths[j] = max(14, col_widths[j], len(col_data))
                 worksheet.write(i, j, col_data)
             elif col_name == "song_rating":
