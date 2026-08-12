@@ -22,6 +22,7 @@ USER_COLOR_MODES = ("light", "dark")
 USER_COLOR_MODE_DEFAULT = "light"
 USER_SUGGESTION_FILTERS_SETTING_KEY = "suggestion-filters"
 LIBRARY_BROWSER_TEXT_PREVIEW_MAX_BYTES = 512 * 1024
+_LIBRARY_BROWSER_AUDIO_TYPES = {".mp3": "audio/mpeg"}
 _LIBRARY_BROWSER_IMAGE_TYPES = {
     ".gif": "image/gif",
     ".jpeg": "image/jpeg",
@@ -104,6 +105,7 @@ class LibraryBrowserEntry:
     name: str
     relative_path: str
     is_directory: bool
+    is_audio: bool
     is_image: bool
     is_text: bool
     size: int | None
@@ -135,6 +137,10 @@ def _library_browser_path_parts(relative_path: str) -> tuple[str, ...]:
 
 def _library_browser_file_is_text(path: pathlib.PurePath) -> bool:
     return path.suffix.casefold() in _LIBRARY_BROWSER_TEXT_SUFFIXES
+
+
+def _library_browser_audio_mimetype_get(path: pathlib.PurePath) -> str | None:
+    return _LIBRARY_BROWSER_AUDIO_TYPES.get(path.suffix.casefold())
 
 
 def _library_browser_image_mimetype_get(path: pathlib.PurePath) -> str | None:
@@ -280,6 +286,10 @@ def library_browser_directory_get(
                     name=child.name,
                     relative_path=pathlib.PurePosixPath(*child_parts).as_posix(),
                     is_directory=is_directory,
+                    is_audio=(
+                        not is_directory
+                        and _library_browser_audio_mimetype_get(child) is not None
+                    ),
                     is_image=(
                         not is_directory
                         and _library_browser_image_mimetype_get(child) is not None
@@ -354,6 +364,19 @@ def library_browser_image_file_get(
     mimetype = _library_browser_image_mimetype_get(path)
     if mimetype is None:
         msg = "That file is not a recognized image file."
+        raise ValueError(msg)
+    return path, mimetype
+
+
+def library_browser_audio_file_get(
+    library_root: pathlib.Path,
+    browser_root: LibraryBrowserRoot,
+    relative_path: str,
+) -> tuple[pathlib.Path, str]:
+    path = library_browser_file_get(library_root, browser_root, relative_path)
+    mimetype = _library_browser_audio_mimetype_get(path)
+    if mimetype is None:
+        msg = "That file is not a recognized audio file."
         raise ValueError(msg)
     return path, mimetype
 

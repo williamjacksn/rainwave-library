@@ -3,6 +3,7 @@ import pathlib
 import flask
 import htpy
 
+from rainwave_library.models.mp3 import ID3_TAG_LABELS, Mp3FileInfo, Mp3TagValues
 from rainwave_library.models.storage import (
     LibraryBrowserDirectory,
     LibraryBrowserEntry,
@@ -21,12 +22,16 @@ def _library_browser_entry(
             ".bi-folder-fill.fs-4.text-warning"
             if entry.is_directory
             else (
-                ".bi-file-earmark-image.fs-4.text-secondary"
-                if entry.is_image
+                ".bi-file-earmark-music.fs-4.text-secondary"
+                if entry.is_audio
                 else (
-                    ".bi-file-earmark-text.fs-4.text-secondary"
-                    if entry.is_text
-                    else ".bi-file-earmark.fs-4.text-secondary"
+                    ".bi-file-earmark-image.fs-4.text-secondary"
+                    if entry.is_image
+                    else (
+                        ".bi-file-earmark-text.fs-4.text-secondary"
+                        if entry.is_text
+                        else ".bi-file-earmark.fs-4.text-secondary"
+                    )
                 )
             )
         ),
@@ -45,6 +50,22 @@ def _library_browser_entry(
             )
         ),
     ]
+    if entry.is_audio:
+        return htpy.button(
+            ".align-items-center.d-flex.gap-3.list-group-item."
+            "list-group-item-action.text-start",
+            aria_label=f"Play {entry.name}",
+            data_bs_target="#modal-lg",
+            data_bs_toggle="modal",
+            hx_get=flask.url_for(
+                "library_browser_audio_preview",
+                browser_root=browser_root.value,
+                path=entry.relative_path,
+            ),
+            hx_swap="outerHTML",
+            hx_target="#modal-lg-content",
+            type="button",
+        )[content]
     if entry.is_image:
         return htpy.button(
             ".align-items-center.d-flex.gap-3.list-group-item."
@@ -96,6 +117,114 @@ def _library_browser_entry(
         download=None if entry.is_directory else entry.name,
         href=href,
     )[content]
+
+
+def library_browser_audio_preview(
+    browser_root: LibraryBrowserRoot,
+    path: str,
+    tags: Mp3TagValues,
+    file_info: Mp3FileInfo,
+) -> str:
+    download_url = flask.url_for(
+        "library_browser_file",
+        browser_root=browser_root.value,
+        path=path,
+    )
+    audio_url = flask.url_for(
+        "library_browser_audio",
+        browser_root=browser_root.value,
+        path=path,
+    )
+    tag_rows = []
+    for tag_name in ID3_TAG_LABELS:
+        values = getattr(tags, tag_name)
+        if not values:
+            continue
+        if tag_name == "www":
+            value = htpy.fragment[
+                [
+                    [
+                        htpy.a(
+                            ".text-break",
+                            href=url,
+                            rel="noopener noreferrer",
+                            target="_blank",
+                        )[url],
+                        htpy.br if index < len(values) - 1 else None,
+                    ]
+                    for index, url in enumerate(values)
+                ]
+            ]
+        else:
+            value = "; ".join(values)
+        tag_rows.append(
+            htpy.tr[
+                htpy.th(".text-nowrap", scope="row")[ID3_TAG_LABELS[tag_name]],
+                htpy.td(".text-break")[value],
+            ]
+        )
+    if tags.duration_seconds is not None:
+        tag_rows.append(
+            htpy.tr[
+                htpy.th(".text-nowrap", scope="row")["Duration"],
+                htpy.td[_duration_hms(tags.duration_seconds)],
+            ]
+        )
+    if file_info.bitrate_bps is not None:
+        tag_rows.append(
+            htpy.tr[
+                htpy.th(".text-nowrap", scope="row")["Bitrate"],
+                htpy.td[f"{file_info.bitrate_bps / 1000:.0f} kbps"],
+            ]
+        )
+    return str(
+        htpy.div("#modal-lg-content.modal-content")[
+            htpy.div(".modal-header")[
+                htpy.h5(".mb-0.modal-title.text-break")[path],
+                htpy.button(
+                    ".btn-close",
+                    aria_label="Close",
+                    data_bs_dismiss="modal",
+                    type="button",
+                ),
+            ],
+            htpy.div(".modal-body")[
+                htpy.audio(
+                    ".w-100",
+                    autoplay=True,
+                    controls=True,
+                    preload="metadata",
+                    src=audio_url,
+                ),
+                (
+                    htpy.div(".alert.alert-warning.mt-3", role="alert")[tags.error]
+                    if tags.error
+                    else None
+                ),
+                (
+                    htpy.div(".table-responsive.mt-3")[
+                        htpy.table(".align-middle.mb-0.table.table-sm")[
+                            htpy.tbody[tag_rows]
+                        ]
+                    ]
+                    if tag_rows
+                    else None
+                ),
+            ],
+            htpy.div(".modal-footer")[
+                htpy.a(
+                    ".btn.btn-primary",
+                    download=pathlib.PurePosixPath(path).name,
+                    href=download_url,
+                )[htpy.i(".bi-download"), " Download"],
+                htpy.button(
+                    ".btn.btn-secondary",
+                    data_bs_dismiss="modal",
+                    type="button",
+                )["Close"],
+            ],
+        ]
+    )
 
 
 def library_browser_image_preview(

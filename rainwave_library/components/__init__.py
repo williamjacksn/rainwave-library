@@ -3,6 +3,7 @@ from .artists import artists_detail, artists_index, artists_rows
 from .auth import impersonate_user, sign_in
 from .home import (
     library_browser,
+    library_browser_audio_preview,
     library_browser_image_preview,
     library_browser_text_preview,
     welcome,
@@ -80,6 +81,7 @@ __all__ = (
     "get_ocremix_start",
     "impersonate_user",
     "library_browser",
+    "library_browser_audio_preview",
     "library_browser_image_preview",
     "library_browser_text_preview",
     "listeners_detail",
