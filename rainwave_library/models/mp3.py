@@ -36,6 +36,18 @@ class Mp3FileInfo:
     bitrate_bps: int | None = None
 
 
+@dataclasses.dataclass(frozen=True)
+class Mp3FilenameNormalization:
+    source_path: str
+    title: str | None
+    target_path: str | None
+    error: str | None = None
+
+    @property
+    def changed(self) -> bool:
+        return self.target_path is not None and self.target_path != self.source_path
+
+
 def mp3_file_info_get(filename: str | pathlib.Path) -> Mp3FileInfo:
     try:
         file_size_bytes = pathlib.Path(filename).stat().st_size
@@ -249,6 +261,78 @@ def make_safe(s: str) -> str:
     )
     translate_table.update(special)
     return s.translate(translate_table)
+
+
+def filename_normalizations_get(
+    paths: typing.Iterable[str],
+    tag_values: typing.Mapping[str, Mp3TagValues],
+) -> tuple[Mp3FilenameNormalization, ...]:
+    reserved_names = {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        *(f"COM{number}" for number in range(1, 10)),
+        *(f"LPT{number}" for number in range(1, 10)),
+    }
+    normalizations = []
+    for source_path in paths:
+        values = tag_values.get(source_path, Mp3TagValues())
+        title = values.title[0].strip() if values.title else None
+        if not title:
+            normalizations.append(
+                Mp3FilenameNormalization(
+                    source_path,
+                    title,
+                    None,
+                    "A title tag is required.",
+                )
+            )
+            continue
+
+        safe_title = make_safe(title)
+        target_name = f"{safe_title}.mp3"
+        if (
+            not safe_title
+            or any(ord(character) < 32 for character in target_name)
+            or safe_title.upper() in reserved_names
+            or len(target_name.encode()) > 255
+        ):
+            normalizations.append(
+                Mp3FilenameNormalization(
+                    source_path,
+                    title,
+                    None,
+                    "The title does not produce a valid filename.",
+                )
+            )
+            continue
+
+        target_path = pathlib.PurePosixPath(source_path).with_name(target_name)
+        normalizations.append(
+            Mp3FilenameNormalization(
+                source_path,
+                title,
+                target_path.as_posix(),
+            )
+        )
+
+    target_counts: dict[str, int] = {}
+    for normalization in normalizations:
+        if normalization.target_path is None:
+            continue
+        target_key = normalization.target_path.casefold()
+        target_counts[target_key] = target_counts.get(target_key, 0) + 1
+    return tuple(
+        dataclasses.replace(
+            normalization,
+            error="More than one title produces this target filename.",
+        )
+        if normalization.target_path is not None
+        and target_counts[normalization.target_path.casefold()] > 1
+        else normalization
+        for normalization in normalizations
+    )
 
 
 def rename_artist(

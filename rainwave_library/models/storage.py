@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import pathlib
+import secrets
 import shutil
 import sqlite3
 import typing
@@ -578,6 +579,95 @@ def suggestion_staging_file_delete(
             break
         parent = parent.parent
     return path.as_posix()
+
+
+def suggestion_staging_files_rename(
+    library_root: pathlib.Path,
+    suggestion_id: str,
+    renames: typing.Mapping[str, str],
+) -> tuple[tuple[str, str], ...]:
+    if not renames:
+        return ()
+
+    suggestion_root = suggestion_staging_folder_get(library_root, suggestion_id)
+    rename_paths = []
+    source_keys = set()
+    target_keys = set()
+    for source_path, target_path in renames.items():
+        source, normalized_source = _suggestion_staging_file_get(
+            library_root,
+            suggestion_id,
+            source_path,
+        )
+        normalized_target = pathlib.PurePosixPath(target_path.replace("\\", "/"))
+        if (
+            normalized_source.suffix.casefold() != ".mp3"
+            or normalized_target.is_absolute()
+            or normalized_target == pathlib.PurePosixPath(".")
+            or ".." in normalized_target.parts
+            or pathlib.PureWindowsPath(target_path).drive
+            or any(ord(character) < 32 for character in target_path)
+            or normalized_target.suffix.casefold() != ".mp3"
+            or normalized_target.parent != normalized_source.parent
+        ):
+            msg = "Invalid normalized MP3 filename."
+            raise ValueError(msg)
+
+        destination = source.with_name(normalized_target.name)
+        source_key = normalized_source.as_posix().casefold()
+        target_key = normalized_target.as_posix().casefold()
+        if source_key in source_keys or target_key in target_keys:
+            msg = "The normalized MP3 filenames are not unique."
+            raise ValueError(msg)
+        source_keys.add(source_key)
+        target_keys.add(target_key)
+        rename_paths.append((source, destination, normalized_source, normalized_target))
+
+    existing_paths = {
+        path.relative_to(suggestion_root).as_posix().casefold()
+        for path in suggestion_root.rglob("*")
+        if path.is_file()
+    }
+    if any(
+        normalized_target.as_posix().casefold() in existing_paths - source_keys
+        for _, _, _, normalized_target in rename_paths
+    ):
+        msg = "A normalized MP3 filename already exists."
+        raise ValueError(msg)
+
+    staged_renames: list[tuple[pathlib.Path, pathlib.Path, pathlib.Path]] = []
+    try:
+        for source, destination, _, _ in rename_paths:
+            temporary = source.with_name(
+                f".{source.name}.{secrets.token_hex(8)}.normalizing"
+            )
+            while temporary.exists():
+                temporary = source.with_name(
+                    f".{source.name}.{secrets.token_hex(8)}.normalizing"
+                )
+            source.rename(temporary)
+            staged_renames.append((source, temporary, destination))
+    except OSError:
+        for source, temporary, _ in reversed(staged_renames):
+            temporary.rename(source)
+        raise
+
+    completed: list[tuple[pathlib.Path, pathlib.Path, pathlib.Path]] = []
+    try:
+        for source, temporary, destination in staged_renames:
+            temporary.rename(destination)
+            completed.append((source, temporary, destination))
+    except OSError:
+        for _, temporary, destination in reversed(completed):
+            destination.rename(temporary)
+        for source, temporary, _ in reversed(staged_renames):
+            temporary.rename(source)
+        raise
+
+    return tuple(
+        (normalized_source.as_posix(), normalized_target.as_posix())
+        for _, _, normalized_source, normalized_target in rename_paths
+    )
 
 
 def connection_init(path: str) -> None:

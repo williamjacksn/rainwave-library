@@ -2068,6 +2068,128 @@ def suggestion_file_delete(suggestion_id: str) -> str:
     )
 
 
+@app.route(
+    "/suggestions/<suggestion_id>/files/normalize",
+    methods=["GET", "POST"],
+)
+@secure
+def suggestion_files_normalize(suggestion_id: str) -> str:
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx_,
+            suggestion_id,
+        )
+        if suggestion is None:
+            flask.abort(404)
+
+        staged_files, folder_path, music_tags = _suggestion_staged_files_get(
+            suggestion_id
+        )
+        music_paths = tuple(
+            path for path, _ in staged_files if path.casefold().endswith(".mp3")
+        )
+        normalizations = rainwave_library.models.mp3.filename_normalizations_get(
+            music_paths,
+            music_tags,
+        )
+        if flask.request.method == "GET":
+            return rainwave_library.components.suggestion_normalize_filenames_form(
+                suggestion_id,
+                normalizations,
+            )
+
+        if any(item.error is not None for item in normalizations):
+            result = (
+                "alert-danger",
+                "Resolve the filename normalization errors before trying again.",
+            )
+        else:
+            requested_renames = {
+                item.source_path: item.target_path
+                for item in normalizations
+                if item.changed and item.target_path is not None
+            }
+            if not requested_renames:
+                result = ("alert-info", "All MP3 filenames are already normalized.")
+            else:
+                try:
+                    completed_renames = (
+                        rainwave_library.models.storage.suggestion_staging_files_rename(
+                            app.config["LIBRARY_ROOT"],
+                            suggestion_id,
+                            requested_renames,
+                        )
+                    )
+                    try:
+                        rainwave_library.models.suggestions.suggestion_file_review_paths_rename(
+                            storage_cnx_,
+                            suggestion_id,
+                            dict(completed_renames),
+                        )
+                    except Exception:
+                        try:
+                            rainwave_library.models.storage.suggestion_staging_files_rename(
+                                app.config["LIBRARY_ROOT"],
+                                suggestion_id,
+                                {
+                                    target_path: source_path
+                                    for source_path, target_path in completed_renames
+                                },
+                            )
+                        except (OSError, ValueError):
+                            app.logger.exception(
+                                "Could not roll back normalized filenames for "
+                                "suggestion %s",
+                                suggestion_id,
+                            )
+                        raise
+                except ValueError as error:
+                    result = ("alert-danger", str(error))
+                except OSError:
+                    app.logger.exception(
+                        "Could not normalize filenames for suggestion %s",
+                        suggestion_id,
+                    )
+                    result = (
+                        "alert-danger",
+                        "The MP3 filenames could not be normalized.",
+                    )
+                else:
+                    renamed_count = len(completed_renames)
+                    result = (
+                        "alert-success",
+                        f"Normalized {renamed_count} MP3 filename"
+                        f"{'' if renamed_count == 1 else 's'}.",
+                    )
+                    app.logger.info(
+                        "Normalized %d MP3 filenames for suggestion %s",
+                        renamed_count,
+                        suggestion_id,
+                    )
+
+        staged_files, folder_path, music_tags = _suggestion_staged_files_get(
+            suggestion_id
+        )
+        music_reviews = rainwave_library.models.suggestions.suggestion_file_reviews_get(
+            storage_cnx_,
+            suggestion_id,
+        )
+    finally:
+        storage_cnx_.close()
+
+    return rainwave_library.components.suggestion_files_card(
+        suggestion_id,
+        staged_files,
+        result,
+        folder_path=str(folder_path),
+        music_tags=music_tags,
+        music_reviews=music_reviews,
+    )
+
+
 @app.route("/suggestions/<suggestion_id>/files/review", methods=["POST"])
 @secure
 def suggestion_file_review(suggestion_id: str) -> str:

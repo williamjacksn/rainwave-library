@@ -7,7 +7,11 @@ import htpy
 import markupsafe
 
 import rainwave_library.versions as v
-from rainwave_library.models.mp3 import ID3_TAG_LABELS, Mp3TagValues
+from rainwave_library.models.mp3 import (
+    ID3_TAG_LABELS,
+    Mp3FilenameNormalization,
+    Mp3TagValues,
+)
 from rainwave_library.models.rainwave import (
     Album,
     Artist,
@@ -3297,6 +3301,129 @@ def suggestion_music_review_controls(
     )
 
 
+def _suggestion_normalize_filenames_button(suggestion_id: str) -> htpy.Element:
+    return htpy.button(
+        ".btn.btn-secondary",
+        data_bs_target="#modal-lg",
+        data_bs_toggle="modal",
+        hx_get=flask.url_for(
+            "suggestion_files_normalize",
+            suggestion_id=suggestion_id,
+        ),
+        hx_swap="outerHTML",
+        hx_target="#modal-lg-content",
+        type="button",
+    )[htpy.i(".bi-input-cursor-text"), " Normalize filenames"]
+
+
+def suggestion_normalize_filenames_form(
+    suggestion_id: str,
+    normalizations: tuple[Mp3FilenameNormalization, ...],
+) -> str:
+    has_errors = any(item.error is not None for item in normalizations)
+    changed_count = sum(item.changed for item in normalizations)
+    can_submit = bool(normalizations) and not has_errors and changed_count > 0
+    url = flask.url_for(
+        "suggestion_files_normalize",
+        suggestion_id=suggestion_id,
+    )
+    if not normalizations:
+        status: htpy.Node = htpy.div(".alert.alert-warning", role="alert")[
+            "There are no MP3 files to normalize."
+        ]
+    elif has_errors:
+        status = htpy.div(".alert.alert-danger", role="alert")[
+            "Resolve the filename problems shown below before normalizing."
+        ]
+    elif changed_count == 0:
+        status = htpy.div(".alert.alert-info", role="alert")[
+            "All MP3 filenames are already normalized."
+        ]
+    else:
+        status = htpy.div(".alert.alert-secondary", role="status")[
+            f"{changed_count} MP3 filename"
+            f"{'' if changed_count == 1 else 's'} will change."
+        ]
+
+    return str(
+        htpy.form(
+            "#modal-lg-content.modal-content",
+            action=url,
+            hx_disabled_elt="button",
+            hx_post=url,
+            hx_swap="outerHTML",
+            hx_target="#suggestion-files-card",
+            method="post",
+        )[
+            htpy.div(".modal-header")[
+                htpy.h5(".modal-title")["Normalize filenames"],
+                htpy.button(
+                    ".btn-close",
+                    aria_label="Close",
+                    data_bs_dismiss="modal",
+                    type="button",
+                ),
+            ],
+            htpy.div(".modal-body")[
+                htpy.p[
+                    "Each MP3 will be renamed using its first title tag with special "
+                    "characters and spaces removed.",
+                ],
+                status,
+                normalizations
+                and htpy.div(".table-responsive")[
+                    htpy.table(".align-middle.mb-0.table.table-sm")[
+                        htpy.thead[
+                            htpy.tr[
+                                htpy.th["Existing file"],
+                                htpy.th["Title tag"],
+                                htpy.th["Target file"],
+                            ]
+                        ],
+                        htpy.tbody[
+                            [
+                                htpy.tr[
+                                    htpy.td[htpy.code(".text-break")[item.source_path]],
+                                    htpy.td(".text-break")[
+                                        item.title or htpy.span(".text-secondary")["—"]
+                                    ],
+                                    htpy.td[
+                                        (
+                                            htpy.code(".text-break")[item.target_path]
+                                            if item.target_path
+                                            else htpy.span(".text-secondary")["—"]
+                                        ),
+                                        item.error
+                                        and htpy.div(".small.text-danger")[item.error],
+                                        item.target_path == item.source_path
+                                        and htpy.div(".small.text-secondary")[
+                                            "No change"
+                                        ],
+                                    ],
+                                ]
+                                for item in normalizations
+                            ]
+                        ],
+                    ]
+                ],
+            ],
+            htpy.div(".justify-content-between.modal-footer")[
+                htpy.button(
+                    ".btn.btn-secondary",
+                    data_bs_dismiss="modal",
+                    type="button",
+                )["Cancel"],
+                htpy.button(
+                    ".btn.btn-primary",
+                    data_bs_dismiss="modal",
+                    disabled=not can_submit,
+                    type="submit",
+                )[htpy.i(".bi-input-cursor-text"), " Normalize filenames"],
+            ],
+        ]
+    )
+
+
 def _suggestion_music_file_table(
     suggestion_id: str,
     files: tuple[tuple[str, int], ...],
@@ -3545,6 +3672,9 @@ def _suggestion_files_card(
     )
     music_tags = music_tags or {}
     music_reviews = music_reviews or {}
+    has_music = any(
+        _suggestion_file_category(path) == "music" for path, _ in staged_files
+    )
     collapse_id = "suggestion-files-card-body"
     return htpy.div(".card", id="suggestion-files-card")[
         _collapsible_card_header(
@@ -3616,6 +3746,10 @@ def _suggestion_files_card(
                         )["0%"]
                     ],
                 ],
+            ],
+            has_music
+            and htpy.div(".mt-3")[
+                _suggestion_normalize_filenames_button(suggestion_id)
             ],
             [
                 _suggestion_file_section(

@@ -286,6 +286,72 @@ def suggestion_file_review_set(
         raise
 
 
+def suggestion_file_review_paths_rename(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    renames: typing.Mapping[str, str],
+) -> None:
+    reviews = suggestion_file_reviews_get(con, suggestion_id)
+    moved_reviews = [
+        (renames[source_path], review)
+        for source_path, review in reviews.items()
+        if source_path in renames
+    ]
+    if not moved_reviews:
+        return
+
+    try:
+        con.executemany(
+            """
+            delete from suggestion_file_reviews
+            where suggestion_id = :suggestion_id
+                and relative_path = :relative_path
+            """,
+            (
+                {
+                    "suggestion_id": suggestion_id,
+                    "relative_path": source_path,
+                }
+                for source_path in renames
+            ),
+        )
+        con.executemany(
+            """
+            insert into suggestion_file_reviews (
+                suggestion_id,
+                relative_path,
+                decision,
+                reviewed_by_discord_id,
+                reviewed_at
+            ) values (
+                :suggestion_id,
+                :relative_path,
+                :decision,
+                :reviewed_by_discord_id,
+                :reviewed_at
+            )
+            on conflict (suggestion_id, relative_path) do update set
+                decision = excluded.decision,
+                reviewed_by_discord_id = excluded.reviewed_by_discord_id,
+                reviewed_at = excluded.reviewed_at
+            """,
+            (
+                {
+                    "suggestion_id": suggestion_id,
+                    "relative_path": target_path,
+                    "decision": review.decision,
+                    "reviewed_by_discord_id": review.reviewed_by_discord_id,
+                    "reviewed_at": review.reviewed_at,
+                }
+                for target_path, review in moved_reviews
+            ),
+        )
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+
+
 def _activity_insert(
     con: sqlite3.Connection,
     suggestion_id: str,
