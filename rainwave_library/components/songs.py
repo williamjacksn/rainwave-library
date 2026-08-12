@@ -167,10 +167,16 @@ def songs_detail(
         htpy.div(".pt-3.row")[htpy.div(".col")[htpy.h1["Song details"]]],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
-                htpy.audio(
-                    controls=True,
-                    preload="metadata",
-                    src=flask.url_for("stream_song", song_id=song.id),
+                (
+                    htpy.audio(
+                        controls=True,
+                        preload="metadata",
+                        src=flask.url_for("stream_song", song_id=song.id),
+                    )
+                    if song.verified
+                    else htpy.div(".alert.alert-warning.mb-0", role="alert")[
+                        "This song is not verified, so its audio file is unavailable."
+                    ]
                 )
             ]
         ],
@@ -259,36 +265,44 @@ def songs_detail(
                         htpy.tr[
                             htpy.th["Filename"],
                             htpy.td(".user-select-all")[
-                                htpy.a(
-                                    ".text-decoration-none",
-                                    href=song.download_url,
-                                    title=song.download_hint,
-                                )[htpy.code[song.filename]]
+                                (
+                                    htpy.a(
+                                        ".text-decoration-none",
+                                        href=song.download_url,
+                                        title=song.download_hint,
+                                    )[htpy.code[song.filename]]
+                                    if song.verified
+                                    else htpy.code[song.filename]
+                                )
                             ],
                         ],
                     ],
                 ]
             ]
         ],
-        htpy.div(".pt-3.row")[
-            htpy.div(".col")[
-                htpy.a(
-                    ".btn.btn-success.me-1",
-                    href=flask.url_for("songs_edit", song_id=song.id),
-                )[htpy.i(".bi-pencil"), " Edit tags"],
-                htpy.button(
-                    ".btn.btn-primary.me-1",
-                    data_bs_target="#song-change-channels-modal",
-                    data_bs_toggle="modal",
-                    type="button",
-                )[htpy.i(".bi-arrow-left-right"), " Change channels"],
-                htpy.a(
-                    ".btn.btn-danger",
-                    href=flask.url_for("songs_remove", song_id=song.id),
-                )[htpy.i(".bi-file-earmark-break"), " Remove file"],
+        (
+            htpy.div(".pt-3.row")[
+                htpy.div(".col")[
+                    htpy.a(
+                        ".btn.btn-success.me-1",
+                        href=flask.url_for("songs_edit", song_id=song.id),
+                    )[htpy.i(".bi-pencil"), " Edit tags"],
+                    htpy.button(
+                        ".btn.btn-primary.me-1",
+                        data_bs_target="#song-change-channels-modal",
+                        data_bs_toggle="modal",
+                        type="button",
+                    )[htpy.i(".bi-arrow-left-right"), " Change channels"],
+                    htpy.a(
+                        ".btn.btn-danger",
+                        href=flask.url_for("songs_remove", song_id=song.id),
+                    )[htpy.i(".bi-file-earmark-break"), " Remove file"],
+                ]
             ]
-        ],
-        _songs_change_channels_modal(song),
+            if song.verified
+            else None
+        ),
+        _songs_change_channels_modal(song) if song.verified else None,
     ]
     return str(_base(content))
 
@@ -537,6 +551,28 @@ def songs_index() -> str:
                         htpy.div(".dropdown-menu")[
                             htpy.div(".px-2")[
                                 htpy.h6(".dropdown-header")["FILTER OPTIONS"],
+                                [
+                                    htpy.div(".form-check")[
+                                        htpy.input(
+                                            f"#verification-{value}.form-check-input",
+                                            checked=(value == "verified"),
+                                            hx_indicator="#filters-indicator",
+                                            hx_post=flask.url_for("songs_rows"),
+                                            name="verification",
+                                            type="radio",
+                                            value=value,
+                                        ),
+                                        htpy.label(
+                                            ".form-check-label",
+                                            for_=f"verification-{value}",
+                                        )[label],
+                                    ]
+                                    for value, label in (
+                                        ("verified", "Verified songs"),
+                                        ("unverified", "Unverified songs"),
+                                    )
+                                ],
+                                htpy.hr,
                                 htpy.div(".form-check")[
                                     htpy.input(
                                         "#include-unrated.form-check-input",

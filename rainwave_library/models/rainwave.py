@@ -417,6 +417,7 @@ class SongDict(TypedDict):
     song_request_count: int
     song_title: str
     song_url: str
+    song_verified: bool
 
 
 class Song:
@@ -537,6 +538,10 @@ class Song:
         return self.data.get("song_title")
 
     @property
+    def verified(self) -> bool:
+        return self.data.get("song_verified", True)
+
+    @property
     def tr(self) -> htpy.Fragment:
         return htpy.fragment[
             htpy.tr[
@@ -546,20 +551,26 @@ class Song:
                         href=flask.url_for("songs_detail", song_id=self.id),
                         title="Song details",
                     )[htpy.i(".bi-info-circle")],
-                    htpy.br,
-                    htpy.a(
-                        ".btn.btn-primary.mb-1",
-                        href=self.download_url,
-                        title="Download this song",
-                    )[htpy.i(".bi-download")],
-                    htpy.br,
-                    htpy.a(
-                        ".btn.btn-primary",
-                        href="#",
-                        hx_get=flask.url_for("songs_play", song_id=self.id),
-                        hx_target="#audio",
-                        title="Play this song",
-                    )[htpy.i(".bi-play")],
+                    (
+                        [
+                            htpy.br,
+                            htpy.a(
+                                ".btn.btn-primary.mb-1",
+                                href=self.download_url,
+                                title="Download this song",
+                            )[htpy.i(".bi-download")],
+                            htpy.br,
+                            htpy.a(
+                                ".btn.btn-primary",
+                                href="#",
+                                hx_get=flask.url_for("songs_play", song_id=self.id),
+                                hx_target="#audio",
+                                title="Play this song",
+                            )[htpy.i(".bi-play")],
+                        ]
+                        if self.verified
+                        else None
+                    ),
                 ],
                 htpy.td(".p-2.d-table-cell.d-md-none")[
                     htpy.i(".bi-disc"),
@@ -599,18 +610,24 @@ class Song:
                         href=flask.url_for("songs_detail", song_id=self.id),
                         title=self.details_hint,
                     )[htpy.i(".bi-info-circle")],
-                    htpy.a(
-                        ".me-1.text-decoration-none",
-                        href=self.download_url,
-                        title=self.download_hint,
-                    )[htpy.i(".bi-download")],
-                    htpy.a(
-                        ".text-decoration-none",
-                        href="#",
-                        hx_get=flask.url_for("songs_play", song_id=self.id),
-                        hx_target="#audio",
-                        title=self.stream_hint,
-                    )[htpy.i(".bi-play")],
+                    (
+                        [
+                            htpy.a(
+                                ".me-1.text-decoration-none",
+                                href=self.download_url,
+                                title=self.download_hint,
+                            )[htpy.i(".bi-download")],
+                            htpy.a(
+                                ".text-decoration-none",
+                                href="#",
+                                hx_get=flask.url_for("songs_play", song_id=self.id),
+                                hx_target="#audio",
+                                title=self.stream_hint,
+                            )[htpy.i(".bi-play")],
+                        ]
+                        if self.verified
+                        else None
+                    ),
                 ],
                 htpy.td(".d-none.d-md-table-cell.text-end")[htpy.code[self.id]],
                 htpy.td(".d-none.d-md-table-cell.text-nowrap")[
@@ -1259,7 +1276,8 @@ def get_song(db: fort.PostgresDatabase, song_id: int) -> Song:
             s.song_request_count,
             s.song_title,
             s.song_url,
-            s.song_origin_sid
+            s.song_origin_sid,
+            s.song_verified
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id
         left join g on g.song_id = s.song_id
@@ -1290,8 +1308,9 @@ def get_songs(
     sort_dir: str = "asc",
     channels: list[int] | None = None,
     include_unrated: bool = True,
+    verified: bool = True,
 ) -> list[Song]:
-    where_clause = "s.song_verified is true"
+    where_clause = "s.song_verified = %(verified)s"
 
     if query:
         where_clause = f"""
@@ -1319,7 +1338,7 @@ def get_songs(
         channels = [1, 2, 3, 4, 5, 6]
     where_clause = f"""
         {where_clause}
-        and %(channels)s && c.channels
+        and %(channels)s && coalesce(c.channels, array[s.song_origin_sid::integer])
     """
 
     if sort_dir not in ("asc", "desc"):
@@ -1383,10 +1402,11 @@ def get_songs(
             s.song_rating_count,
             s.song_title,
             s.song_url,
-            s.song_origin_sid
+            s.song_origin_sid,
+            s.song_verified
         from r4_songs s
         join r4_albums a on a.album_id = s.album_id
-        join c on c.song_id = s.song_id
+        left join c on c.song_id = s.song_id
         left join g on g.song_id = s.song_id
         left join r on r.song_id = s.song_id
         where {where_clause}
@@ -1397,6 +1417,7 @@ def get_songs(
         "channels": channels,
         "offset": 100 * (page - 1),
         "query": query,
+        "verified": verified,
     }
     rows = db.q(sql, params)
     return [Song(r) for r in cast(list[SongDict], cast(object, rows))]

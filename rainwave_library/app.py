@@ -3034,11 +3034,15 @@ def songs() -> str:
 def songs_detail(song_id: int) -> str:
     db = app.config["RAINWAVE_DATABASE"]
     song = rainwave_library.models.rainwave.get_song(db, song_id)
-    file_info = rainwave_library.models.mp3.mp3_file_info_get(song.filename)
+    file_info = (
+        rainwave_library.models.mp3.mp3_file_info_get(song.filename)
+        if song.verified
+        else None
+    )
     return rainwave_library.components.songs_detail(
         song,
-        file_size_bytes=file_info.file_size_bytes,
-        audio_bitrate_bps=file_info.bitrate_bps,
+        file_size_bytes=file_info.file_size_bytes if file_info else None,
+        audio_bitrate_bps=file_info.bitrate_bps if file_info else None,
     )
 
 
@@ -3116,6 +3120,8 @@ def songs_change_channels(song_id: int) -> werkzeug.Response | str:
 def songs_download(song_id: int) -> flask.Response:
     db = app.config["RAINWAVE_DATABASE"]
     song = rainwave_library.models.rainwave.get_song(db, song_id)
+    if not song.verified:
+        flask.abort(404)
     return flask.send_file(song.filename, as_attachment=True)
 
 
@@ -3152,6 +3158,8 @@ def songs_edit(song_id: int) -> str:
 def songs_play(song_id: int) -> str:
     db = app.config["RAINWAVE_DATABASE"]
     song = rainwave_library.models.rainwave.get_song(db, song_id)
+    if not song.verified:
+        flask.abort(404)
     return rainwave_library.components.songs_play(song)
 
 
@@ -3193,6 +3201,8 @@ def songs_remove(song_id: int) -> werkzeug.Response | str:
 def stream_song(song_id: int) -> flask.Response:
     db = app.config["RAINWAVE_DATABASE"]
     song = rainwave_library.models.rainwave.get_song(db, song_id)
+    if not song.verified:
+        flask.abort(404)
     return flask.send_file(song.filename)
 
 
@@ -3210,8 +3220,16 @@ def songs_rows() -> str:
     if not valid_channels:
         valid_channels = None
     include_unrated = "include-unrated" in flask.request.values
+    verified = flask.request.values.get("verification", "verified") != "unverified"
     songs_ = rainwave_library.models.rainwave.get_songs(
-        db, q, page, sort_col, sort_dir, valid_channels, include_unrated
+        db,
+        q,
+        page,
+        sort_col,
+        sort_dir,
+        valid_channels,
+        include_unrated,
+        verified,
     )
     return rainwave_library.components.songs_rows(songs_, page)
 
@@ -3229,8 +3247,16 @@ def songs_xlsx() -> flask.Response:
         int(c) for c in input_channels if c.isdigit() and 0 < int(c) < 7
     ] or None
     include_unrated = "include-unrated" in flask.request.values
+    verified = flask.request.values.get("verification", "verified") != "unverified"
     data = rainwave_library.models.rainwave.get_songs(
-        db, query, page, sort_col, sort_dir, channels, include_unrated
+        db,
+        query,
+        page,
+        sort_col,
+        sort_dir,
+        channels,
+        include_unrated,
+        verified,
     )
     headers = [
         "song_id",
