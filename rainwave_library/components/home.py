@@ -4,18 +4,30 @@ import flask
 import htpy
 
 from rainwave_library.models.storage import (
-    UpcomingMusicDirectory,
-    UpcomingMusicEntry,
+    LibraryBrowserDirectory,
+    LibraryBrowserEntry,
+    LibraryBrowserRoot,
 )
 
 from .common import _back_button, _base, _duration_hms, _user_menu
 
 
-def _upcoming_music_entry(entry: UpcomingMusicEntry) -> htpy.Element:
+def _library_browser_entry(
+    entry: LibraryBrowserEntry,
+    browser_root: LibraryBrowserRoot,
+) -> htpy.Element:
     href = (
-        flask.url_for("upcoming_music", path=entry.relative_path)
+        flask.url_for(
+            "library_browser",
+            browser_root=browser_root.value,
+            path=entry.relative_path,
+        )
         if entry.is_directory
-        else flask.url_for("upcoming_music_file", path=entry.relative_path)
+        else flask.url_for(
+            "library_browser_file",
+            browser_root=browser_root.value,
+            path=entry.relative_path,
+        )
     )
     return htpy.a(
         ".align-items-center.d-flex.gap-3.list-group-item.list-group-item-action",
@@ -28,26 +40,43 @@ def _upcoming_music_entry(entry: UpcomingMusicEntry) -> htpy.Element:
             else ".bi-file-earmark.fs-4.text-secondary"
         ),
         htpy.div(".flex-grow-1.text-break")[entry.name],
-        htpy.span(".small.text-nowrap.text-secondary")[
-            (
-                f"{_duration_hms(entry.duration_seconds or 0)} MP3"
-                if entry.is_directory
-                else f"{entry.size or 0:,} bytes"
+        (
+            htpy.span(".small.text-nowrap.text-secondary")[
+                f"{_duration_hms(entry.duration_seconds)} MP3"
+            ]
+            if entry.duration_seconds is not None
+            else (
+                htpy.span(".small.text-nowrap.text-secondary")[
+                    f"{entry.size or 0:,} bytes"
+                ]
+                if not entry.is_directory
+                else None
             )
-        ],
+        ),
     ]
 
 
-def _upcoming_music_breadcrumbs(relative_path: str) -> htpy.Element:
-    parts = pathlib.PurePosixPath(relative_path).parts if relative_path else ()
+def _library_browser_breadcrumbs(
+    directory: LibraryBrowserDirectory,
+) -> htpy.Element:
+    parts = (
+        pathlib.PurePosixPath(directory.relative_path).parts
+        if directory.relative_path
+        else ()
+    )
     breadcrumbs = [
         htpy.li(
             ".active.breadcrumb-item" if not parts else ".breadcrumb-item",
             aria_current="page" if not parts else None,
         )[
-            "Upcoming music"
+            directory.root.label
             if not parts
-            else htpy.a(href=flask.url_for("upcoming_music"))["Upcoming music"]
+            else htpy.a(
+                href=flask.url_for(
+                    "library_browser",
+                    browser_root=directory.root.value,
+                )
+            )[directory.root.label]
         ]
     ]
     for index, part in enumerate(parts):
@@ -60,20 +89,32 @@ def _upcoming_music_breadcrumbs(relative_path: str) -> htpy.Element:
             )[
                 part
                 if is_current
-                else htpy.a(href=flask.url_for("upcoming_music", path=path))[part]
+                else htpy.a(
+                    href=flask.url_for(
+                        "library_browser",
+                        browser_root=directory.root.value,
+                        path=path,
+                    )
+                )[part]
             ]
         )
-    return htpy.nav(aria_label="Upcoming music folders")[
+    return htpy.nav(aria_label=f"{directory.root.label} folders")[
         htpy.ol(".breadcrumb")[breadcrumbs]
     ]
 
 
-def _upcoming_music_empty_folder(directory: UpcomingMusicDirectory) -> htpy.Element:
+def _library_browser_empty_folder(
+    directory: LibraryBrowserDirectory,
+) -> htpy.Element:
     folder_name = pathlib.PurePosixPath(directory.relative_path).name
-    delete_url = flask.url_for("upcoming_music_folder_delete")
+    delete_url = flask.url_for(
+        "library_browser_folder_delete",
+        browser_root=directory.root.value,
+    )
     return htpy.div[
         htpy.p(".text-secondary")["This folder is empty."],
         directory.relative_path
+        and directory.root.allow_empty_directory_delete
         and htpy.form(
             action=delete_url,
             hx_confirm=f'Delete the empty folder "{folder_name}"?',
@@ -94,7 +135,7 @@ def _upcoming_music_empty_folder(directory: UpcomingMusicDirectory) -> htpy.Elem
     ]
 
 
-def upcoming_music(directory: UpcomingMusicDirectory) -> str:
+def library_browser(directory: LibraryBrowserDirectory) -> str:
     content = [
         htpy.div(".g-1.pt-3.row")[
             _back_button(flask.url_for("index"), "Home"),
@@ -102,7 +143,7 @@ def upcoming_music(directory: UpcomingMusicDirectory) -> str:
         ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
-                htpy.h1["Upcoming music"],
+                htpy.h1["Library files"],
                 htpy.code(".d-block.small.text-break.user-select-all")[
                     str(directory.path)
                 ],
@@ -110,17 +151,40 @@ def upcoming_music(directory: UpcomingMusicDirectory) -> str:
         ],
         htpy.div(".pt-3.row")[
             htpy.div(".col")[
-                _upcoming_music_breadcrumbs(directory.relative_path),
+                htpy.nav(aria_label="Library folder selection")[
+                    htpy.div(".nav.nav-tabs.mb-3")[
+                        [
+                            htpy.a(
+                                class_=[
+                                    "nav-link",
+                                    {"active": browser_root is directory.root},
+                                ],
+                                aria_current=(
+                                    "page" if browser_root is directory.root else None
+                                ),
+                                href=flask.url_for(
+                                    "library_browser",
+                                    browser_root=browser_root.value,
+                                ),
+                            )[browser_root.label]
+                            for browser_root in LibraryBrowserRoot
+                        ]
+                    ]
+                ],
+                _library_browser_breadcrumbs(directory),
                 (
                     htpy.div(".list-group")[
-                        [_upcoming_music_entry(entry) for entry in directory.entries]
+                        [
+                            _library_browser_entry(entry, directory.root)
+                            for entry in directory.entries
+                        ]
                     ]
                     if directory.entries
                     else (
-                        _upcoming_music_empty_folder(directory)
+                        _library_browser_empty_folder(directory)
                         if directory.exists
                         else htpy.div(".alert.alert-warning", role="alert")[
-                            "The upcoming music folder does not exist."
+                            f"The {directory.root.label.lower()} folder does not exist."
                         ]
                     )
                 ),
@@ -155,9 +219,9 @@ def welcome(role: str) -> str:
                     "Download and tag remixes from ocremix.org",
                 ),
                 (
-                    "upcoming_music",
-                    "Upcoming music",
-                    "Browse music staged in the upcoming library folder",
+                    "library_browser_index",
+                    "Library files",
+                    "Browse upcoming and removed music files",
                 ),
                 (
                     "bluesky",

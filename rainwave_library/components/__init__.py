@@ -1,7 +1,7 @@
 from .albums import albums_detail, albums_index, albums_missing_art, albums_rows
 from .artists import artists_detail, artists_index, artists_rows
 from .auth import impersonate_user, sign_in
-from .home import upcoming_music, welcome
+from .home import library_browser, welcome
 from .listeners import (
     listeners_detail,
     listeners_edit,
@@ -74,6 +74,7 @@ __all__ = (
     "get_ocremix_fetch",
     "get_ocremix_start",
     "impersonate_user",
+    "library_browser",
     "listeners_detail",
     "listeners_edit",
     "listeners_index",
@@ -119,7 +120,6 @@ __all__ = (
     "suggestion_wizard_body",
     "suggestions_index",
     "suggestions_rows",
-    "upcoming_music",
     "user_settings_index",
     "welcome",
 )

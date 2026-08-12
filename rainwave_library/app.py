@@ -320,25 +320,51 @@ def index() -> werkzeug.Response | str:
     return rainwave_library.components.welcome(flask.session.get("role", "member"))
 
 
-@app.route("/upcoming", methods=["GET"])
-@secure
-def upcoming_music() -> str:
+def _library_browser_root_get(
+    browser_root: str,
+) -> rainwave_library.models.storage.LibraryBrowserRoot:
     try:
-        directory = rainwave_library.models.storage.upcoming_music_directory_get(
+        return rainwave_library.models.storage.LibraryBrowserRoot(browser_root)
+    except ValueError:
+        flask.abort(404)
+
+
+@app.route("/library-files", methods=["GET"])
+@secure
+def library_browser_index() -> werkzeug.Response:
+    return flask.redirect(
+        flask.url_for(
+            "library_browser",
+            browser_root=(
+                rainwave_library.models.storage.LibraryBrowserRoot.UPCOMING.value
+            ),
+        )
+    )
+
+
+@app.route("/library-files/<browser_root>", methods=["GET"])
+@secure
+def library_browser(browser_root: str) -> str:
+    selected_root = _library_browser_root_get(browser_root)
+    try:
+        directory = rainwave_library.models.storage.library_browser_directory_get(
             app.config["LIBRARY_ROOT"],
+            selected_root,
             flask.request.args.get("path", ""),
         )
     except ValueError:
         flask.abort(404)
-    return rainwave_library.components.upcoming_music(directory)
+    return rainwave_library.components.library_browser(directory)
 
 
-@app.route("/upcoming/file", methods=["GET"])
+@app.route("/library-files/<browser_root>/file", methods=["GET"])
 @secure
-def upcoming_music_file() -> flask.Response:
+def library_browser_file(browser_root: str) -> flask.Response:
+    selected_root = _library_browser_root_get(browser_root)
     try:
-        path = rainwave_library.models.storage.upcoming_music_file_get(
+        path = rainwave_library.models.storage.library_browser_file_get(
             app.config["LIBRARY_ROOT"],
+            selected_root,
             flask.request.args.get("path", ""),
         )
     except ValueError:
@@ -353,18 +379,21 @@ def upcoming_music_file() -> flask.Response:
     return response
 
 
-@app.route("/upcoming/folder", methods=["POST"])
+@app.route("/library-files/<browser_root>/folder", methods=["POST"])
 @secure
-def upcoming_music_folder_delete() -> werkzeug.Response:
+def library_browser_folder_delete(browser_root: str) -> werkzeug.Response:
+    selected_root = _library_browser_root_get(browser_root)
     try:
-        parent_path = rainwave_library.models.storage.upcoming_music_directory_delete(
+        parent_path = rainwave_library.models.storage.library_browser_directory_delete(
             app.config["LIBRARY_ROOT"],
+            selected_root,
             flask.request.form.get("path", ""),
         )
     except ValueError as error:
         flask.abort(409, str(error))
     redirect_url = flask.url_for(
-        "upcoming_music",
+        "library_browser",
+        browser_root=selected_root.value,
         **({"path": parent_path} if parent_path else {}),
     )
     if flask.request.headers.get("HX-Request") == "true":
@@ -372,6 +401,44 @@ def upcoming_music_folder_delete() -> werkzeug.Response:
         response.headers["HX-Redirect"] = redirect_url
         return response
     return flask.redirect(redirect_url)
+
+
+@app.route("/upcoming", methods=["GET"])
+@secure
+def upcoming_music() -> werkzeug.Response:
+    path = flask.request.args.get("path", "")
+    return flask.redirect(
+        flask.url_for(
+            "library_browser",
+            browser_root=(
+                rainwave_library.models.storage.LibraryBrowserRoot.UPCOMING.value
+            ),
+            **({"path": path} if path else {}),
+        )
+    )
+
+
+@app.route("/upcoming/file", methods=["GET"])
+@secure
+def upcoming_music_file() -> werkzeug.Response:
+    path = flask.request.args.get("path", "")
+    return flask.redirect(
+        flask.url_for(
+            "library_browser_file",
+            browser_root=(
+                rainwave_library.models.storage.LibraryBrowserRoot.UPCOMING.value
+            ),
+            **({"path": path} if path else {}),
+        )
+    )
+
+
+@app.route("/upcoming/folder", methods=["POST"])
+@secure
+def upcoming_music_folder_delete() -> werkzeug.Response:
+    return library_browser_folder_delete(
+        rainwave_library.models.storage.LibraryBrowserRoot.UPCOMING.value
+    )
 
 
 @app.route("/albums", methods=["GET"])
@@ -1940,7 +2007,13 @@ def suggestion_schedule_release(suggestion_id: str) -> werkzeug.Response | str:
             suggestion_id,
             destination,
         )
-        redirect_url = flask.url_for("upcoming_music", path=destination)
+        redirect_url = flask.url_for(
+            "library_browser",
+            browser_root=(
+                rainwave_library.models.storage.LibraryBrowserRoot.UPCOMING.value
+            ),
+            path=destination,
+        )
     if flask.request.headers.get("HX-Request") == "true":
         response = flask.make_response()
         response.headers["HX-Redirect"] = redirect_url

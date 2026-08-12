@@ -1,5 +1,6 @@
 import dataclasses
 import datetime
+import enum
 import json
 import logging
 import os
@@ -33,8 +34,29 @@ class User:
     updated_at: str
 
 
+class LibraryBrowserRoot(enum.StrEnum):
+    UPCOMING = "upcoming"
+    REMOVED = "removed"
+
+    @property
+    def allow_empty_directory_delete(self) -> bool:
+        return self is self.UPCOMING
+
+    @property
+    def calculate_mp3_duration(self) -> bool:
+        return self is self.UPCOMING
+
+    @property
+    def directory_name(self) -> str:
+        return "~upcoming" if self is self.UPCOMING else "removed"
+
+    @property
+    def label(self) -> str:
+        return "Upcoming music" if self is self.UPCOMING else "Removed music"
+
+
 @dataclasses.dataclass(frozen=True)
-class UpcomingMusicEntry:
+class LibraryBrowserEntry:
     name: str
     relative_path: str
     is_directory: bool
@@ -43,14 +65,15 @@ class UpcomingMusicEntry:
 
 
 @dataclasses.dataclass(frozen=True)
-class UpcomingMusicDirectory:
+class LibraryBrowserDirectory:
+    root: LibraryBrowserRoot
     path: pathlib.Path
     relative_path: str
     exists: bool
-    entries: tuple[UpcomingMusicEntry, ...]
+    entries: tuple[LibraryBrowserEntry, ...]
 
 
-def _upcoming_music_path_parts(relative_path: str) -> tuple[str, ...]:
+def _library_browser_path_parts(relative_path: str) -> tuple[str, ...]:
     normalized_path = relative_path.replace("\\", "/").strip()
     path = pathlib.PurePosixPath(normalized_path)
     if (
@@ -59,29 +82,37 @@ def _upcoming_music_path_parts(relative_path: str) -> tuple[str, ...]:
         or pathlib.PureWindowsPath(normalized_path).drive
         or any(ord(character) < 32 for character in normalized_path)
     ):
-        msg = "Invalid upcoming music path."
+        msg = "Invalid library browser path."
         raise ValueError(msg)
     return path.parts if normalized_path else ()
 
 
-def _upcoming_music_root_get(library_root: pathlib.Path) -> pathlib.Path:
-    return (library_root / "~upcoming").resolve()
-
-
-def _upcoming_music_path_get(
+def _library_browser_root_get(
     library_root: pathlib.Path,
+    browser_root: LibraryBrowserRoot,
+) -> pathlib.Path:
+    return (library_root / browser_root.directory_name).resolve()
+
+
+def _upcoming_music_root_get(library_root: pathlib.Path) -> pathlib.Path:
+    return _library_browser_root_get(library_root, LibraryBrowserRoot.UPCOMING)
+
+
+def _library_browser_path_get(
+    library_root: pathlib.Path,
+    browser_root: LibraryBrowserRoot,
     relative_path: str,
 ) -> tuple[pathlib.Path, pathlib.Path, tuple[str, ...]]:
-    root = _upcoming_music_root_get(library_root)
-    parts = _upcoming_music_path_parts(relative_path)
+    root = _library_browser_root_get(library_root, browser_root)
+    parts = _library_browser_path_parts(relative_path)
     candidate = root.joinpath(*parts)
     try:
         resolved_candidate = candidate.resolve(strict=True)
     except FileNotFoundError:
-        msg = "That upcoming music path no longer exists."
+        msg = "That library browser path no longer exists."
         raise ValueError(msg) from None
     if not resolved_candidate.is_relative_to(root):
-        msg = "Invalid upcoming music path."
+        msg = "Invalid library browser path."
         raise ValueError(msg)
     return root, resolved_candidate, parts
 
@@ -155,26 +186,31 @@ def upcoming_music_date_mp3_duration_get(
     return _mp3_duration_get(resolved_date_directory, root)
 
 
-def upcoming_music_directory_get(
+def library_browser_directory_get(
     library_root: pathlib.Path,
+    browser_root: LibraryBrowserRoot,
     relative_path: str = "",
-) -> UpcomingMusicDirectory:
-    root = _upcoming_music_root_get(library_root)
-    parts = _upcoming_music_path_parts(relative_path)
+) -> LibraryBrowserDirectory:
+    root = _library_browser_root_get(library_root, browser_root)
+    parts = _library_browser_path_parts(relative_path)
     normalized_path = pathlib.PurePosixPath(*parts).as_posix() if parts else ""
     if not root.exists() and not parts:
-        return UpcomingMusicDirectory(root, "", False, ())
+        return LibraryBrowserDirectory(browser_root, root, "", False, ())
 
-    _, directory, _ = _upcoming_music_path_get(library_root, relative_path)
+    _, directory, _ = _library_browser_path_get(
+        library_root,
+        browser_root,
+        relative_path,
+    )
     if not directory.is_dir():
-        msg = "That upcoming music path is not a folder."
+        msg = "That library browser path is not a folder."
         raise ValueError(msg)
 
     entries = []
     try:
         children = tuple(directory.iterdir())
     except OSError as error:
-        msg = "The upcoming music folder could not be read."
+        msg = "The library browser folder could not be read."
         raise ValueError(msg) from error
     for child in children:
         try:
@@ -186,14 +222,14 @@ def upcoming_music_directory_get(
                 continue
             child_parts = (*parts, child.name)
             entries.append(
-                UpcomingMusicEntry(
+                LibraryBrowserEntry(
                     name=child.name,
                     relative_path=pathlib.PurePosixPath(*child_parts).as_posix(),
                     is_directory=is_directory,
                     size=None if is_directory else resolved_child.stat().st_size,
                     duration_seconds=(
                         _mp3_duration_get(resolved_child, root)
-                        if is_directory
+                        if is_directory and browser_root.calculate_mp3_duration
                         else None
                     ),
                 )
@@ -201,7 +237,8 @@ def upcoming_music_directory_get(
         except OSError:
             continue
     entries.sort(key=lambda entry: (not entry.is_directory, entry.name.casefold()))
-    return UpcomingMusicDirectory(
+    return LibraryBrowserDirectory(
+        browser_root,
         directory,
         normalized_path,
         True,
@@ -209,40 +246,54 @@ def upcoming_music_directory_get(
     )
 
 
-def upcoming_music_file_get(
+def library_browser_file_get(
     library_root: pathlib.Path,
+    browser_root: LibraryBrowserRoot,
     relative_path: str,
 ) -> pathlib.Path:
-    _, path, _ = _upcoming_music_path_get(library_root, relative_path)
+    _, path, _ = _library_browser_path_get(
+        library_root,
+        browser_root,
+        relative_path,
+    )
     if not path.is_file():
-        msg = "That upcoming music path is not a file."
+        msg = "That library browser path is not a file."
         raise ValueError(msg)
     return path
 
 
-def upcoming_music_directory_delete(
+def library_browser_directory_delete(
     library_root: pathlib.Path,
+    browser_root: LibraryBrowserRoot,
     relative_path: str,
 ) -> str:
-    parts = _upcoming_music_path_parts(relative_path)
-    if not parts:
-        msg = "The upcoming music root folder cannot be deleted."
+    if not browser_root.allow_empty_directory_delete:
+        msg = f"Folders cannot be deleted from {browser_root.label}."
         raise ValueError(msg)
 
-    root, directory, _ = _upcoming_music_path_get(library_root, relative_path)
+    parts = _library_browser_path_parts(relative_path)
+    if not parts:
+        msg = f"The {browser_root.label} root folder cannot be deleted."
+        raise ValueError(msg)
+
+    root, directory, _ = _library_browser_path_get(
+        library_root,
+        browser_root,
+        relative_path,
+    )
     candidate = root
     for part in parts:
         candidate /= part
         if candidate.is_symlink():
-            msg = "Linked upcoming music folders cannot be deleted."
+            msg = "Linked library browser folders cannot be deleted."
             raise ValueError(msg)
     if not directory.is_dir():
-        msg = "That upcoming music path is not a folder."
+        msg = "That library browser path is not a folder."
         raise ValueError(msg)
     try:
         candidate.rmdir()
     except OSError as error:
-        msg = "Only an empty upcoming music folder can be deleted."
+        msg = "Only an empty library browser folder can be deleted."
         raise ValueError(msg) from error
     return pathlib.PurePosixPath(*parts[:-1]).as_posix() if len(parts) > 1 else ""
 
