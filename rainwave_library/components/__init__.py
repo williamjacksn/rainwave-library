@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import pathlib
 
 import flask
@@ -25,6 +26,7 @@ from rainwave_library.models.suggestions import (
     Suggestion,
     SuggestionActivity,
     SuggestionDetail,
+    SuggestionFileReview,
     SuggestionFilterSet,
     SuggestionLink,
 )
@@ -2977,11 +2979,17 @@ def _suggestion_file_section(
     label: str,
     files: tuple[tuple[str, int], ...],
     music_tags: dict[str, Mp3TagValues],
+    music_reviews: dict[str, SuggestionFileReview],
 ) -> htpy.Element:
     heading_id = f"suggestion-files-{section_id}-heading"
     return htpy.section(".mt-3", aria_labelledby=heading_id)[
         htpy.h6(".mb-0.py-2.text-secondary", id=heading_id)[label],
-        _suggestion_music_file_table(suggestion_id, files, music_tags)
+        _suggestion_music_file_table(
+            suggestion_id,
+            files,
+            music_tags,
+            music_reviews,
+        )
         if section_id == "music"
         else htpy.div(".list-group.list-group-flush")[
             [_suggestion_file_item(suggestion_id, path, size) for path, size in files]
@@ -3210,10 +3218,90 @@ def _suggestion_music_file_details(
     ]
 
 
+def _suggestion_music_review_control_id(
+    suggestion_id: str,
+    path: str,
+    layout: str,
+) -> str:
+    digest = hashlib.sha256(f"{suggestion_id}\0{path}".encode()).hexdigest()[:16]
+    return f"suggestion-music-review-{layout}-{digest}"
+
+
+def _suggestion_music_review_form(
+    suggestion_id: str,
+    path: str,
+    review: SuggestionFileReview | None,
+    layout: str,
+    *,
+    oob: bool = False,
+) -> htpy.Element:
+    current_decision = review.decision if review is not None else "unreviewed"
+    url = flask.url_for(
+        "suggestion_file_review",
+        suggestion_id=suggestion_id,
+        path=path,
+    )
+    choices = (
+        ("unreviewed", "Not reviewed", "secondary", "bi-circle"),
+        ("keep", "Keep", "success", "bi-check-lg"),
+        ("pass", "Pass", "danger", "bi-x-lg"),
+    )
+    return htpy.form(
+        f"#{_suggestion_music_review_control_id(suggestion_id, path, layout)}",
+        action=url,
+        aria_label=f"Review decision for {path}",
+        hx_disabled_elt="button",
+        hx_post=url,
+        hx_swap="none",
+        hx_swap_oob="outerHTML" if oob else None,
+        method="post",
+    )[
+        htpy.div(".btn-group.btn-group-sm", role="group")[
+            [
+                htpy.button(
+                    f".btn.btn-{'' if decision == current_decision else 'outline-'}"
+                    f"{color}",
+                    aria_pressed=("true" if decision == current_decision else "false"),
+                    name="decision",
+                    type="submit",
+                    value=decision,
+                )[htpy.i(f".{icon}.bi.me-1"), label]
+                for decision, label, color, icon in choices
+            ]
+        ]
+    ]
+
+
+def suggestion_music_review_controls(
+    suggestion_id: str,
+    path: str,
+    review: SuggestionFileReview | None,
+) -> str:
+    return str(
+        htpy.fragment[
+            _suggestion_music_review_form(
+                suggestion_id,
+                path,
+                review,
+                "desktop",
+                oob=True,
+            ),
+            _suggestion_music_review_form(
+                suggestion_id,
+                path,
+                review,
+                "mobile",
+                oob=True,
+            ),
+        ]
+    )
+
+
 def _suggestion_music_file_table(
     suggestion_id: str,
     files: tuple[tuple[str, int], ...],
     music_tags: dict[str, Mp3TagValues],
+    music_reviews: dict[str, SuggestionFileReview],
 ) -> htpy.Element:
     tag_groups = (
         ("album", "title"),
@@ -3225,6 +3313,7 @@ def _suggestion_music_file_table(
     modals = []
     for row_index, (path, size) in enumerate(files):
         tags = music_tags.get(path, Mp3TagValues())
+        review = music_reviews.get(path)
         tag_values = {
             "album": tags.album,
             "title": tags.title,
@@ -3243,6 +3332,14 @@ def _suggestion_music_file_table(
                     _suggestion_music_file_details(size, tags.duration_seconds),
                     tags.error
                     and htpy.div(".small.text-danger", role="status")[tags.error],
+                    htpy.div(".mt-2")[
+                        _suggestion_music_review_form(
+                            suggestion_id,
+                            path,
+                            review,
+                            "desktop",
+                        )
+                    ],
                 ],
                 [
                     _suggestion_tag_group_cell(
@@ -3282,6 +3379,17 @@ def _suggestion_music_file_table(
                     ]
                 ],
                 htpy.div(".card-body")[
+                    htpy.div(".border-bottom.mb-3.pb-3")[
+                        htpy.div(".fw-semibold.mb-2.small.text-secondary")[
+                            "Review decision"
+                        ],
+                        _suggestion_music_review_form(
+                            suggestion_id,
+                            path,
+                            review,
+                            "mobile",
+                        ),
+                    ],
                     [
                         (
                             htpy.div(".border-bottom.mb-3.pb-3")
@@ -3294,7 +3402,7 @@ def _suggestion_music_file_table(
                         for tag_index, (tag_name, label) in enumerate(
                             ID3_TAG_LABELS.items()
                         )
-                    ]
+                    ],
                 ],
             ]
         )
@@ -3394,6 +3502,7 @@ def _suggestion_files_card(
     *,
     folder_path: str | None = None,
     music_tags: dict[str, Mp3TagValues] | None = None,
+    music_reviews: dict[str, SuggestionFileReview] | None = None,
 ) -> htpy.Element:
     upload_url = flask.url_for(
         "suggestion_files_upload",
@@ -3435,6 +3544,7 @@ def _suggestion_files_card(
         )
     )
     music_tags = music_tags or {}
+    music_reviews = music_reviews or {}
     collapse_id = "suggestion-files-card-body"
     return htpy.div(".card", id="suggestion-files-card")[
         _collapsible_card_header(
@@ -3514,6 +3624,7 @@ def _suggestion_files_card(
                     label,
                     files,
                     music_tags,
+                    music_reviews,
                 )
                 for section_id, label, files in file_sections
                 if files
@@ -3531,6 +3642,7 @@ def suggestion_files_card(
     *,
     folder_path: str | None = None,
     music_tags: dict[str, Mp3TagValues] | None = None,
+    music_reviews: dict[str, SuggestionFileReview] | None = None,
 ) -> str:
     return str(
         _suggestion_files_card(
@@ -3539,6 +3651,7 @@ def suggestion_files_card(
             result,
             folder_path=folder_path,
             music_tags=music_tags,
+            music_reviews=music_reviews,
         )
     )
 
@@ -3925,6 +4038,7 @@ def suggestion_page(
     *,
     folder_path: str | None = None,
     music_tags: dict[str, Mp3TagValues] | None = None,
+    music_reviews: dict[str, SuggestionFileReview] | None = None,
     staged_mp3_duration_seconds: float = 0.0,
 ) -> str:
     channel_badges: htpy.Node = (
@@ -4004,6 +4118,7 @@ def suggestion_page(
                     staged_files,
                     folder_path=folder_path,
                     music_tags=music_tags,
+                    music_reviews=music_reviews,
                 )
             ]
         ],

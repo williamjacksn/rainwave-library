@@ -10,6 +10,29 @@ import htpy
 
 art_dir = pathlib.Path("/var/www/rainwave.cc/album_art")
 
+
+class UserGroup(enum.IntEnum):
+    ANONYMOUS = 1
+    LEGACY_LISTENERS = 2
+    DISCORD_LISTENERS = 3
+    ADMINS = 5
+    BOT = 6
+    DONORS = 8
+    MANAGERS = 18
+
+    @property
+    def label(self) -> str:
+        return {
+            1: "Anonymous",
+            2: "Legacy Listeners",
+            3: "Discord Listeners",
+            5: "Admins",
+            6: "Bot",
+            8: "Donors",
+            18: "Managers",
+        }.get(self.value, self.name)
+
+
 channels: dict[int | str, str] = {
     1: "Game",
     2: "OC ReMix",

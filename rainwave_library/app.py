@@ -1711,6 +1711,21 @@ def _suggestion_staged_files_get(
     return staged_files, folder_path, music_tags
 
 
+def _suggestion_file_reviews_get(
+    suggestion_id: str,
+) -> dict[str, rainwave_library.models.suggestions.SuggestionFileReview]:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        return rainwave_library.models.suggestions.suggestion_file_reviews_get(
+            storage_cnx,
+            suggestion_id,
+        )
+    finally:
+        storage_cnx.close()
+
+
 @app.route("/suggestions/<suggestion_id>", methods=["GET"])
 @secure
 def suggestion_page(suggestion_id: str) -> str:
@@ -1726,6 +1741,7 @@ def suggestion_page(suggestion_id: str) -> str:
     if suggestion is None:
         flask.abort(404)
     staged_files, folder_path, music_tags = _suggestion_staged_files_get(suggestion_id)
+    music_reviews = _suggestion_file_reviews_get(suggestion_id)
     staged_mp3_duration_seconds = (
         rainwave_library.models.storage.suggestion_staging_mp3_duration_get(
             app.config["LIBRARY_ROOT"],
@@ -1737,6 +1753,7 @@ def suggestion_page(suggestion_id: str) -> str:
         staged_files,
         folder_path=str(folder_path),
         music_tags=music_tags,
+        music_reviews=music_reviews,
         staged_mp3_duration_seconds=staged_mp3_duration_seconds,
     )
 
@@ -1747,16 +1764,16 @@ def suggestion_page(suggestion_id: str) -> str:
 )
 @secure
 def suggestion_schedule_release_duration(suggestion_id: str) -> str:
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx,
+            storage_cnx_,
             suggestion_id,
         )
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
     if suggestion is None:
         flask.abort(404)
 
@@ -1793,16 +1810,16 @@ def suggestion_schedule_release_duration(suggestion_id: str) -> str:
 )
 @secure
 def suggestion_schedule_release_target(suggestion_id: str) -> str:
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx,
+            storage_cnx_,
             suggestion_id,
         )
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
     if suggestion is None:
         flask.abort(404)
 
@@ -1934,15 +1951,15 @@ def suggestion_schedule_release(suggestion_id: str) -> werkzeug.Response | str:
 @app.route("/suggestions/<suggestion_id>/files", methods=["POST"])
 @secure
 def suggestion_files_upload(suggestion_id: str) -> str:
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx, suggestion_id
+            storage_cnx_, suggestion_id
         )
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
     if suggestion is None:
         flask.abort(404)
 
@@ -1975,75 +1992,127 @@ def suggestion_files_upload(suggestion_id: str) -> str:
         result = ("alert-danger", "The files could not be uploaded.")
 
     staged_files, folder_path, music_tags = _suggestion_staged_files_get(suggestion_id)
+    music_reviews = _suggestion_file_reviews_get(suggestion_id)
     return rainwave_library.components.suggestion_files_card(
         suggestion_id,
         staged_files,
         result,
         folder_path=str(folder_path),
         music_tags=music_tags,
+        music_reviews=music_reviews,
     )
 
 
 @app.route("/suggestions/<suggestion_id>/files", methods=["DELETE"])
 @secure
 def suggestion_file_delete(suggestion_id: str) -> str:
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx, suggestion_id
+            storage_cnx_, suggestion_id
+        )
+        if suggestion is None:
+            flask.abort(404)
+
+        relative_path = flask.request.args.get("path", "")
+        try:
+            deleted_path = (
+                rainwave_library.models.storage.suggestion_staging_file_delete(
+                    app.config["LIBRARY_ROOT"],
+                    suggestion_id,
+                    relative_path,
+                )
+            )
+            rainwave_library.models.suggestions.suggestion_file_review_set(
+                storage_cnx_,
+                suggestion_id,
+                deleted_path,
+                "unreviewed",
+                reviewed_by_discord_id=None,
+            )
+            result = ("alert-success", f"Deleted {deleted_path}.")
+            app.logger.info(
+                "Deleted file %s for suggestion %s",
+                deleted_path,
+                suggestion_id,
+            )
+        except ValueError as error:
+            result = ("alert-danger", str(error))
+        except OSError:
+            app.logger.exception(
+                "Could not delete file %s for suggestion %s",
+                relative_path,
+                suggestion_id,
+            )
+            result = ("alert-danger", "The file could not be deleted.")
+
+        staged_files, folder_path, music_tags = _suggestion_staged_files_get(
+            suggestion_id
+        )
+        music_reviews = rainwave_library.models.suggestions.suggestion_file_reviews_get(
+            storage_cnx_,
+            suggestion_id,
         )
     finally:
-        storage_cnx.close()
-    if suggestion is None:
-        flask.abort(404)
+        storage_cnx_.close()
 
-    relative_path = flask.request.args.get("path", "")
-    try:
-        deleted_path = rainwave_library.models.storage.suggestion_staging_file_delete(
-            app.config["LIBRARY_ROOT"],
-            suggestion_id,
-            relative_path,
-        )
-        result = ("alert-success", f"Deleted {deleted_path}.")
-        app.logger.info(
-            "Deleted file %s for suggestion %s",
-            deleted_path,
-            suggestion_id,
-        )
-    except ValueError as error:
-        result = ("alert-danger", str(error))
-    except OSError:
-        app.logger.exception(
-            "Could not delete file %s for suggestion %s",
-            relative_path,
-            suggestion_id,
-        )
-        result = ("alert-danger", "The file could not be deleted.")
-
-    staged_files, folder_path, music_tags = _suggestion_staged_files_get(suggestion_id)
     return rainwave_library.components.suggestion_files_card(
         suggestion_id,
         staged_files,
         result,
         folder_path=str(folder_path),
         music_tags=music_tags,
+        music_reviews=music_reviews,
+    )
+
+
+@app.route("/suggestions/<suggestion_id>/files/review", methods=["POST"])
+@secure
+def suggestion_file_review(suggestion_id: str) -> str:
+    relative_path, _ = _suggestion_staged_file_get(suggestion_id, {".mp3"})
+    decision = flask.request.form.get("decision", "")
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        rainwave_library.models.suggestions.suggestion_file_review_set(
+            storage_cnx_,
+            suggestion_id,
+            relative_path,
+            decision,
+            reviewed_by_discord_id=(
+                str(flask.g.discord_id) if flask.g.discord_id else None
+            ),
+        )
+        review = rainwave_library.models.suggestions.suggestion_file_reviews_get(
+            storage_cnx_,
+            suggestion_id,
+        ).get(relative_path)
+    except ValueError as error:
+        flask.abort(400, str(error))
+    finally:
+        storage_cnx_.close()
+    return rainwave_library.components.suggestion_music_review_controls(
+        suggestion_id,
+        relative_path,
+        review,
     )
 
 
 @app.route("/suggestions/<suggestion_id>/files/tags", methods=["POST"])
 @secure
 def suggestion_file_tags_update(suggestion_id: str) -> str:
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx, suggestion_id
+            storage_cnx_, suggestion_id
         )
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
     if suggestion is None:
         flask.abort(404)
 
@@ -2152,12 +2221,14 @@ def suggestion_file_tags_update(suggestion_id: str) -> str:
                     result = ("alert-danger", str(error))
 
     staged_files, folder_path, music_tags = _suggestion_staged_files_get(suggestion_id)
+    music_reviews = _suggestion_file_reviews_get(suggestion_id)
     return rainwave_library.components.suggestion_files_card(
         suggestion_id,
         staged_files,
         result,
         folder_path=str(folder_path),
         music_tags=music_tags,
+        music_reviews=music_reviews,
     )
 
 
@@ -2255,15 +2326,15 @@ def suggestion_file_stream(suggestion_id: str) -> flask.Response:
 @app.route("/suggestions/<suggestion_id>/details", methods=["GET"])
 @signed_in
 def suggestion_details(suggestion_id: str) -> str:
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx, suggestion_id
+            storage_cnx_, suggestion_id
         )
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
     if suggestion is None:
         flask.abort(404)
     editable = (
@@ -2279,12 +2350,12 @@ def suggestion_details(suggestion_id: str) -> str:
 @signed_in
 def suggestion_description(suggestion_id: str) -> str:
     requester_discord_id = str(flask.g.discord_id or "")
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx, suggestion_id
+            storage_cnx_, suggestion_id
         )
         if suggestion is None:
             flask.abort(404)
@@ -2311,7 +2382,7 @@ def suggestion_description(suggestion_id: str) -> str:
         description = flask.request.form.get("description", "")
         try:
             updated = rainwave_library.models.suggestions.suggestion_description_update(
-                storage_cnx,
+                storage_cnx_,
                 suggestion_id,
                 requester_discord_id=requester_discord_id,
                 description=description,
@@ -2326,10 +2397,10 @@ def suggestion_description(suggestion_id: str) -> str:
         if not updated:
             flask.abort(403)
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx, suggestion_id
+            storage_cnx_, suggestion_id
         )
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
 
     if suggestion is None:
         flask.abort(404)
@@ -2341,15 +2412,15 @@ def suggestion_description(suggestion_id: str) -> str:
 @app.route("/suggestions/<suggestion_id>/activity", methods=["GET"])
 @signed_in
 def suggestion_activity(suggestion_id: str) -> str:
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx, suggestion_id
+            storage_cnx_, suggestion_id
         )
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
 
     if suggestion is None:
         flask.abort(404)
@@ -2416,12 +2487,12 @@ def suggestion_comment(suggestion_id: str) -> werkzeug.Response | str:
 def suggestion_link(suggestion_id: str) -> werkzeug.Response | str:
     requester_discord_id = str(flask.g.discord_id or "")
     is_staff = flask.session.get("role") == "staff"
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx, suggestion_id
+            storage_cnx_, suggestion_id
         )
         if suggestion is None:
             flask.abort(404)
@@ -2447,7 +2518,7 @@ def suggestion_link(suggestion_id: str) -> werkzeug.Response | str:
         label = flask.request.form.get("label", "")
         try:
             added = rainwave_library.models.suggestions.suggestion_link_add(
-                storage_cnx,
+                storage_cnx_,
                 suggestion_id,
                 url=url,
                 label=label,
@@ -2467,10 +2538,10 @@ def suggestion_link(suggestion_id: str) -> werkzeug.Response | str:
         if not added:
             flask.abort(403)
         suggestion = rainwave_library.models.suggestions.suggestion_get(
-            storage_cnx, suggestion_id
+            storage_cnx_, suggestion_id
         )
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
 
     if suggestion is None:
         flask.abort(404)

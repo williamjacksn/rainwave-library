@@ -82,6 +82,16 @@ class SuggestionActivity:
 
 
 @dataclass(frozen=True)
+class SuggestionFileReview:
+    decisions: typing.ClassVar[tuple[str, ...]] = ("keep", "pass")
+
+    relative_path: str
+    decision: str
+    reviewed_by_discord_id: str | None
+    reviewed_at: str
+
+
+@dataclass(frozen=True)
 class SuggestionDetail(Suggestion):
     primary_channel_id: int | None
     claimed_at: str | None
@@ -185,6 +195,95 @@ class SuggestionFilterSet:
 
 def id_new() -> str:
     return secrets.token_urlsafe(16)
+
+
+def suggestion_file_reviews_get(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+) -> dict[str, SuggestionFileReview]:
+    rows = con.execute(
+        """
+        select
+            relative_path,
+            decision,
+            reviewed_by_discord_id,
+            reviewed_at
+        from suggestion_file_reviews
+        where suggestion_id = ?
+        """,
+        (suggestion_id,),
+    ).fetchall()
+    return {
+        str(row["relative_path"]): SuggestionFileReview(
+            relative_path=str(row["relative_path"]),
+            decision=str(row["decision"]),
+            reviewed_by_discord_id=(
+                str(row["reviewed_by_discord_id"])
+                if row["reviewed_by_discord_id"] is not None
+                else None
+            ),
+            reviewed_at=str(row["reviewed_at"]),
+        )
+        for row in rows
+    }
+
+
+def suggestion_file_review_set(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    relative_path: str,
+    decision: str,
+    *,
+    reviewed_by_discord_id: str | None,
+) -> None:
+    relative_path = relative_path.strip()
+    if not relative_path:
+        msg = "A suggestion file path is required."
+        raise ValueError(msg)
+    if decision not in (*SuggestionFileReview.decisions, "unreviewed"):
+        msg = "Choose a valid file review decision."
+        raise ValueError(msg)
+    reviewer_id = (reviewed_by_discord_id or "").strip() or None
+
+    try:
+        if decision == "unreviewed":
+            con.execute(
+                """
+                delete from suggestion_file_reviews
+                where suggestion_id = ? and relative_path = ?
+                """,
+                (suggestion_id, relative_path),
+            )
+        else:
+            con.execute(
+                """
+                insert into suggestion_file_reviews (
+                    suggestion_id,
+                    relative_path,
+                    decision,
+                    reviewed_by_discord_id
+                ) values (
+                    :suggestion_id,
+                    :relative_path,
+                    :decision,
+                    :reviewed_by_discord_id
+                )
+                on conflict (suggestion_id, relative_path) do update set
+                    decision = excluded.decision,
+                    reviewed_by_discord_id = excluded.reviewed_by_discord_id,
+                    reviewed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                """,
+                {
+                    "suggestion_id": suggestion_id,
+                    "relative_path": relative_path,
+                    "decision": decision,
+                    "reviewed_by_discord_id": reviewer_id,
+                },
+            )
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
 
 
 def _activity_insert(

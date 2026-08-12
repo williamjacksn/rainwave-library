@@ -2064,6 +2064,24 @@ def _migration_18(con: sqlite3.Connection) -> None:
         )
 
 
+def _migration_19(con: sqlite3.Connection) -> None:
+    con.execute(
+        """
+        create table suggestion_file_reviews (
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            relative_path text not null,
+            decision text not null
+                check (decision in ('keep', 'pass')),
+            reviewed_by_discord_id text,
+            reviewed_at text not null
+                default (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+            primary key (suggestion_id, relative_path)
+        ) without rowid
+        """
+    )
+
+
 MIGRATIONS = (
     _migration_1,
     _migration_2,
@@ -2083,6 +2101,7 @@ MIGRATIONS = (
     _migration_16,
     _migration_17,
     _migration_18,
+    _migration_19,
 )
 
 
