@@ -379,6 +379,29 @@ def library_browser_file(browser_root: str) -> flask.Response:
     return response
 
 
+@app.route("/library-files/<browser_root>/text-preview", methods=["GET"])
+@secure
+def library_browser_text_preview(browser_root: str) -> str:
+    selected_root = _library_browser_root_get(browser_root)
+    relative_path = flask.request.args.get("path", "")
+    try:
+        _, content, truncated = (
+            rainwave_library.models.storage.library_browser_text_file_get(
+                app.config["LIBRARY_ROOT"],
+                selected_root,
+                relative_path,
+            )
+        )
+    except ValueError:
+        flask.abort(404)
+    return rainwave_library.components.library_browser_text_preview(
+        selected_root,
+        relative_path,
+        content,
+        truncated=truncated,
+    )
+
+
 @app.route("/library-files/<browser_root>/folder", methods=["POST"])
 @secure
 def library_browser_folder_delete(browser_root: str) -> werkzeug.Response:

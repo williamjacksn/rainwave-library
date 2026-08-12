@@ -30,3 +30,8 @@
 .suggestion-image-preview {
     max-height: calc(100vh - 9rem);
 }
+
+.text-file-preview {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}

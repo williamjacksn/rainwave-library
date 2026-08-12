@@ -21,6 +21,43 @@ USER_COLOR_MODE_SETTING_KEY = "color-mode"
 USER_COLOR_MODES = ("light", "dark")
 USER_COLOR_MODE_DEFAULT = "light"
 USER_SUGGESTION_FILTERS_SETTING_KEY = "suggestion-filters"
+LIBRARY_BROWSER_TEXT_PREVIEW_MAX_BYTES = 512 * 1024
+_LIBRARY_BROWSER_TEXT_SUFFIXES = frozenset(
+    {
+        ".asc",
+        ".bat",
+        ".cfg",
+        ".conf",
+        ".css",
+        ".csv",
+        ".cue",
+        ".env",
+        ".htm",
+        ".html",
+        ".ini",
+        ".js",
+        ".json",
+        ".log",
+        ".m3u",
+        ".m3u8",
+        ".md",
+        ".nfo",
+        ".pls",
+        ".ps1",
+        ".py",
+        ".rst",
+        ".sh",
+        ".sql",
+        ".srt",
+        ".text",
+        ".toml",
+        ".tsv",
+        ".txt",
+        ".xml",
+        ".yaml",
+        ".yml",
+    }
+)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -60,6 +97,7 @@ class LibraryBrowserEntry:
     name: str
     relative_path: str
     is_directory: bool
+    is_text: bool
     size: int | None
     duration_seconds: float | None
 
@@ -85,6 +123,10 @@ def _library_browser_path_parts(relative_path: str) -> tuple[str, ...]:
         msg = "Invalid library browser path."
         raise ValueError(msg)
     return path.parts if normalized_path else ()
+
+
+def _library_browser_file_is_text(path: pathlib.PurePath) -> bool:
+    return path.suffix.casefold() in _LIBRARY_BROWSER_TEXT_SUFFIXES
 
 
 def _library_browser_root_get(
@@ -226,6 +268,7 @@ def library_browser_directory_get(
                     name=child.name,
                     relative_path=pathlib.PurePosixPath(*child_parts).as_posix(),
                     is_directory=is_directory,
+                    is_text=(not is_directory and _library_browser_file_is_text(child)),
                     size=None if is_directory else resolved_child.stat().st_size,
                     duration_seconds=(
                         _mp3_duration_get(resolved_child, root)
@@ -260,6 +303,30 @@ def library_browser_file_get(
         msg = "That library browser path is not a file."
         raise ValueError(msg)
     return path
+
+
+def library_browser_text_file_get(
+    library_root: pathlib.Path,
+    browser_root: LibraryBrowserRoot,
+    relative_path: str,
+) -> tuple[pathlib.Path, str, bool]:
+    path = library_browser_file_get(library_root, browser_root, relative_path)
+    if not _library_browser_file_is_text(path):
+        msg = "That file is not a recognized text file."
+        raise ValueError(msg)
+
+    try:
+        with path.open("rb") as file:
+            content_bytes = file.read(LIBRARY_BROWSER_TEXT_PREVIEW_MAX_BYTES + 1)
+    except OSError as error:
+        msg = "The text file could not be read."
+        raise ValueError(msg) from error
+
+    truncated = len(content_bytes) > LIBRARY_BROWSER_TEXT_PREVIEW_MAX_BYTES
+    if truncated:
+        content_bytes = content_bytes[:LIBRARY_BROWSER_TEXT_PREVIEW_MAX_BYTES]
+    content = content_bytes.decode("utf-8-sig", errors="replace")
+    return path, content, truncated
 
 
 def library_browser_directory_delete(

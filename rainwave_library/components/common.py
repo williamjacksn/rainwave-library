@@ -50,7 +50,9 @@ def _modal_loading_content() -> htpy.Element:
 
 def _remote_modal() -> htpy.Element:
     return htpy.div("#modal-lg.fade.modal", data_remote_modal="true")[
-        htpy.div(".modal-dialog.modal-lg")[_modal_loading_content()],
+        htpy.div(".modal-dialog.modal-dialog-scrollable.modal-lg")[
+            _modal_loading_content()
+        ],
         htpy.template("#modal-lg-loading-template")[_modal_loading_content()],
     ]
 

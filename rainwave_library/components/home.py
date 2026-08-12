@@ -16,6 +16,48 @@ def _library_browser_entry(
     entry: LibraryBrowserEntry,
     browser_root: LibraryBrowserRoot,
 ) -> htpy.Element:
+    content = htpy.fragment[
+        htpy.i(
+            ".bi-folder-fill.fs-4.text-warning"
+            if entry.is_directory
+            else (
+                ".bi-file-earmark-text.fs-4.text-secondary"
+                if entry.is_text
+                else ".bi-file-earmark.fs-4.text-secondary"
+            )
+        ),
+        htpy.div(".flex-grow-1.text-break")[entry.name],
+        (
+            htpy.span(".small.text-nowrap.text-secondary")[
+                f"{_duration_hms(entry.duration_seconds)} MP3"
+            ]
+            if entry.duration_seconds is not None
+            else (
+                htpy.span(".small.text-nowrap.text-secondary")[
+                    f"{entry.size or 0:,} bytes"
+                ]
+                if not entry.is_directory
+                else None
+            )
+        ),
+    ]
+    if entry.is_text:
+        return htpy.button(
+            ".align-items-center.d-flex.gap-3.list-group-item."
+            "list-group-item-action.text-start",
+            aria_label=f"Preview {entry.name}",
+            data_bs_target="#modal-lg",
+            data_bs_toggle="modal",
+            hx_get=flask.url_for(
+                "library_browser_text_preview",
+                browser_root=browser_root.value,
+                path=entry.relative_path,
+            ),
+            hx_swap="outerHTML",
+            hx_target="#modal-lg-content",
+            type="button",
+        )[content]
+
     href = (
         flask.url_for(
             "library_browser",
@@ -33,27 +75,58 @@ def _library_browser_entry(
         ".align-items-center.d-flex.gap-3.list-group-item.list-group-item-action",
         download=None if entry.is_directory else entry.name,
         href=href,
-    )[
-        htpy.i(
-            ".bi-folder-fill.fs-4.text-warning"
-            if entry.is_directory
-            else ".bi-file-earmark.fs-4.text-secondary"
-        ),
-        htpy.div(".flex-grow-1.text-break")[entry.name],
-        (
-            htpy.span(".small.text-nowrap.text-secondary")[
-                f"{_duration_hms(entry.duration_seconds)} MP3"
-            ]
-            if entry.duration_seconds is not None
-            else (
-                htpy.span(".small.text-nowrap.text-secondary")[
-                    f"{entry.size or 0:,} bytes"
-                ]
-                if not entry.is_directory
-                else None
-            )
-        ),
-    ]
+    )[content]
+
+
+def library_browser_text_preview(
+    browser_root: LibraryBrowserRoot,
+    path: str,
+    content: str,
+    *,
+    truncated: bool,
+) -> str:
+    download_url = flask.url_for(
+        "library_browser_file",
+        browser_root=browser_root.value,
+        path=path,
+    )
+    return str(
+        htpy.div("#modal-lg-content.modal-content")[
+            htpy.div(".modal-header")[
+                htpy.h5(".mb-0.modal-title.text-break")[path],
+                htpy.button(
+                    ".btn-close",
+                    aria_label="Close",
+                    data_bs_dismiss="modal",
+                    type="button",
+                ),
+            ],
+            htpy.div(".modal-body")[
+                (
+                    htpy.div(".alert.alert-warning", role="alert")[
+                        "This preview is limited to the first 512 KiB of the file."
+                    ]
+                    if truncated
+                    else None
+                ),
+                htpy.pre(".bg-body-tertiary.border.mb-0.p-3.rounded.text-file-preview")[
+                    content
+                ],
+            ],
+            htpy.div(".modal-footer")[
+                htpy.a(
+                    ".btn.btn-primary",
+                    download=pathlib.PurePosixPath(path).name,
+                    href=download_url,
+                )[htpy.i(".bi-download"), " Download"],
+                htpy.button(
+                    ".btn.btn-secondary",
+                    data_bs_dismiss="modal",
+                    type="button",
+                )["Close"],
+            ],
+        ]
+    )
 
 
 def _library_browser_breadcrumbs(
