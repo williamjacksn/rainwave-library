@@ -379,6 +379,47 @@ def library_browser_file(browser_root: str) -> flask.Response:
     return response
 
 
+@app.route("/library-files/<browser_root>/image", methods=["GET"])
+@secure
+def library_browser_image(browser_root: str) -> flask.Response:
+    selected_root = _library_browser_root_get(browser_root)
+    try:
+        path, mimetype = rainwave_library.models.storage.library_browser_image_file_get(
+            app.config["LIBRARY_ROOT"],
+            selected_root,
+            flask.request.args.get("path", ""),
+        )
+    except ValueError:
+        flask.abort(404)
+    response = flask.send_file(
+        path,
+        conditional=True,
+        mimetype=mimetype,
+    )
+    response.headers["Content-Security-Policy"] = "default-src 'none'"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+@app.route("/library-files/<browser_root>/image-preview", methods=["GET"])
+@secure
+def library_browser_image_preview(browser_root: str) -> str:
+    selected_root = _library_browser_root_get(browser_root)
+    relative_path = flask.request.args.get("path", "")
+    try:
+        rainwave_library.models.storage.library_browser_image_file_get(
+            app.config["LIBRARY_ROOT"],
+            selected_root,
+            relative_path,
+        )
+    except ValueError:
+        flask.abort(404)
+    return rainwave_library.components.library_browser_image_preview(
+        selected_root,
+        relative_path,
+    )
+
+
 @app.route("/library-files/<browser_root>/text-preview", methods=["GET"])
 @secure
 def library_browser_text_preview(browser_root: str) -> str:

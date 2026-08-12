@@ -31,6 +31,10 @@
     max-height: calc(100vh - 9rem);
 }
 
+.library-browser-image-preview {
+    max-height: calc(100vh - 13rem);
+}
+
 .text-file-preview {
     white-space: pre-wrap;
     overflow-wrap: anywhere;

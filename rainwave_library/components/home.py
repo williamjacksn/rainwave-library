@@ -21,9 +21,13 @@ def _library_browser_entry(
             ".bi-folder-fill.fs-4.text-warning"
             if entry.is_directory
             else (
-                ".bi-file-earmark-text.fs-4.text-secondary"
-                if entry.is_text
-                else ".bi-file-earmark.fs-4.text-secondary"
+                ".bi-file-earmark-image.fs-4.text-secondary"
+                if entry.is_image
+                else (
+                    ".bi-file-earmark-text.fs-4.text-secondary"
+                    if entry.is_text
+                    else ".bi-file-earmark.fs-4.text-secondary"
+                )
             )
         ),
         htpy.div(".flex-grow-1.text-break")[entry.name],
@@ -41,6 +45,22 @@ def _library_browser_entry(
             )
         ),
     ]
+    if entry.is_image:
+        return htpy.button(
+            ".align-items-center.d-flex.gap-3.list-group-item."
+            "list-group-item-action.text-start",
+            aria_label=f"Preview {entry.name}",
+            data_bs_target="#modal-lg",
+            data_bs_toggle="modal",
+            hx_get=flask.url_for(
+                "library_browser_image_preview",
+                browser_root=browser_root.value,
+                path=entry.relative_path,
+            ),
+            hx_swap="outerHTML",
+            hx_target="#modal-lg-content",
+            type="button",
+        )[content]
     if entry.is_text:
         return htpy.button(
             ".align-items-center.d-flex.gap-3.list-group-item."
@@ -76,6 +96,54 @@ def _library_browser_entry(
         download=None if entry.is_directory else entry.name,
         href=href,
     )[content]
+
+
+def library_browser_image_preview(
+    browser_root: LibraryBrowserRoot,
+    path: str,
+) -> str:
+    download_url = flask.url_for(
+        "library_browser_file",
+        browser_root=browser_root.value,
+        path=path,
+    )
+    image_url = flask.url_for(
+        "library_browser_image",
+        browser_root=browser_root.value,
+        path=path,
+    )
+    return str(
+        htpy.div("#modal-lg-content.bg-dark.modal-content.text-white")[
+            htpy.div(".border-0.modal-header")[
+                htpy.h5(".mb-0.modal-title.text-break")[path],
+                htpy.button(
+                    ".btn-close.btn-close-white",
+                    aria_label="Close",
+                    data_bs_dismiss="modal",
+                    type="button",
+                ),
+            ],
+            htpy.div(".modal-body.p-2.text-center")[
+                htpy.img(
+                    ".img-fluid.library-browser-image-preview",
+                    alt=path,
+                    src=image_url,
+                )
+            ],
+            htpy.div(".border-0.modal-footer")[
+                htpy.a(
+                    ".btn.btn-primary",
+                    download=pathlib.PurePosixPath(path).name,
+                    href=download_url,
+                )[htpy.i(".bi-download"), " Download"],
+                htpy.button(
+                    ".btn.btn-secondary",
+                    data_bs_dismiss="modal",
+                    type="button",
+                )["Close"],
+            ],
+        ]
+    )
 
 
 def library_browser_text_preview(
