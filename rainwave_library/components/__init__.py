@@ -14,6 +14,7 @@ from .listeners import (
     listeners_index,
     listeners_rows,
 )
+from .power_hour import power_hour
 from .settings import settings_index, user_settings_index
 from .songs import (
     songs_change_channels_form,
@@ -88,6 +89,7 @@ __all__ = (
     "listeners_edit",
     "listeners_index",
     "listeners_rows",
+    "power_hour",
     "settings_index",
     "sign_in",
     "songs_change_channels_form",

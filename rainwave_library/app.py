@@ -320,6 +320,15 @@ def index() -> werkzeug.Response | str:
     return rainwave_library.components.welcome(flask.session.get("role", "member"))
 
 
+@app.route("/new-music-power-hours", methods=["GET"])
+@secure
+def new_music_power_hours() -> str:
+    overview = rainwave_library.models.power_hour.power_hour_overview_get(
+        app.config["RAINWAVE_DATABASE"]
+    )
+    return rainwave_library.components.power_hour(overview)
+
+
 def _library_browser_root_get(
     browser_root: str,
 ) -> rainwave_library.models.storage.LibraryBrowserRoot:

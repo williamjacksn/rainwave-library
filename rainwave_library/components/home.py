@@ -494,6 +494,11 @@ def welcome(role: str) -> str:
                     "Browse upcoming and removed music files",
                 ),
                 (
+                    "new_music_power_hours",
+                    "New Music Power Hours",
+                    "Review songs eligible for the next New Music Power Hour",
+                ),
+                (
                     "bluesky",
                     "Post to Bluesky",
                     "Post an update to the Rainwave Bluesky account",
