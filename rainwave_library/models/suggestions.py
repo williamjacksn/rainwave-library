@@ -119,9 +119,9 @@ class SuggestionFilterSet:
             sort_dir="desc",
             sort_col="requested_at",
             claimed_by=[],
-            channel=["unassigned", "1", "2", "3", "4", "6"],
-            status=list(Suggestion.statuses),
-            type=list(Suggestion.kinds),
+            channel=[],
+            status=[],
+            type=[],
             your_suggestions=False,
             your_claims=False,
         )

@@ -76,7 +76,6 @@ def _suggestions_claimed_by_filter(
     claimants: list[str], filters: SuggestionFilterSet
 ) -> htpy.Element:
     rows_url = flask.url_for("suggestions_rows")
-    empty = len(filters.claimed_by) == 0
     return htpy.div(".dropdown")[
         htpy.button(
             ".btn.btn-primary.dropdown-toggle",
@@ -90,7 +89,7 @@ def _suggestions_claimed_by_filter(
                 htpy.div(".form-check")[
                     htpy.input(
                         "#suggestion-claimant-unclaimed.form-check-input",
-                        checked="" in filters.claimed_by or empty,
+                        checked="" in filters.claimed_by,
                         hx_indicator="#suggestion-filters-indicator",
                         hx_post=rows_url,
                         name="claimed-by",
@@ -106,7 +105,7 @@ def _suggestions_claimed_by_filter(
                     htpy.div(".form-check")[
                         htpy.input(
                             f"#suggestion-claimant-{index}.form-check-input",
-                            checked=claimant in filters.claimed_by or empty,
+                            checked=claimant in filters.claimed_by,
                             hx_indicator="#suggestion-filters-indicator",
                             hx_post=rows_url,
                             name="claimed-by",
@@ -135,7 +134,6 @@ def _suggestions_channel_filter(filters: SuggestionFilterSet) -> htpy.Element:
         ),
         key=lambda channel: channel[1].casefold(),
     )
-    empty_channel_list = len(filters.channel) == 0
     return htpy.div(".dropdown")[
         htpy.button(
             ".btn.btn-primary.dropdown-toggle",
@@ -149,7 +147,7 @@ def _suggestions_channel_filter(filters: SuggestionFilterSet) -> htpy.Element:
                 htpy.div(".form-check")[
                     htpy.input(
                         "#suggestion-channel-unassigned.form-check-input",
-                        checked="unassigned" in filters.channel or empty_channel_list,
+                        checked="unassigned" in filters.channel,
                         hx_indicator="#suggestion-filters-indicator",
                         hx_post=rows_url,
                         name="channels",
@@ -165,8 +163,7 @@ def _suggestions_channel_filter(filters: SuggestionFilterSet) -> htpy.Element:
                     htpy.div(".form-check")[
                         htpy.input(
                             f"#suggestion-channel-{channel_id}.form-check-input",
-                            checked=str(channel_id) in filters.channel
-                            or empty_channel_list,
+                            checked=str(channel_id) in filters.channel,
                             hx_indicator="#suggestion-filters-indicator",
                             hx_post=rows_url,
                             name="channels",
