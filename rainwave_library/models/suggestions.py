@@ -465,6 +465,12 @@ def suggestions_get(
     valid_claimed_by_names = tuple(
         dict.fromkeys(name for name in claimed_by_filters if name)
     )
+    requester_display_name_expression = (
+        "coalesce(nullif(trim(requester.display_name), ''), s.requester_name)"
+    )
+    claimant_display_name_expression = (
+        "coalesce(nullif(trim(claimant.display_name), ''), s.claimed_by_name)"
+    )
     claimed_by_parameters = {
         f"claimed_by_name_{index}": name
         for index, name in enumerate(valid_claimed_by_names)
@@ -473,10 +479,13 @@ def suggestions_get(
     if claimed_by_parameters:
         placeholders = ", ".join(f":{name}" for name in claimed_by_parameters)
         claimed_by_conditions.append(
-            f"s.claimed_by_name collate nocase in ({placeholders})"
+            f"{claimant_display_name_expression} collate nocase "
+            f"in ({placeholders})"
         )
     if include_unclaimed:
-        claimed_by_conditions.append("nullif(trim(s.claimed_by_name), '') is null")
+        claimed_by_conditions.append(
+            f"nullif(trim({claimant_display_name_expression}), '') is null"
+        )
     claimed_by_clause = (
         f"and ({' or '.join(claimed_by_conditions)})" if claimed_by_conditions else ""
     )
@@ -498,12 +507,12 @@ def suggestions_get(
         ),
         "title": ("s.title collate nocase",),
         "requester_name": (
-            "s.requester_name collate nocase",
+            f"{requester_display_name_expression} collate nocase",
             "s.title collate nocase",
         ),
         "requested_at": ("s.requested_at", "s.title collate nocase"),
         "claimed_by_name": (
-            "s.claimed_by_name collate nocase",
+            f"{claimant_display_name_expression} collate nocase",
             "s.title collate nocase",
         ),
     }
@@ -519,17 +528,11 @@ def suggestions_get(
             s.kind,
             s.status,
             s.description,
-            coalesce(
-                nullif(trim(requester.display_name), ''),
-                s.requester_name
-            ) requester_display_name,
+            {requester_display_name_expression} requester_display_name,
             s.requester_discord_id,
             requester.avatar_url requester_avatar_url,
             s.requested_at,
-            coalesce(
-                nullif(trim(claimant.display_name), ''),
-                s.claimed_by_name
-            ) claimed_by_display_name,
+            {claimant_display_name_expression} claimed_by_display_name,
             s.claimed_by_discord_id,
             claimant.avatar_url claimed_by_avatar_url,
             (
@@ -591,8 +594,8 @@ def suggestions_get(
                 :query is null
                 or s.title like :query
                 or s.description like :query
-                or coalesce(s.requester_name, '') like :query
-                or coalesce(s.claimed_by_name, '') like :query
+                or coalesce({requester_display_name_expression}, '') like :query
+                or coalesce({claimant_display_name_expression}, '') like :query
             )
         order by
             {sort_clause},
@@ -630,14 +633,22 @@ def suggestions_get(
 def suggestion_claimants_get(con: sqlite3.Connection) -> list[str]:
     rows = con.execute(
         """
-        select min(claimed_by_name) claimed_by_name
-        from suggestions
-        where nullif(trim(claimed_by_name), '') is not null
-        group by claimed_by_name collate nocase
-        order by claimed_by_name collate nocase
+        select min(claimed_by_display_name) claimed_by_display_name
+        from (
+            select coalesce(
+                nullif(trim(claimant.display_name), ''),
+                s.claimed_by_name
+            ) claimed_by_display_name
+            from suggestions s
+            left join users claimant
+                on claimant.discord_id = s.claimed_by_discord_id
+        )
+        where nullif(trim(claimed_by_display_name), '') is not null
+        group by claimed_by_display_name collate nocase
+        order by claimed_by_display_name collate nocase
         """
     ).fetchall()
-    return [str(row["claimed_by_name"]) for row in rows]
+    return [str(row["claimed_by_display_name"]) for row in rows]
 
 
 def suggestion_counts_by_requester(
