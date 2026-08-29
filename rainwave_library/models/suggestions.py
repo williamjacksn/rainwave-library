@@ -479,8 +479,7 @@ def suggestions_get(
     if claimed_by_parameters:
         placeholders = ", ".join(f":{name}" for name in claimed_by_parameters)
         claimed_by_conditions.append(
-            f"{claimant_display_name_expression} collate nocase "
-            f"in ({placeholders})"
+            f"{claimant_display_name_expression} collate nocase in ({placeholders})"
         )
     if include_unclaimed:
         claimed_by_conditions.append(

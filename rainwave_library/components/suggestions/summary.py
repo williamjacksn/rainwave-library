@@ -65,8 +65,8 @@ def _suggestion_staff_action_state(
 
 
 def _suggestion_preview_staff_actions(suggestion: Suggestion) -> htpy.Node:
-    is_staff, claimable, releasable, resolvable = (
-        _suggestion_staff_action_state(suggestion)
+    is_staff, claimable, releasable, resolvable = _suggestion_staff_action_state(
+        suggestion
     )
     if not is_staff:
         return None
@@ -99,8 +99,7 @@ def _suggestion_preview_staff_actions(suggestion: Suggestion) -> htpy.Node:
         and htpy.button(
             ".btn.btn-outline-danger.btn-sm",
             hx_confirm=(
-                "Are you sure you want to release your claim on "
-                f"{suggestion.title}?"
+                f"Are you sure you want to release your claim on {suggestion.title}?"
             ),
             hx_disabled_elt="this",
             hx_post=flask.url_for(
@@ -141,8 +140,8 @@ def _suggestion_preview_staff_actions(suggestion: Suggestion) -> htpy.Node:
 
 
 def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
-    _is_staff, claimable, releasable, _resolvable = (
-        _suggestion_staff_action_state(suggestion)
+    _is_staff, claimable, releasable, _resolvable = _suggestion_staff_action_state(
+        suggestion
     )
     kind_label = Suggestion.kind_labels.get(suggestion.kind, suggestion.kind)
     return htpy.tr(id=f"suggestion-row-{suggestion.id}")[
