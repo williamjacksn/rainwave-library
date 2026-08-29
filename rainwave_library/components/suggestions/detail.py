@@ -27,6 +27,7 @@ from .release import (
 from .summary import (
     _suggestion_detail_table,
     _suggestion_edit_form,
+    _suggestion_preview_staff_actions,
     _suggestion_status_badge,
     _suggestion_user_identity,
     _suggestion_value,
@@ -159,7 +160,7 @@ def suggestion_detail_row(
         if suggestion.channel_ids
         else htpy.span(".text-secondary")["—"]
     )
-    content = htpy.tr[
+    content = htpy.tr(id=f"suggestion-row-{suggestion.id}")[
         htpy.td(".p-0", colspan=Suggestion.colspan)[
             htpy.div(".border-0.card.rounded-0")[
                 htpy.div(".align-items-center.card-header.d-flex.gap-2.px-2.rounded-0")[
@@ -180,6 +181,7 @@ def suggestion_detail_row(
                     editable and _suggestion_edit_form(suggestion, edit_result),
                     not editable
                     and htpy.fragment[
+                        _suggestion_preview_staff_actions(suggestion),
                         htpy.div(".g-3.row")[
                             _suggestion_detail_item(
                                 "Suggestion type",

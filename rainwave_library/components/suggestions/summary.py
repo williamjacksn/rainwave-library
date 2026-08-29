@@ -44,141 +44,122 @@ def _suggestion_user_identity(
     ]
 
 
-def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
-    editable = flask.session.get("role") == "staff"
-    resolvable = editable and suggestion.status in ("new", "claimed")
+def _suggestion_staff_action_state(
+    suggestion: Suggestion,
+) -> tuple[bool, bool, bool, bool]:
+    is_staff = flask.session.get("role") == "staff"
     claimable = (
-        editable
+        is_staff
         and suggestion.status == "new"
         and not suggestion.claimed_by_name
         and not suggestion.claimed_by_discord_id
     )
     releasable = (
-        suggestion.status == "claimed"
+        is_staff
+        and suggestion.status == "claimed"
         and bool(suggestion.claimed_by_discord_id)
         and suggestion.claimed_by_discord_id == str(flask.g.discord_id or "")
+    )
+    resolvable = is_staff and suggestion.status in ("new", "claimed")
+    return is_staff, claimable, releasable, resolvable
+
+
+def _suggestion_preview_staff_actions(suggestion: Suggestion) -> htpy.Node:
+    is_staff, claimable, releasable, resolvable = (
+        _suggestion_staff_action_state(suggestion)
+    )
+    if not is_staff:
+        return None
+
+    return htpy.div(".d-flex.flex-wrap.gap-2.mb-3")[
+        htpy.button(
+            ".btn.btn-secondary.btn-sm",
+            hx_get=flask.url_for(
+                "suggestion_details",
+                suggestion_id=suggestion.id,
+            ),
+            hx_swap="outerHTML",
+            hx_target="closest tr",
+            type="button",
+        )[htpy.i(".bi-pencil"), " Edit suggestion"],
+        claimable
+        and htpy.button(
+            ".btn.btn-primary.btn-sm",
+            hx_confirm=f"Are you sure you want to claim {suggestion.title}?",
+            hx_disabled_elt="this",
+            hx_post=flask.url_for(
+                "suggestion_claim",
+                suggestion_id=suggestion.id,
+            ),
+            hx_swap="outerHTML",
+            hx_target="closest tr",
+            type="button",
+        )[htpy.i(".bi-person-check"), " Claim suggestion"],
+        releasable
+        and htpy.button(
+            ".btn.btn-outline-danger.btn-sm",
+            hx_confirm=(
+                "Are you sure you want to release your claim on "
+                f"{suggestion.title}?"
+            ),
+            hx_disabled_elt="this",
+            hx_post=flask.url_for(
+                "suggestion_release",
+                suggestion_id=suggestion.id,
+            ),
+            hx_swap="outerHTML",
+            hx_target="closest tr",
+            type="button",
+        )[htpy.i(".bi-person-dash"), " Release claim"],
+        resolvable
+        and htpy.button(
+            ".btn.btn-success.btn-sm",
+            data_bs_target="#modal-lg",
+            data_bs_toggle="modal",
+            hx_get=flask.url_for(
+                "suggestion_accept",
+                suggestion_id=suggestion.id,
+            ),
+            hx_swap="outerHTML",
+            hx_target="#modal-lg-content",
+            type="button",
+        )[htpy.i(".bi-check-circle"), " Accept suggestion"],
+        resolvable
+        and htpy.button(
+            ".btn.btn-danger.btn-sm",
+            data_bs_target="#modal-lg",
+            data_bs_toggle="modal",
+            hx_get=flask.url_for(
+                "suggestion_decline",
+                suggestion_id=suggestion.id,
+            ),
+            hx_swap="outerHTML",
+            hx_target="#modal-lg-content",
+            type="button",
+        )[htpy.i(".bi-x-circle"), " Decline suggestion"],
+    ]
+
+
+def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
+    _is_staff, claimable, releasable, _resolvable = (
+        _suggestion_staff_action_state(suggestion)
     )
     kind_label = Suggestion.kind_labels.get(suggestion.kind, suggestion.kind)
     return htpy.tr(id=f"suggestion-row-{suggestion.id}")[
         htpy.td(".text-center.text-nowrap")[
-            (
-                htpy.div(".dropdown")[
-                    htpy.button(
-                        ".btn.btn-secondary.btn-sm",
-                        aria_expanded="false",
-                        aria_label=f"Actions for {suggestion.title}",
-                        data_bs_toggle="dropdown",
-                        title="Suggestion actions",
-                        type="button",
-                    )[htpy.i(".bi-list")],
-                    htpy.ul(".dropdown-menu")[
-                        htpy.li[
-                            htpy.button(
-                                ".dropdown-item",
-                                hx_get=flask.url_for(
-                                    "suggestion_details",
-                                    suggestion_id=suggestion.id,
-                                    view="1",
-                                ),
-                                hx_swap="outerHTML",
-                                hx_target="closest tr",
-                                type="button",
-                            )[htpy.i(".bi-eye.me-2"), "View suggestion"]
-                        ],
-                        htpy.li[
-                            htpy.button(
-                                ".dropdown-item",
-                                hx_get=flask.url_for(
-                                    "suggestion_details",
-                                    suggestion_id=suggestion.id,
-                                ),
-                                hx_swap="outerHTML",
-                                hx_target="closest tr",
-                                type="button",
-                            )[htpy.i(".bi-pencil.me-2"), "Edit suggestion"]
-                        ],
-                        claimable
-                        and htpy.li[
-                            htpy.button(
-                                ".dropdown-item",
-                                hx_confirm=(
-                                    "Are you sure you want to claim "
-                                    f"{suggestion.title}?"
-                                ),
-                                hx_disabled_elt="this",
-                                hx_post=flask.url_for(
-                                    "suggestion_claim",
-                                    suggestion_id=suggestion.id,
-                                ),
-                                hx_swap="outerHTML",
-                                hx_target="closest tr",
-                                type="button",
-                            )[htpy.i(".bi-person-check.me-2"), "Claim suggestion"]
-                        ],
-                        releasable
-                        and htpy.li[
-                            htpy.button(
-                                ".dropdown-item.text-danger",
-                                hx_confirm=(
-                                    "Are you sure you want to release your claim on "
-                                    f"{suggestion.title}?"
-                                ),
-                                hx_disabled_elt="this",
-                                hx_post=flask.url_for(
-                                    "suggestion_release",
-                                    suggestion_id=suggestion.id,
-                                ),
-                                hx_swap="outerHTML",
-                                hx_target="closest tr",
-                                type="button",
-                            )[htpy.i(".bi-person-dash.me-2"), "Release claim"]
-                        ],
-                        resolvable
-                        and htpy.li[
-                            htpy.button(
-                                ".dropdown-item.text-success",
-                                data_bs_target="#modal-lg",
-                                data_bs_toggle="modal",
-                                hx_get=flask.url_for(
-                                    "suggestion_accept",
-                                    suggestion_id=suggestion.id,
-                                ),
-                                hx_swap="outerHTML",
-                                hx_target="#modal-lg-content",
-                                type="button",
-                            )[htpy.i(".bi-check-circle.me-2"), "Accept suggestion"]
-                        ],
-                        resolvable
-                        and htpy.li[
-                            htpy.button(
-                                ".dropdown-item.text-danger",
-                                data_bs_target="#modal-lg",
-                                data_bs_toggle="modal",
-                                hx_get=flask.url_for(
-                                    "suggestion_decline",
-                                    suggestion_id=suggestion.id,
-                                ),
-                                hx_swap="outerHTML",
-                                hx_target="#modal-lg-content",
-                                type="button",
-                            )[htpy.i(".bi-x-circle.me-2"), "Decline suggestion"]
-                        ],
-                    ],
-                ]
-                if editable
-                else htpy.a(
-                    ".text-decoration-none",
-                    aria_label=f"View details for {suggestion.title}",
-                    href="#",
-                    hx_get=flask.url_for(
-                        "suggestion_details",
-                        suggestion_id=suggestion.id,
-                    ),
-                    hx_swap="outerHTML",
-                    hx_target="closest tr",
-                    title="View suggestion details",
-                )[htpy.i(".bi-eye")]
-            ),
+            htpy.a(
+                ".text-decoration-none",
+                aria_label=f"View details for {suggestion.title}",
+                href="#",
+                hx_get=flask.url_for(
+                    "suggestion_details",
+                    suggestion_id=suggestion.id,
+                    view="1",
+                ),
+                hx_swap="outerHTML",
+                hx_target="closest tr",
+                title="View suggestion details",
+            )[htpy.i(".bi-eye")],
         ],
         htpy.td(".d-table-cell.d-md-none")[
             htpy.div(".fw-semibold.text-break")[suggestion.title],
