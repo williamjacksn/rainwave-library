@@ -2109,11 +2109,7 @@ def suggestion_schedule_release(suggestion_id: str) -> werkzeug.Response | str:
             folder_path=folder_path,
             staged_duration_seconds=staged_duration_seconds,
             upcoming_duration_seconds=upcoming_duration_seconds,
-            error=(
-                "The suggestion files could not be copied."
-                if release_immediately
-                else "The suggestion files could not be moved."
-            ),
+            error="The suggestion files could not be moved.",
         )
 
     if release_immediately:

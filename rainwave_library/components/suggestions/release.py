@@ -47,7 +47,11 @@ def _suggestion_schedule_release_duration(
 ) -> htpy.Element:
     selected_date_duration = (
         upcoming_duration_seconds
-        if release_date and upcoming_duration_seconds is not None
+        if (
+            not release_immediately
+            and release_date
+            and upcoming_duration_seconds is not None
+        )
         else None
     )
     return htpy.div(
@@ -56,11 +60,7 @@ def _suggestion_schedule_release_duration(
         role="status",
     )[
         htpy.div[
-            htpy.strong[
-                "MP3 duration to be copied: "
-                if release_immediately
-                else "MP3 duration to be moved: "
-            ],
+            htpy.strong["MP3 duration to be moved: "],
             _duration_hms(staged_duration_seconds),
         ],
         selected_date_duration is not None
@@ -207,7 +207,7 @@ def _suggestion_schedule_release_form(
                 htpy.strong[suggestion.title],
                 (
                     " can be moved into the upcoming music folder for a future date "
-                    "or copied directly into the library immediately."
+                    "or moved directly into the library immediately."
                 ),
             ],
             _suggestion_schedule_release_duration(
@@ -241,7 +241,7 @@ def _suggestion_schedule_release_form(
                         )["Release immediately"],
                     ],
                     htpy.div(".form-text")[
-                        "Copies the staged files directly into the selected channel "
+                        "Moves the staged files directly into the selected channel "
                         "folder under the library root. If the destination already "
                         "exists, files are merged into it and matching files are "
                         "replaced."

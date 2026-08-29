@@ -8,6 +8,7 @@ import pathlib
 import secrets
 import shutil
 import sqlite3
+import tempfile
 import typing
 
 import mutagen
@@ -502,6 +503,83 @@ def suggestion_release_target_get(
     return destination
 
 
+def _suggestion_release_merge(
+    source: pathlib.Path,
+    destination: pathlib.Path,
+) -> None:
+    source_entries = tuple(source.rglob("*"))
+    source_directories = sorted(
+        (path for path in source_entries if path.is_dir()),
+        key=lambda path: len(path.relative_to(source).parts),
+    )
+    source_files = tuple(path for path in source_entries if path.is_file())
+
+    for source_directory in source_directories:
+        target = destination / source_directory.relative_to(source)
+        if target.is_symlink() or (target.exists() and not target.is_dir()):
+            msg = f"The library destination already contains {target.name}."
+            raise ValueError(msg)
+    target_files = tuple(
+        (source_file, destination / source_file.relative_to(source))
+        for source_file in source_files
+    )
+    replaced_files = []
+    for _, target in target_files:
+        if target.exists() and target.is_dir():
+            msg = f"The library destination already contains {target.name}."
+            raise ValueError(msg)
+        if target.exists() or target.is_symlink():
+            replaced_files.append(target)
+
+    backup_root = None
+    created_directories = []
+    moved_files = []
+    backed_up_files = []
+    try:
+        if replaced_files:
+            backup_root = pathlib.Path(
+                tempfile.mkdtemp(prefix=".release-backup-", dir=source.parent)
+            )
+            for target in replaced_files:
+                backup = backup_root / target.relative_to(destination)
+                backup.parent.mkdir(parents=True, exist_ok=True)
+                target.rename(backup)
+                backed_up_files.append((target, backup))
+        for source_directory in source_directories:
+            target = destination / source_directory.relative_to(source)
+            if not target.exists():
+                target.mkdir()
+                created_directories.append(target)
+        for source_file, target in target_files:
+            source_file.rename(target)
+            moved_files.append((source_file, target))
+        for source_directory in (*reversed(source_directories), source):
+            source_directory.rmdir()
+        if backup_root is not None:
+            shutil.rmtree(backup_root)
+    except OSError:
+        for source_file, target in reversed(moved_files):
+            try:
+                source_file.parent.mkdir(parents=True, exist_ok=True)
+                target.rename(source_file)
+            except OSError:
+                pass
+        for target, backup in reversed(backed_up_files):
+            try:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                backup.rename(target)
+            except OSError:
+                pass
+        if backup_root is not None:
+            shutil.rmtree(backup_root, ignore_errors=True)
+        for directory in reversed(created_directories):
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
+        raise
+
+
 def suggestion_release_schedule(
     library_root: pathlib.Path,
     suggestion_id: str,
@@ -551,23 +629,12 @@ def suggestion_release_schedule(
             continue
         directory.mkdir()
         created_directories.append(directory)
-    immediate_destination_created = False
     try:
-        if release_immediately:
-            if not destination.exists():
-                try:
-                    destination.mkdir()
-                except FileExistsError:
-                    if not destination.is_dir():
-                        raise
-                else:
-                    immediate_destination_created = True
-            shutil.copytree(source, destination, dirs_exist_ok=True)
+        if release_immediately and destination.exists():
+            _suggestion_release_merge(source, destination)
         else:
             source.rename(destination)
     except OSError:
-        if immediate_destination_created:
-            shutil.rmtree(destination, ignore_errors=True)
         for directory in reversed(created_directories):
             try:
                 directory.rmdir()
