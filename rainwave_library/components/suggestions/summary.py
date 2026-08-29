@@ -46,7 +46,7 @@ def _suggestion_user_identity(
 
 def _suggestion_staff_action_state(
     suggestion: Suggestion,
-) -> tuple[bool, bool, bool, bool]:
+) -> tuple[bool, bool, bool, bool, bool]:
     is_staff = flask.session.get("role") == "staff"
     claimable = (
         is_staff
@@ -61,12 +61,13 @@ def _suggestion_staff_action_state(
         and suggestion.claimed_by_discord_id == str(flask.g.discord_id or "")
     )
     resolvable = is_staff and suggestion.status == "claimed"
-    return is_staff, claimable, releasable, resolvable
+    completable = is_staff and suggestion.status == "accepted"
+    return is_staff, claimable, releasable, resolvable, completable
 
 
 def _suggestion_preview_staff_actions(suggestion: Suggestion) -> htpy.Node:
-    is_staff, claimable, releasable, resolvable = _suggestion_staff_action_state(
-        suggestion
+    is_staff, claimable, releasable, resolvable, completable = (
+        _suggestion_staff_action_state(suggestion)
     )
     if not is_staff:
         return None
@@ -136,12 +137,27 @@ def _suggestion_preview_staff_actions(suggestion: Suggestion) -> htpy.Node:
             hx_target="#modal-lg-content",
             type="button",
         )[htpy.i(".bi-x-circle"), " Decline suggestion"],
+        completable
+        and htpy.button(
+            ".btn.btn-success.btn-sm",
+            hx_confirm=(
+                f'Are you sure you want to mark "{suggestion.title}" as completed?'
+            ),
+            hx_disabled_elt="this",
+            hx_post=flask.url_for(
+                "suggestion_complete",
+                suggestion_id=suggestion.id,
+            ),
+            hx_swap="outerHTML",
+            hx_target="closest tr",
+            type="button",
+        )[htpy.i(".bi-check2-all"), " Mark completed"],
     ]
 
 
 def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
-    _is_staff, claimable, releasable, _resolvable = _suggestion_staff_action_state(
-        suggestion
+    _is_staff, claimable, releasable, _resolvable, _completable = (
+        _suggestion_staff_action_state(suggestion)
     )
     kind_label = Suggestion.kind_labels.get(suggestion.kind, suggestion.kind)
     return htpy.tr(id=f"suggestion-row-{suggestion.id}")[

@@ -3067,6 +3067,32 @@ def suggestion_accept(suggestion_id: str) -> werkzeug.Response | str:
     return flask.redirect(flask.url_for("suggestions"))
 
 
+@app.route("/suggestions/<suggestion_id>/complete", methods=["POST"])
+@secure
+def suggestion_complete(suggestion_id: str) -> str:
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        completed = rainwave_library.models.suggestions.suggestion_complete(
+            storage_cnx,
+            suggestion_id,
+            actor_name=flask.g.discord_display_name,
+            actor_discord_id=(str(flask.g.discord_id) if flask.g.discord_id else None),
+        )
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+    finally:
+        storage_cnx.close()
+
+    if suggestion is None:
+        flask.abort(404)
+    if not completed:
+        flask.abort(409, "Only accepted suggestions can be marked as completed.")
+    return rainwave_library.components.suggestion_row(suggestion)
+
+
 @app.route("/suggestions/<suggestion_id>", methods=["POST"])
 @secure
 def suggestion_update(suggestion_id: str) -> str:

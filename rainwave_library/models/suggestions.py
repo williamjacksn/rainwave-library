@@ -1169,6 +1169,49 @@ def suggestion_accept(
     return True
 
 
+def suggestion_complete(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    *,
+    actor_name: str | None,
+    actor_discord_id: str | None,
+) -> bool:
+    try:
+        cursor = con.execute(
+            """
+            update suggestions
+            set
+                status = 'completed',
+                resolved_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+                updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            where suggestion_id = :suggestion_id
+                and status = 'accepted'
+            """,
+            {"suggestion_id": suggestion_id},
+        )
+        completed = cursor.rowcount == 1
+        if completed:
+            _activity_insert(
+                con,
+                suggestion_id,
+                activity_type="updated-status",
+                actor_name=actor_name,
+                actor_discord_id=actor_discord_id,
+                old_value="accepted",
+                new_value="completed",
+            )
+            con.commit()
+        else:
+            con.rollback()
+    except Exception:
+        con.rollback()
+        raise
+
+    if completed:
+        log.info("Completed suggestion %s", suggestion_id)
+    return completed
+
+
 def suggestion_decline(
     con: sqlite3.Connection,
     suggestion_id: str,
