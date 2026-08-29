@@ -37,6 +37,7 @@ from .release import (
 )
 from .summary import (
     suggestion_accept_form,
+    suggestion_assign_form,
     suggestion_decline_form,
     suggestion_edit_requester_discord_id_field,
     suggestion_row,
@@ -48,6 +49,7 @@ __all__ = (
     "staff_suggestion_requester_discord_id_field",
     "suggestion_accept_form",
     "suggestion_activity_block",
+    "suggestion_assign_form",
     "suggestion_comment_button",
     "suggestion_comment_form",
     "suggestion_create_form",

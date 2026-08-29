@@ -1040,6 +1040,90 @@ def suggestion_claim(
     return claimed
 
 
+def suggestion_assign(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    assignee_discord_id: str,
+    *,
+    actor_name: str | None,
+    actor_discord_id: str | None,
+) -> bool:
+    assignee_discord_id = assignee_discord_id.strip()
+    actor_discord_id = (actor_discord_id or "").strip() or None
+    if not assignee_discord_id:
+        msg = "Choose a staff member."
+        raise ValueError(msg)
+    if assignee_discord_id == actor_discord_id:
+        msg = "Choose another staff member, or claim the suggestion yourself."
+        raise ValueError(msg)
+
+    assignee = con.execute(
+        """
+        select coalesce(
+            nullif(trim(display_name), ''),
+            nullif(trim(username), ''),
+            discord_id
+        ) display_name
+        from users
+        where discord_id = ? and role = 'staff'
+        """,
+        (assignee_discord_id,),
+    ).fetchone()
+    if assignee is None:
+        msg = "Choose a valid staff member."
+        raise ValueError(msg)
+    assignee_name = str(assignee["display_name"])
+
+    try:
+        cursor = con.execute(
+            """
+            update suggestions
+            set
+                status = 'claimed',
+                claimed_by_name = :claimed_by_name,
+                claimed_by_discord_id = :claimed_by_discord_id,
+                claimed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+                updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            where suggestion_id = :suggestion_id
+                and status = 'new'
+                and nullif(trim(claimed_by_name), '') is null
+                and nullif(trim(claimed_by_discord_id), '') is null
+            """,
+            {
+                "suggestion_id": suggestion_id,
+                "claimed_by_name": assignee_name,
+                "claimed_by_discord_id": assignee_discord_id,
+            },
+        )
+        assigned = cursor.rowcount == 1
+        if assigned:
+            _activity_insert(
+                con,
+                suggestion_id,
+                activity_type="updated-status",
+                actor_name=actor_name,
+                actor_discord_id=actor_discord_id,
+                body=f"Assigned to {assignee_name}.",
+                old_value="new",
+                new_value="claimed",
+            )
+            con.commit()
+        else:
+            con.rollback()
+    except Exception:
+        con.rollback()
+        raise
+
+    if assigned:
+        log.info(
+            "Suggestion %s assigned to Discord user %s by %s",
+            suggestion_id,
+            assignee_discord_id,
+            actor_discord_id,
+        )
+    return assigned
+
+
 def suggestion_release(
     con: sqlite3.Connection,
     suggestion_id: str,

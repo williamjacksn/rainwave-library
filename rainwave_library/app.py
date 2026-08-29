@@ -2935,6 +2935,71 @@ def suggestion_claim(suggestion_id: str) -> str:
     return rainwave_library.components.suggestion_row(suggestion)
 
 
+@app.route("/suggestions/<suggestion_id>/assign", methods=["GET", "POST"])
+@secure
+def suggestion_assign(suggestion_id: str) -> werkzeug.Response | str:
+    actor_discord_id = str(flask.g.discord_id or "")
+    storage_cnx = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+        if suggestion is None:
+            flask.abort(404)
+        if (
+            suggestion.status != "new"
+            or suggestion.claimed_by_name
+            or suggestion.claimed_by_discord_id
+        ):
+            flask.abort(409, "Only unclaimed new suggestions can be assigned.")
+
+        staff_users = rainwave_library.models.storage.staff_users_get(
+            storage_cnx,
+            exclude_discord_id=actor_discord_id,
+        )
+        if flask.request.method == "GET":
+            return rainwave_library.components.suggestion_assign_form(
+                suggestion,
+                staff_users,
+            )
+
+        assignee_discord_id = flask.request.form.get("assignee-discord-id", "")
+        try:
+            assigned = rainwave_library.models.suggestions.suggestion_assign(
+                storage_cnx,
+                suggestion_id,
+                assignee_discord_id,
+                actor_name=flask.g.discord_display_name,
+                actor_discord_id=actor_discord_id,
+            )
+        except ValueError as error:
+            response = flask.make_response(
+                rainwave_library.components.suggestion_assign_form(
+                    suggestion,
+                    staff_users,
+                    assignee_discord_id=assignee_discord_id,
+                    error=str(error),
+                )
+            )
+            response.headers["HX-Retarget"] = "#modal-lg-content"
+            response.headers["HX-Reswap"] = "outerHTML"
+            return response
+
+        if not assigned:
+            flask.abort(409, "This suggestion is no longer available to assign.")
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx, suggestion_id
+        )
+    finally:
+        storage_cnx.close()
+
+    if suggestion is None:
+        flask.abort(404)
+    return rainwave_library.components.suggestion_row(suggestion)
+
+
 @app.route("/suggestions/<suggestion_id>/release", methods=["POST"])
 @signed_in
 def suggestion_release(suggestion_id: str) -> str:

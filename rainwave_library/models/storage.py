@@ -910,13 +910,7 @@ def settings_get(con: sqlite3.Connection) -> list[tuple[str, str, bool]]:
     return [(row["key"], row["value"], bool(row["protected"])) for row in rows]
 
 
-def user_get(con: sqlite3.Connection, discord_id: str) -> User | None:
-    row = con.execute(
-        "select * from users where discord_id = ?",
-        (discord_id.strip(),),
-    ).fetchone()
-    if row is None:
-        return None
+def _user_from_row(row: sqlite3.Row) -> User:
     return User(
         discord_id=row["discord_id"],
         username=row["username"],
@@ -926,6 +920,41 @@ def user_get(con: sqlite3.Connection, discord_id: str) -> User | None:
         created_at=row["created_at"],
         updated_at=row["updated_at"],
     )
+
+
+def user_get(con: sqlite3.Connection, discord_id: str) -> User | None:
+    row = con.execute(
+        "select * from users where discord_id = ?",
+        (discord_id.strip(),),
+    ).fetchone()
+    return _user_from_row(row) if row is not None else None
+
+
+def staff_users_get(
+    con: sqlite3.Connection,
+    *,
+    exclude_discord_id: str | None = None,
+) -> list[User]:
+    rows = con.execute(
+        """
+        select *
+        from users
+        where role = 'staff'
+            and (
+                :exclude_discord_id is null
+                or discord_id != :exclude_discord_id
+            )
+        order by
+            coalesce(
+                nullif(trim(display_name), ''),
+                nullif(trim(username), ''),
+                discord_id
+            ) collate nocase,
+            discord_id
+        """,
+        {"exclude_discord_id": exclude_discord_id},
+    ).fetchall()
+    return [_user_from_row(row) for row in rows]
 
 
 def user_upsert(

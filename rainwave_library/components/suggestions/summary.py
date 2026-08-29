@@ -5,6 +5,7 @@ from rainwave_library.models.rainwave import (
     channel_badge,
     channels,
 )
+from rainwave_library.models.storage import User
 from rainwave_library.models.suggestions import (
     Suggestion,
     SuggestionDetail,
@@ -96,6 +97,19 @@ def _suggestion_preview_staff_actions(suggestion: Suggestion) -> htpy.Node:
             hx_target="closest tr",
             type="button",
         )[htpy.i(".bi-person-check"), " Claim suggestion"],
+        claimable
+        and htpy.button(
+            ".btn.btn-secondary.btn-sm",
+            data_bs_target="#modal-lg",
+            data_bs_toggle="modal",
+            hx_get=flask.url_for(
+                "suggestion_assign",
+                suggestion_id=suggestion.id,
+            ),
+            hx_swap="outerHTML",
+            hx_target="#modal-lg-content",
+            type="button",
+        )[htpy.i(".bi-person-plus"), " Assign staff member"],
         releasable
         and htpy.button(
             ".btn.btn-outline-danger.btn-sm",
@@ -301,6 +315,111 @@ def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
 
 def suggestion_row(suggestion: Suggestion) -> str:
     return str(_suggestion_row(suggestion))
+
+
+def _suggestion_assign_form(
+    suggestion: SuggestionDetail,
+    staff_users: list[User],
+    *,
+    assignee_discord_id: str = "",
+    error: str | None = None,
+) -> htpy.Element:
+    url = flask.url_for("suggestion_assign", suggestion_id=suggestion.id)
+    after_request = (
+        "if (event.detail.successful && "
+        "!event.detail.xhr.getResponseHeader('HX-Retarget')) {"
+        "bootstrap.Modal.getOrCreateInstance("
+        "document.getElementById('modal-lg')).hide();"
+        "}"
+    )
+    return htpy.form(
+        "#modal-lg-content.modal-content",
+        action=url,
+        hx_disabled_elt="button",
+        hx_post=url,
+        hx_swap="outerHTML",
+        hx_target=f"#suggestion-row-{suggestion.id}",
+        method="post",
+        **{"hx-on:htmx:after-request": after_request},
+    )[
+        htpy.div(".modal-header")[
+            htpy.h5(".modal-title")["Assign suggestion"],
+            htpy.button(
+                ".btn-close",
+                aria_label="Close",
+                data_bs_dismiss="modal",
+                type="button",
+            ),
+        ],
+        htpy.div(".modal-body")[
+            error and htpy.div(".alert.alert-danger", role="alert")[error],
+            htpy.p[
+                "Assign ",
+                htpy.strong[suggestion.title],
+                " to another staff member.",
+            ],
+            (
+                htpy.div[
+                    htpy.label(
+                        ".form-label",
+                        for_="suggestion-assignee-discord-id",
+                    )["Staff member"],
+                    htpy.select(
+                        "#suggestion-assignee-discord-id.form-select",
+                        name="assignee-discord-id",
+                        required=True,
+                    )[
+                        htpy.option(value="")["Choose a staff member"],
+                        [
+                            htpy.option(
+                                selected=(user.discord_id == assignee_discord_id),
+                                value=user.discord_id,
+                            )[
+                                user.display_name or user.username or user.discord_id,
+                                " (",
+                                user.discord_id,
+                                ")",
+                            ]
+                            for user in staff_users
+                        ],
+                    ],
+                ]
+                if staff_users
+                else htpy.div(".alert.alert-warning.mb-0", role="alert")[
+                    "No other staff members are available in the local user database."
+                ]
+            ),
+        ],
+        htpy.div(".justify-content-between.modal-footer")[
+            htpy.button(
+                ".btn.btn-secondary",
+                data_bs_dismiss="modal",
+                type="button",
+            )["Cancel"],
+            htpy.button(
+                ".btn.btn-primary",
+                disabled=not staff_users,
+                type="submit",
+            )[htpy.i(".bi-person-plus"), " Assign suggestion"],
+        ],
+    ]
+
+
+def suggestion_assign_form(
+    suggestion: SuggestionDetail,
+    staff_users: list[User],
+    *,
+    assignee_discord_id: str = "",
+    error: str | None = None,
+) -> str:
+    return str(
+        _suggestion_assign_form(
+            suggestion,
+            staff_users,
+            assignee_discord_id=assignee_discord_id,
+            error=error,
+        )
+    )
 
 
 def _suggestion_value(value: str | int | float | None) -> htpy.Node:
