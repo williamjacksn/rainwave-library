@@ -44,6 +44,13 @@ class Suggestion:
         "claimed",
         "accepted",
     )
+    claimable_statuses: typing.ClassVar[tuple[str, ...]] = ("new", "declined")
+    assignable_statuses: typing.ClassVar[tuple[str, ...]] = (
+        "new",
+        "accepted",
+        "completed",
+        "declined",
+    )
     owner_editable_statuses: typing.ClassVar[tuple[str, ...]] = ("new", "claimed")
 
     id: str
@@ -997,6 +1004,24 @@ def suggestion_claim(
         raise ValueError(msg)
 
     try:
+        existing = con.execute(
+            """
+            select status, claimed_by_name, claimed_by_discord_id
+            from suggestions
+            where suggestion_id = ?
+            """,
+            (suggestion_id,),
+        ).fetchone()
+        if (
+            existing is None
+            or existing["status"] not in Suggestion.claimable_statuses
+            or existing["claimed_by_name"]
+            or existing["claimed_by_discord_id"]
+        ):
+            con.rollback()
+            return False
+        old_status = str(existing["status"])
+
         cursor = con.execute(
             """
             update suggestions
@@ -1005,9 +1030,10 @@ def suggestion_claim(
                 claimed_by_name = :claimed_by_name,
                 claimed_by_discord_id = :claimed_by_discord_id,
                 claimed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+                resolved_at = null,
                 updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
             where suggestion_id = :suggestion_id
-                and status = 'new'
+                and status = :old_status
                 and nullif(trim(claimed_by_name), '') is null
                 and nullif(trim(claimed_by_discord_id), '') is null
             """,
@@ -1015,6 +1041,7 @@ def suggestion_claim(
                 "suggestion_id": suggestion_id,
                 "claimed_by_name": claimed_by_name,
                 "claimed_by_discord_id": claimed_by_discord_id,
+                "old_status": old_status,
             },
         )
         claimed = cursor.rowcount == 1
@@ -1025,7 +1052,7 @@ def suggestion_claim(
                 activity_type="updated-status",
                 actor_name=claimed_by_name,
                 actor_discord_id=claimed_by_discord_id,
-                old_value="new",
+                old_value=old_status,
                 new_value="claimed",
             )
             con.commit()
@@ -1053,39 +1080,58 @@ def suggestion_assign(
     if not assignee_discord_id:
         msg = "Choose a staff member."
         raise ValueError(msg)
-    if assignee_discord_id == actor_discord_id:
-        msg = "Choose another staff member, or claim the suggestion yourself."
-        raise ValueError(msg)
-
-    assignee = con.execute(
-        """
-        select coalesce(
-            nullif(trim(display_name), ''),
-            nullif(trim(username), ''),
-            discord_id
-        ) display_name
-        from users
-        where discord_id = ? and role = 'staff'
-        """,
-        (assignee_discord_id,),
-    ).fetchone()
-    if assignee is None:
-        msg = "Choose a valid staff member."
-        raise ValueError(msg)
-    assignee_name = str(assignee["display_name"])
 
     try:
+        existing = con.execute(
+            """
+            select status, claimed_by_name, claimed_by_discord_id
+            from suggestions
+            where suggestion_id = ?
+            """,
+            (suggestion_id,),
+        ).fetchone()
+        if (
+            existing is None
+            or existing["status"] not in Suggestion.assignable_statuses
+            or existing["claimed_by_name"]
+            or existing["claimed_by_discord_id"]
+        ):
+            con.rollback()
+            return False
+        old_status = str(existing["status"])
+        if assignee_discord_id == actor_discord_id and old_status == "new":
+            msg = "Choose another staff member, or claim the suggestion yourself."
+            raise ValueError(msg)
+
+        assignee = con.execute(
+            """
+            select coalesce(
+                nullif(trim(display_name), ''),
+                nullif(trim(username), ''),
+                discord_id
+            ) display_name
+            from users
+            where discord_id = ? and role = 'staff'
+            """,
+            (assignee_discord_id,),
+        ).fetchone()
+        if assignee is None:
+            msg = "Choose a valid staff member."
+            raise ValueError(msg)
+        assignee_name = str(assignee["display_name"])
+        new_status = "claimed" if old_status == "new" else old_status
+
         cursor = con.execute(
             """
             update suggestions
             set
-                status = 'claimed',
+                status = :new_status,
                 claimed_by_name = :claimed_by_name,
                 claimed_by_discord_id = :claimed_by_discord_id,
                 claimed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
                 updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
             where suggestion_id = :suggestion_id
-                and status = 'new'
+                and status = :old_status
                 and nullif(trim(claimed_by_name), '') is null
                 and nullif(trim(claimed_by_discord_id), '') is null
             """,
@@ -1093,20 +1139,32 @@ def suggestion_assign(
                 "suggestion_id": suggestion_id,
                 "claimed_by_name": assignee_name,
                 "claimed_by_discord_id": assignee_discord_id,
+                "new_status": new_status,
+                "old_status": old_status,
             },
         )
         assigned = cursor.rowcount == 1
         if assigned:
-            _activity_insert(
-                con,
-                suggestion_id,
-                activity_type="updated-status",
-                actor_name=actor_name,
-                actor_discord_id=actor_discord_id,
-                body=f"Assigned to {assignee_name}.",
-                old_value="new",
-                new_value="claimed",
-            )
+            if new_status != old_status:
+                _activity_insert(
+                    con,
+                    suggestion_id,
+                    activity_type="updated-status",
+                    actor_name=actor_name,
+                    actor_discord_id=actor_discord_id,
+                    body=f"Assigned to {assignee_name}.",
+                    old_value=old_status,
+                    new_value=new_status,
+                )
+            else:
+                _activity_insert(
+                    con,
+                    suggestion_id,
+                    activity_type="assigned",
+                    actor_name=actor_name,
+                    actor_discord_id=actor_discord_id,
+                    body=f"Assigned to {assignee_name}.",
+                )
             con.commit()
         else:
             con.rollback()

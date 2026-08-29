@@ -47,13 +47,18 @@ def _suggestion_user_identity(
 
 def _suggestion_staff_action_state(
     suggestion: Suggestion,
-) -> tuple[bool, bool, bool, bool, bool]:
+) -> tuple[bool, bool, bool, bool, bool, bool]:
     is_staff = flask.session.get("role") == "staff"
+    is_unassigned = not (suggestion.claimed_by_name or suggestion.claimed_by_discord_id)
     claimable = (
         is_staff
-        and suggestion.status == "new"
-        and not suggestion.claimed_by_name
-        and not suggestion.claimed_by_discord_id
+        and is_unassigned
+        and suggestion.status in Suggestion.claimable_statuses
+    )
+    assignable = (
+        is_staff
+        and is_unassigned
+        and suggestion.status in Suggestion.assignable_statuses
     )
     releasable = (
         is_staff
@@ -63,11 +68,11 @@ def _suggestion_staff_action_state(
     )
     resolvable = is_staff and suggestion.status == "claimed"
     completable = is_staff and suggestion.status == "accepted"
-    return is_staff, claimable, releasable, resolvable, completable
+    return is_staff, claimable, assignable, releasable, resolvable, completable
 
 
 def _suggestion_preview_staff_actions(suggestion: Suggestion) -> htpy.Node:
-    is_staff, claimable, releasable, resolvable, completable = (
+    is_staff, claimable, assignable, releasable, resolvable, completable = (
         _suggestion_staff_action_state(suggestion)
     )
     if not is_staff:
@@ -97,7 +102,7 @@ def _suggestion_preview_staff_actions(suggestion: Suggestion) -> htpy.Node:
             hx_target="closest tr",
             type="button",
         )[htpy.i(".bi-person-check"), " Claim suggestion"],
-        claimable
+        assignable
         and htpy.button(
             ".btn.btn-secondary.btn-sm",
             data_bs_target="#modal-lg",
@@ -170,7 +175,7 @@ def _suggestion_preview_staff_actions(suggestion: Suggestion) -> htpy.Node:
 
 
 def _suggestion_row(suggestion: Suggestion) -> htpy.Element:
-    _is_staff, claimable, releasable, _resolvable, _completable = (
+    _is_staff, claimable, _assignable, releasable, _resolvable, _completable = (
         _suggestion_staff_action_state(suggestion)
     )
     kind_label = Suggestion.kind_labels.get(suggestion.kind, suggestion.kind)
@@ -356,7 +361,7 @@ def _suggestion_assign_form(
             htpy.p[
                 "Assign ",
                 htpy.strong[suggestion.title],
-                " to another staff member.",
+                " to a staff member.",
             ],
             (
                 htpy.div[
