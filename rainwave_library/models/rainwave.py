@@ -2,7 +2,7 @@ import datetime
 import enum
 import os
 import pathlib
-from typing import TypedDict, cast
+from typing import Self, TypedDict, cast
 
 import flask
 import fort
@@ -53,7 +53,7 @@ channels: dict[int | str, str] = {
 class ChannelRootFolder(enum.StrEnum):
     label: str
 
-    def __new__(cls, value: str, label: str) -> "ChannelRootFolder":
+    def __new__(cls, value: str, label: str) -> Self:
         member = str.__new__(cls, value)
         member._value_ = value
         member.label = label
@@ -129,7 +129,7 @@ class Album:
     def art_table(self) -> htpy.Element:
         src_base = "https://rainwave.cc/album_art"
         files = self.art_files
-        prefixes = sorted(set(f.name[0] for f in files))
+        prefixes = sorted({f.name[0] for f in files})
         return htpy.table(
             ".align-middle.d-block.pt-3.table.table-bordered.table-sm.text-center"
         )[

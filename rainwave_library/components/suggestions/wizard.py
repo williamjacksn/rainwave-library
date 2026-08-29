@@ -196,8 +196,10 @@ def _suggestion_wizard_step2(
         and htpy.div(".alert.alert-warning", role="alert")[
             "The ",
             htpy.strong[channel_label],
-            " channel allows up to 5 open suggestions at a time. Please wait "
-            "until one of your suggestions is resolved before adding another.",
+            (
+                " channel allows up to 5 open suggestions at a time. Please wait "
+                "until one of your suggestions is resolved before adding another."
+            ),
         ],
         not over_limit and channel_id == 1 and _suggestion_game_rules(),
         not over_limit and channel_id == 2 and _suggestion_oc_remix_rules(),

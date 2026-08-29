@@ -472,7 +472,10 @@ def suggestion_release_target_get(
         except ValueError:
             msg = "Choose a valid release date."
             raise ValueError(msg) from None
-        if parsed_release_date <= datetime.date.today():
+        if (
+            parsed_release_date
+            <= datetime.datetime.now(tz=datetime.UTC).astimezone().date()
+        ):
             msg = "The release date must be in the future."
             raise ValueError(msg)
     try:

@@ -17,6 +17,7 @@ import pathlib
 import sys
 
 import fort
+import psycopg2
 
 import rainwave_library.models.rainwave
 import rainwave_library.models.storage
@@ -139,8 +140,8 @@ def main() -> None:
             break
         try:
             run(db, sql)
-        except Exception as e:
-            print(f"error: {e}")
+        except psycopg2.Error as error:
+            print(f"error: {error}")
 
 
 if __name__ == "__main__":

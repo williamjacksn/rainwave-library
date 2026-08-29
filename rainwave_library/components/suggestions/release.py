@@ -177,7 +177,8 @@ def _suggestion_schedule_release_form(
         else channel_folder
     )
     minimum_release_date = (
-        datetime.date.today() + datetime.timedelta(days=1)
+        datetime.datetime.now(tz=datetime.UTC).astimezone().date()
+        + datetime.timedelta(days=1)
     ).isoformat()
     return htpy.form(
         "#suggestion-schedule-release-form.modal-content",
@@ -204,8 +205,10 @@ def _suggestion_schedule_release_form(
             htpy.p[
                 "Files staged for ",
                 htpy.strong[suggestion.title],
-                " can be moved into the upcoming music folder for a future date or "
-                "copied directly into the library immediately.",
+                (
+                    " can be moved into the upcoming music folder for a future date "
+                    "or copied directly into the library immediately."
+                ),
             ],
             _suggestion_schedule_release_duration(
                 staged_duration_seconds,

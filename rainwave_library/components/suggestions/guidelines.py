@@ -77,22 +77,28 @@ def _suggestion_oc_remix_rules() -> htpy.Element:
         htpy.div(".alert.alert-info", role="alert")[
             "Rainwave automatically adds every remix and album published on ",
             htpy.a(href="https://ocremix.org/")["OC ReMix"],
-            ". You do not need to suggest new OC ReMix music or ask for it to "
-            "be added to an existing album.",
+            (
+                ". You do not need to suggest new OC ReMix music or ask for it to "
+                "be added to an existing album."
+            ),
         ],
         htpy.h5["When to make a suggestion"],
         htpy.ul[
             htpy.li[
                 htpy.strong["Correct a metadata problem: "],
-                "Use a Metadata update suggestion when a title, artist, album, "
-                "source game, arrangement credit, or other library information "
-                "is missing or incorrect.",
+                (
+                    "Use a Metadata update suggestion when a title, artist, album, "
+                    "source game, arrangement credit, or other library information "
+                    "is missing or incorrect."
+                ),
             ],
             htpy.li[
                 htpy.strong["Report a Content ID restriction: "],
-                "If an OC ReMix track becomes subject to Content ID restrictions, "
-                "use a Metadata update suggestion to request that it be moved "
-                "to the Covers channel.",
+                (
+                    "If an OC ReMix track becomes subject to Content ID "
+                    "restrictions, use a Metadata update suggestion to request "
+                    "that it be moved to the Covers channel."
+                ),
             ],
         ],
         htpy.p[
@@ -210,8 +216,10 @@ def _suggestion_chiptune_rules() -> htpy.Element:
                 "There is limited flexibility for exceptional tracks."
             ],
             htpy.li[
-                "Eligible soundtracks often come from the following systems, "
-                "although exceptions exist:",
+                (
+                    "Eligible soundtracks often come from the following systems, "
+                    "although exceptions exist:"
+                ),
                 htpy.ul[
                     htpy.li["Nintendo Entertainment System / Famicom"],
                     htpy.li["Game Boy / Game Boy Color"],

@@ -22,16 +22,20 @@ def power_hour(overview: PowerHourOverview) -> str:
         status = htpy.div(".alert.alert-success", role="status")[
             [
                 htpy.i(".bi-check-circle-fill.me-2"),
-                "The eligible songs meet the minimum duration for a New Music "
-                "Power Hour.",
+                (
+                    "The eligible songs meet the minimum duration for a New Music "
+                    "Power Hour."
+                ),
             ]
         ]
     else:
         status = htpy.div(".alert.alert-warning", role="alert")[
             [
                 htpy.i(".bi-exclamation-triangle-fill.me-2"),
-                "There is not enough eligible music to schedule a New Music "
-                "Power Hour. ",
+                (
+                    "There is not enough eligible music to schedule a New Music "
+                    "Power Hour. "
+                ),
                 htpy.strong[
                     _duration_hms(overview.remaining_duration_seconds), " more"
                 ],

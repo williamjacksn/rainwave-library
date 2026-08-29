@@ -422,7 +422,7 @@ def suggestion_assign_form(
     )
 
 
-def _suggestion_value(value: str | int | float | None) -> htpy.Node:
+def _suggestion_value(value: str | float | None) -> htpy.Node:
     if value is None or value == "":
         return htpy.span(".text-secondary")["—"]
     return str(value)

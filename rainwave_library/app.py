@@ -81,9 +81,9 @@ app.config["RAINWAVE_DATABASE"] = rainwave_library.models.rainwave.connection_ge
 def external_url_for(endpoint: str, *args, **kwargs) -> str:  # noqa: ANN002, ANN003
     return flask.url_for(
         endpoint,
+        *args,
         _scheme=app.config["PREFERRED_URL_SCHEME"],
         _external=True,
-        *args,
         **kwargs,
     )
 
@@ -622,8 +622,10 @@ def artists_detail(artist_id: int) -> werkzeug.Response | str:
             if errors:
                 rename_result = (
                     "alert-danger",
-                    f"Processed {len(songs_)} song files, but {len(errors)} failed. "
-                    "See the application log for details.",
+                    (
+                        f"Processed {len(songs_)} song files, but {len(errors)} "
+                        "failed. See the application log for details."
+                    ),
                 )
             else:
                 renamed_artist = rainwave_library.models.rainwave.get_artist_by_name(
@@ -642,8 +644,10 @@ def artists_detail(artist_id: int) -> werkzeug.Response | str:
                     )
                 rename_result = (
                     "alert-warning",
-                    f"Processed {len(songs_)} song files, but Rainwave has not yet "
-                    f"created the artist {new_name!r}. Try reloading this page.",
+                    (
+                        f"Processed {len(songs_)} song files, but Rainwave has not "
+                        f"yet created the artist {new_name!r}. Try reloading this page."
+                    ),
                 )
     return rainwave_library.components.artists_detail(
         artist, songs_, rename_result=rename_result
@@ -1385,7 +1389,7 @@ def suggestions() -> str:
             filters = rainwave_library.models.suggestions.SuggestionFilterSet.from_json(
                 saved_filters
             )
-        except (json.JSONDecodeError, ValueError):
+        except (json.JSONDecodeError, TypeError, ValueError):
             app.logger.warning(
                 "Ignoring invalid saved suggestion filters for Discord user %s",
                 discord_id,
@@ -1476,7 +1480,9 @@ def _suggestion_notice() -> _SuggestionNotice:
     count = rainwave_library.models.rainwave.song_count(db)
     return {
         "song_count": count // 1000 * 1000,
-        "song_count_as_of": datetime.date.today().strftime("%B %Y"),
+        "song_count_as_of": datetime.datetime.now(tz=datetime.UTC)
+        .astimezone()
+        .strftime("%B %Y"),
     }
 
 
@@ -2166,8 +2172,10 @@ def suggestion_files_upload(suggestion_id: str) -> str:
         )
         result = (
             "alert-success",
-            f"Uploaded {len(uploaded_names)} "
-            f"file{'' if len(uploaded_names) == 1 else 's'}.",
+            (
+                f"Uploaded {len(uploaded_names)} "
+                f"file{'' if len(uploaded_names) == 1 else 's'}."
+            ),
         )
         app.logger.info(
             "Uploaded %d files for suggestion %s",
@@ -2350,8 +2358,10 @@ def suggestion_files_normalize(suggestion_id: str) -> str:
                     renamed_count = len(completed_renames)
                     result = (
                         "alert-success",
-                        f"Normalized {renamed_count} MP3 filename"
-                        f"{'' if renamed_count == 1 else 's'}.",
+                        (
+                            f"Normalized {renamed_count} MP3 filename"
+                            f"{'' if renamed_count == 1 else 's'}."
+                        ),
                     )
                     app.logger.info(
                         "Normalized %d MP3 filenames for suggestion %s",
@@ -2496,15 +2506,19 @@ def suggestion_file_tags_update(suggestion_id: str) -> str:
             elif failed_count:
                 result = (
                     "alert-warning",
-                    f"Updated {tag_label} for {updated_count} MP3 "
-                    f"file{'' if updated_count == 1 else 's'}; "
-                    f"{failed_count} could not be updated.",
+                    (
+                        f"Updated {tag_label} for {updated_count} MP3 "
+                        f"file{'' if updated_count == 1 else 's'}; "
+                        f"{failed_count} could not be updated."
+                    ),
                 )
             else:
                 result = (
                     "alert-success",
-                    f"Updated {tag_label} for {updated_count} MP3 "
-                    f"file{'' if updated_count == 1 else 's'}.",
+                    (
+                        f"Updated {tag_label} for {updated_count} MP3 "
+                        f"file{'' if updated_count == 1 else 's'}."
+                    ),
                 )
         else:
             relative_path = flask.request.form.get("path", "")

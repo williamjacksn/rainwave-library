@@ -380,8 +380,10 @@ def suggestion_normalize_filenames_form(
             ],
             htpy.div(".modal-body")[
                 htpy.p[
-                    "Each MP3 will be renamed using its first title tag with special "
-                    "characters and spaces removed.",
+                    (
+                        "Each MP3 will be renamed using its first title tag with "
+                        "special characters and spaces removed."
+                    ),
                 ],
                 status,
                 normalizations

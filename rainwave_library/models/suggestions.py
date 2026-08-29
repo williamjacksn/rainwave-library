@@ -131,7 +131,7 @@ class SuggestionFilterSet:
         data = json.loads(value)
         if not isinstance(data, dict):
             msg = "Suggestion filters must be represented by a JSON object."
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         expected_keys = {
             "sort_dir",
