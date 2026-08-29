@@ -60,7 +60,7 @@ def _suggestion_staff_action_state(
         and bool(suggestion.claimed_by_discord_id)
         and suggestion.claimed_by_discord_id == str(flask.g.discord_id or "")
     )
-    resolvable = is_staff and suggestion.status in ("new", "claimed")
+    resolvable = is_staff and suggestion.status == "claimed"
     return is_staff, claimable, releasable, resolvable
 
 
