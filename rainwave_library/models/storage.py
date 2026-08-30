@@ -22,6 +22,7 @@ USER_COLOR_MODE_SETTING_KEY = "color-mode"
 USER_COLOR_MODES = ("light", "dark")
 USER_COLOR_MODE_DEFAULT = "light"
 USER_SUGGESTION_FILTERS_SETTING_KEY = "suggestion-filters"
+SUGGESTION_IMAGE_SUFFIXES = frozenset({".jpeg", ".jpg", ".png"})
 LIBRARY_BROWSER_TEXT_PREVIEW_MAX_BYTES = 512 * 1024
 _LIBRARY_BROWSER_AUDIO_TYPES = {".mp3": "audio/mpeg"}
 _LIBRARY_BROWSER_IMAGE_TYPES = {
@@ -821,10 +822,15 @@ def suggestion_staging_file_delete(
     return path.as_posix()
 
 
-def suggestion_staging_files_rename(
+def _suggestion_staging_files_rename(
     library_root: pathlib.Path,
     suggestion_id: str,
     renames: typing.Mapping[str, str],
+    *,
+    allowed_suffixes: frozenset[str],
+    invalid_filename_message: str,
+    duplicate_filename_message: str,
+    existing_filename_message: str,
 ) -> tuple[tuple[str, str], ...]:
     if not renames:
         return ()
@@ -841,24 +847,23 @@ def suggestion_staging_files_rename(
         )
         normalized_target = pathlib.PurePosixPath(target_path.replace("\\", "/"))
         if (
-            normalized_source.suffix.casefold() != ".mp3"
+            normalized_source.suffix.casefold() not in allowed_suffixes
             or normalized_target.is_absolute()
             or normalized_target == pathlib.PurePosixPath(".")
             or ".." in normalized_target.parts
             or pathlib.PureWindowsPath(target_path).drive
             or any(ord(character) < 32 for character in target_path)
-            or normalized_target.suffix.casefold() != ".mp3"
+            or normalized_target.suffix.casefold()
+            != normalized_source.suffix.casefold()
             or normalized_target.parent != normalized_source.parent
         ):
-            msg = "Invalid normalized MP3 filename."
-            raise ValueError(msg)
+            raise ValueError(invalid_filename_message)
 
         destination = source.with_name(normalized_target.name)
         source_key = normalized_source.as_posix().casefold()
         target_key = normalized_target.as_posix().casefold()
         if source_key in source_keys or target_key in target_keys:
-            msg = "The normalized MP3 filenames are not unique."
-            raise ValueError(msg)
+            raise ValueError(duplicate_filename_message)
         source_keys.add(source_key)
         target_keys.add(target_key)
         rename_paths.append((source, destination, normalized_source, normalized_target))
@@ -872,8 +877,7 @@ def suggestion_staging_files_rename(
         normalized_target.as_posix().casefold() in existing_paths - source_keys
         for _, _, _, normalized_target in rename_paths
     ):
-        msg = "A normalized MP3 filename already exists."
-        raise ValueError(msg)
+        raise ValueError(existing_filename_message)
 
     staged_renames: list[tuple[pathlib.Path, pathlib.Path, pathlib.Path]] = []
     try:
@@ -908,6 +912,57 @@ def suggestion_staging_files_rename(
         (normalized_source.as_posix(), normalized_target.as_posix())
         for _, _, normalized_source, normalized_target in rename_paths
     )
+
+
+def suggestion_staging_files_rename(
+    library_root: pathlib.Path,
+    suggestion_id: str,
+    renames: typing.Mapping[str, str],
+) -> tuple[tuple[str, str], ...]:
+    return _suggestion_staging_files_rename(
+        library_root,
+        suggestion_id,
+        renames,
+        allowed_suffixes=frozenset({".mp3"}),
+        invalid_filename_message="Invalid normalized MP3 filename.",
+        duplicate_filename_message=("The normalized MP3 filenames are not unique."),
+        existing_filename_message="A normalized MP3 filename already exists.",
+    )
+
+
+def suggestion_staging_image_rename(
+    library_root: pathlib.Path,
+    suggestion_id: str,
+    source_path: str,
+    target_filename: str,
+) -> tuple[str, str]:
+    _, normalized_source = _suggestion_staging_file_get(
+        library_root,
+        suggestion_id,
+        source_path,
+    )
+    try:
+        normalized_target = normalized_source.with_name(target_filename)
+    except ValueError:
+        msg = "Invalid image filename."
+        raise ValueError(msg) from None
+
+    if normalized_source.suffix.casefold() not in SUGGESTION_IMAGE_SUFFIXES:
+        msg = "Invalid image filename."
+        raise ValueError(msg)
+    if normalized_target == normalized_source:
+        return normalized_source.as_posix(), normalized_target.as_posix()
+
+    completed_renames = _suggestion_staging_files_rename(
+        library_root,
+        suggestion_id,
+        {normalized_source.as_posix(): normalized_target.as_posix()},
+        allowed_suffixes=SUGGESTION_IMAGE_SUFFIXES,
+        invalid_filename_message="Invalid image filename.",
+        duplicate_filename_message="The image filenames are not unique.",
+        existing_filename_message="An image filename already exists.",
+    )
+    return completed_renames[0]
 
 
 def connection_init(path: str) -> None:

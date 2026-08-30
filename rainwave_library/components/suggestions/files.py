@@ -1,3 +1,5 @@
+import pathlib
+
 import flask
 import htpy
 
@@ -5,6 +7,7 @@ from rainwave_library.models.mp3 import (
     ID3_TAG_LABELS,
     Mp3TagValues,
 )
+from rainwave_library.models.storage import SUGGESTION_IMAGE_SUFFIXES
 from rainwave_library.models.suggestions import (
     SuggestionFileReview,
 )
@@ -28,7 +31,7 @@ def _suggestion_file_category(path: str) -> str:
     normalized_path = path.casefold()
     if normalized_path.endswith(".mp3"):
         return "music"
-    if normalized_path.endswith((".jpeg", ".jpg", ".png")):
+    if normalized_path.endswith(tuple(SUGGESTION_IMAGE_SUFFIXES)):
         return "images"
     return "other-files"
 
@@ -60,6 +63,22 @@ def _suggestion_file_item(
                 title="Preview image",
                 type="button",
             )[htpy.i(".bi-eye")],
+            previewable
+            and htpy.button(
+                ".btn.btn-link.p-0",
+                aria_label=f"Rename {path}",
+                data_bs_target="#modal-lg",
+                data_bs_toggle="modal",
+                hx_get=flask.url_for(
+                    "suggestion_image_rename",
+                    suggestion_id=suggestion_id,
+                    path=path,
+                ),
+                hx_swap="outerHTML",
+                hx_target="#modal-lg-content",
+                title="Rename image",
+                type="button",
+            )[htpy.i(".bi-pencil")],
             playable
             and htpy.button(
                 ".btn.btn-link.p-0",
@@ -286,6 +305,80 @@ def suggestion_image_preview_modal(suggestion_id: str, path: str) -> str:
                         path=path,
                     ),
                 )
+            ],
+        ]
+    )
+
+
+def suggestion_image_rename_form(
+    suggestion_id: str,
+    path: str,
+    *,
+    filename: str | None = None,
+    error: str | None = None,
+) -> str:
+    url = flask.url_for(
+        "suggestion_image_rename",
+        suggestion_id=suggestion_id,
+        path=path,
+    )
+    after_request = (
+        "if (event.detail.successful && "
+        "!event.detail.xhr.getResponseHeader('HX-Retarget')) {"
+        "bootstrap.Modal.getOrCreateInstance("
+        "document.getElementById('modal-lg')).hide();"
+        "}"
+    )
+    current_filename = pathlib.PurePosixPath(path.replace("\\", "/")).name
+    return str(
+        htpy.form(
+            "#modal-lg-content.modal-content",
+            action=url,
+            hx_disabled_elt="button",
+            hx_post=url,
+            hx_swap="outerHTML",
+            hx_target="#suggestion-files-card",
+            method="post",
+            **{"hx-on:htmx:after-request": after_request},
+        )[
+            htpy.div(".modal-header")[
+                htpy.h5(".modal-title")["Rename image"],
+                htpy.button(
+                    ".btn-close",
+                    aria_label="Close",
+                    data_bs_dismiss="modal",
+                    type="button",
+                ),
+            ],
+            htpy.div(".modal-body")[
+                error and htpy.div(".alert.alert-danger", role="alert")[error],
+                htpy.p[
+                    "Rename ",
+                    htpy.code(".text-break")[path],
+                    ". The file will remain in the same folder.",
+                ],
+                htpy.label(".form-label", for_="suggestion-image-filename")["Filename"],
+                htpy.input(
+                    "#suggestion-image-filename.form-control",
+                    name="filename",
+                    required=True,
+                    type="text",
+                    value=filename if filename is not None else current_filename,
+                ),
+                htpy.div(".form-text")[
+                    "Keep the existing file extension; renaming does not convert "
+                    "the image format."
+                ],
+            ],
+            htpy.div(".justify-content-between.modal-footer")[
+                htpy.button(
+                    ".btn.btn-secondary",
+                    data_bs_dismiss="modal",
+                    type="button",
+                )["Cancel"],
+                htpy.button(".btn.btn-primary", type="submit")[
+                    htpy.i(".bi-pencil"), " Rename image"
+                ],
             ],
         ]
     )

@@ -21,6 +21,7 @@ from .files import (
     suggestion_file_player,
     suggestion_files_card,
     suggestion_image_preview_modal,
+    suggestion_image_rename_form,
 )
 from .forms import (
     staff_suggestion_create_form,
@@ -64,6 +65,7 @@ __all__ = (
     "suggestion_file_player",
     "suggestion_files_card",
     "suggestion_image_preview_modal",
+    "suggestion_image_rename_form",
     "suggestion_link_button",
     "suggestion_link_fields",
     "suggestion_link_form",

@@ -2617,11 +2617,93 @@ def suggestion_file_preview(suggestion_id: str) -> flask.Response:
 def suggestion_file_preview_modal(suggestion_id: str) -> str:
     relative_path, _ = _suggestion_staged_file_get(
         suggestion_id,
-        {".jpeg", ".jpg", ".png"},
+        set(rainwave_library.models.storage.SUGGESTION_IMAGE_SUFFIXES),
     )
     return rainwave_library.components.suggestion_image_preview_modal(
         suggestion_id,
         relative_path,
+    )
+
+
+@app.route(
+    "/suggestions/<suggestion_id>/files/rename-image",
+    methods=["GET", "POST"],
+)
+@secure
+def suggestion_image_rename(suggestion_id: str) -> werkzeug.Response | str:
+    relative_path, _ = _suggestion_staged_file_get(
+        suggestion_id,
+        set(rainwave_library.models.storage.SUGGESTION_IMAGE_SUFFIXES),
+    )
+    if flask.request.method == "GET":
+        return rainwave_library.components.suggestion_image_rename_form(
+            suggestion_id,
+            relative_path,
+        )
+
+    filename = flask.request.form.get("filename", "")
+    try:
+        source_path, target_path = (
+            rainwave_library.models.storage.suggestion_staging_image_rename(
+                app.config["LIBRARY_ROOT"],
+                suggestion_id,
+                relative_path,
+                filename,
+            )
+        )
+    except ValueError as error:
+        response = flask.make_response(
+            rainwave_library.components.suggestion_image_rename_form(
+                suggestion_id,
+                relative_path,
+                filename=filename,
+                error=str(error),
+            )
+        )
+        response.headers["HX-Retarget"] = "#modal-lg-content"
+        response.headers["HX-Reswap"] = "outerHTML"
+        return response
+    except OSError:
+        app.logger.exception(
+            "Could not rename image %s for suggestion %s",
+            relative_path,
+            suggestion_id,
+        )
+        response = flask.make_response(
+            rainwave_library.components.suggestion_image_rename_form(
+                suggestion_id,
+                relative_path,
+                filename=filename,
+                error="The image file could not be renamed.",
+            )
+        )
+        response.headers["HX-Retarget"] = "#modal-lg-content"
+        response.headers["HX-Reswap"] = "outerHTML"
+        return response
+
+    if source_path == target_path:
+        result = ("alert-info", "The image filename is unchanged.")
+    else:
+        result = (
+            "alert-success",
+            f"Renamed {source_path} to {target_path}.",
+        )
+        app.logger.info(
+            "Renamed image %s to %s for suggestion %s",
+            source_path,
+            target_path,
+            suggestion_id,
+        )
+
+    staged_files, folder_path, music_tags = _suggestion_staged_files_get(suggestion_id)
+    music_reviews = _suggestion_file_reviews_get(suggestion_id)
+    return rainwave_library.components.suggestion_files_card(
+        suggestion_id,
+        staged_files,
+        result,
+        folder_path=str(folder_path),
+        music_tags=music_tags,
+        music_reviews=music_reviews,
     )
 
 
