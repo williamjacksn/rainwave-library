@@ -38,6 +38,7 @@ class Suggestion:
         "accepted",
         "completed",
         "declined",
+        "withdrawn",
     )
     open_statuses: typing.ClassVar[tuple[str, ...]] = (
         "new",
@@ -506,6 +507,7 @@ def suggestions_get(
                 when 'accepted' then 3
                 when 'completed' then 4
                 when 'declined' then 5
+                when 'withdrawn' then 6
             end
             """,
             "s.requested_at",
@@ -554,7 +556,8 @@ def suggestions_get(
         where (
                 :status_0 is null
                 or s.status in (
-                    :status_0, :status_1, :status_2, :status_3, :status_4
+                    :status_0, :status_1, :status_2, :status_3, :status_4,
+                    :status_5
                 )
             )
             and (
@@ -626,6 +629,7 @@ def suggestions_get(
             "status_2": status_parameters[2],
             "status_3": status_parameters[3],
             "status_4": status_parameters[4],
+            "status_5": status_parameters[5],
             "kind_0": kind_parameters[0],
             "kind_1": kind_parameters[1],
             "kind_2": kind_parameters[2],
@@ -1423,6 +1427,58 @@ def suggestion_decline(
     return True
 
 
+def suggestion_withdraw(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    *,
+    requester_discord_id: str,
+    actor_name: str | None,
+) -> bool:
+    requester_discord_id = requester_discord_id.strip()
+    if not requester_discord_id:
+        msg = "A Discord user ID is required to withdraw a suggestion."
+        raise ValueError(msg)
+
+    try:
+        cursor = con.execute(
+            """
+            update suggestions
+            set
+                status = 'withdrawn',
+                resolved_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+                updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            where suggestion_id = :suggestion_id
+                and requester_discord_id = :requester_discord_id
+                and status = 'new'
+            """,
+            {
+                "suggestion_id": suggestion_id,
+                "requester_discord_id": requester_discord_id,
+            },
+        )
+        withdrawn = cursor.rowcount == 1
+        if withdrawn:
+            _activity_insert(
+                con,
+                suggestion_id,
+                activity_type="updated-status",
+                actor_name=actor_name,
+                actor_discord_id=requester_discord_id,
+                old_value="new",
+                new_value="withdrawn",
+            )
+            con.commit()
+        else:
+            con.rollback()
+    except Exception:
+        con.rollback()
+        raise
+
+    if withdrawn:
+        log.info("Suggestion %s withdrawn by its owner", suggestion_id)
+    return withdrawn
+
+
 def suggestion_update(
     con: sqlite3.Connection,
     suggestion_id: str,
@@ -1486,10 +1542,10 @@ def suggestion_update(
                 kind = :kind,
                 status = :status,
                 resolved_at = case
-                    when :status in ('completed', 'declined')
+                    when :status in ('completed', 'declined', 'withdrawn')
                         and status != :status
                     then strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-                    when :status not in ('completed', 'declined')
+                    when :status not in ('completed', 'declined', 'withdrawn')
                     then null
                     else resolved_at
                 end,

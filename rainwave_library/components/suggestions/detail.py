@@ -28,7 +28,7 @@ from .release import (
 from .summary import (
     _suggestion_detail_table,
     _suggestion_edit_form,
-    _suggestion_preview_staff_actions,
+    _suggestion_preview_actions,
     _suggestion_status_badge,
     _suggestion_user_identity,
     _suggestion_value,
@@ -149,12 +149,15 @@ def suggestion_detail_row(
     editable: bool = False,
     edit_result: tuple[str, str] | None = None,
 ) -> str:
+    is_owner = bool(suggestion.requester_discord_id) and (
+        suggestion.requester_discord_id == str(flask.g.discord_id or "")
+    )
     owner_editable = (
         not editable
-        and bool(suggestion.requester_discord_id)
-        and suggestion.requester_discord_id == str(flask.g.discord_id or "")
+        and is_owner
         and suggestion.status in Suggestion.owner_editable_statuses
     )
+    owner_withdrawable = not editable and is_owner and suggestion.status == "new"
     channel_badges: htpy.Node = (
         htpy.fragment[
             [channel_badge(channel_id) for channel_id in suggestion.channel_ids]
@@ -186,7 +189,10 @@ def suggestion_detail_row(
                     editable and _suggestion_edit_form(suggestion, edit_result),
                     not editable
                     and htpy.fragment[
-                        _suggestion_preview_staff_actions(suggestion),
+                        _suggestion_preview_actions(
+                            suggestion,
+                            owner_withdrawable=owner_withdrawable,
+                        ),
                         htpy.div(".g-3.row")[
                             _suggestion_detail_item(
                                 "Suggestion type",

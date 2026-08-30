@@ -19,6 +19,7 @@ def _suggestion_status_badge(status: str) -> htpy.Element:
         "accepted": "text-bg-info",
         "completed": "text-bg-success",
         "declined": "text-bg-danger",
+        "withdrawn": "text-bg-secondary",
     }
     return htpy.span(f".badge.{status_classes.get(status, 'text-bg-light')}")[
         status.title()
@@ -71,15 +72,20 @@ def _suggestion_staff_action_state(
     return is_staff, claimable, assignable, releasable, resolvable, completable
 
 
-def _suggestion_preview_staff_actions(suggestion: Suggestion) -> htpy.Node:
+def _suggestion_preview_actions(
+    suggestion: Suggestion,
+    *,
+    owner_withdrawable: bool = False,
+) -> htpy.Node:
     is_staff, claimable, assignable, releasable, resolvable, completable = (
         _suggestion_staff_action_state(suggestion)
     )
-    if not is_staff:
+    if not is_staff and not owner_withdrawable:
         return None
 
     return htpy.div(".d-flex.flex-wrap.gap-2.mb-3")[
-        htpy.button(
+        is_staff
+        and htpy.button(
             ".btn.btn-secondary.btn-sm",
             hx_get=flask.url_for(
                 "suggestion_details",
@@ -171,6 +177,19 @@ def _suggestion_preview_staff_actions(suggestion: Suggestion) -> htpy.Node:
             hx_target="closest tr",
             type="button",
         )[htpy.i(".bi-check2-all"), " Mark completed"],
+        owner_withdrawable
+        and htpy.button(
+            ".btn.btn-outline-danger.btn-sm",
+            hx_confirm=(f'Are you sure you want to withdraw "{suggestion.title}"?'),
+            hx_disabled_elt="this",
+            hx_post=flask.url_for(
+                "suggestion_withdraw",
+                suggestion_id=suggestion.id,
+            ),
+            hx_swap="outerHTML",
+            hx_target="closest tr",
+            type="button",
+        )[htpy.i(".bi-x-circle"), " Withdraw suggestion"],
     ]
 
 
