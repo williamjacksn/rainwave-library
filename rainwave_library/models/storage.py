@@ -853,8 +853,7 @@ def _suggestion_staging_files_rename(
             or ".." in normalized_target.parts
             or pathlib.PureWindowsPath(target_path).drive
             or any(ord(character) < 32 for character in target_path)
-            or normalized_target.suffix.casefold()
-            != normalized_source.suffix.casefold()
+            or normalized_target.suffix.casefold() not in allowed_suffixes
             or normalized_target.parent != normalized_source.parent
         ):
             raise ValueError(invalid_filename_message)
@@ -947,7 +946,17 @@ def suggestion_staging_image_rename(
         msg = "Invalid image filename."
         raise ValueError(msg) from None
 
-    if normalized_source.suffix.casefold() not in SUGGESTION_IMAGE_SUFFIXES:
+    source_suffix = normalized_source.suffix.casefold()
+    target_suffix = normalized_target.suffix.casefold()
+    compatible_suffixes = source_suffix == target_suffix or {
+        source_suffix,
+        target_suffix,
+    } <= {".jpeg", ".jpg"}
+    if (
+        source_suffix not in SUGGESTION_IMAGE_SUFFIXES
+        or target_suffix not in SUGGESTION_IMAGE_SUFFIXES
+        or not compatible_suffixes
+    ):
         msg = "Invalid image filename."
         raise ValueError(msg)
     if normalized_target == normalized_source:

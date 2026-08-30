@@ -366,8 +366,9 @@ def suggestion_image_rename_form(
                     value=filename if filename is not None else current_filename,
                 ),
                 htpy.div(".form-text")[
-                    "Keep the existing file extension; renaming does not convert "
-                    "the image format."
+                    ".jpeg and .jpg extensions are interchangeable. Other image "
+                    "formats cannot be changed because renaming does not convert "
+                    "the file."
                 ],
             ],
             htpy.div(".justify-content-between.modal-footer")[
