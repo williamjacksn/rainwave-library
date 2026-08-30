@@ -166,6 +166,94 @@ def suggestion_links_block(suggestion: SuggestionDetail) -> str:
     return str(_suggestion_links_block(suggestion))
 
 
+def _suggestion_title_block(
+    suggestion: SuggestionDetail,
+    *,
+    editable: bool,
+) -> htpy.Element:
+    return htpy.div(
+        ".align-items-center.d-flex.flex-grow-1.gap-2",
+        id=f"suggestion-title-{suggestion.id}",
+    )[
+        htpy.h5(".mb-0.text-break")[suggestion.title],
+        editable
+        and htpy.button(
+            ".btn.btn-link.p-0.text-decoration-none",
+            aria_label=f"Edit the title for {suggestion.title}",
+            hx_get=flask.url_for("suggestion_title", suggestion_id=suggestion.id),
+            hx_swap="outerHTML",
+            hx_target=f"#suggestion-title-{suggestion.id}",
+            title="Edit title",
+            type="button",
+        )[htpy.i(".bi-pencil")],
+    ]
+
+
+def suggestion_title_block(
+    suggestion: SuggestionDetail,
+    *,
+    editable: bool,
+) -> str:
+    return str(_suggestion_title_block(suggestion, editable=editable))
+
+
+def _suggestion_title_form(
+    suggestion: SuggestionDetail,
+    *,
+    title: str | None = None,
+    error: str | None = None,
+) -> htpy.Element:
+    url = flask.url_for("suggestion_title", suggestion_id=suggestion.id)
+    return htpy.div(
+        ".flex-grow-1",
+        id=f"suggestion-title-{suggestion.id}",
+    )[
+        error and htpy.div(".alert.alert-danger.py-2", role="alert")[error],
+        htpy.form(
+            ".align-items-center.d-flex.gap-2",
+            hx_disabled_elt="button",
+            hx_post=url,
+            hx_swap="outerHTML",
+            hx_target=f"#suggestion-title-{suggestion.id}",
+        )[
+            htpy.input(
+                ".form-control.form-control-sm",
+                aria_label="Suggestion title",
+                name="title",
+                required=True,
+                type="text",
+                value=suggestion.title if title is None else title,
+            ),
+            htpy.button(
+                ".btn.btn-success.btn-sm.text-nowrap",
+                type="submit",
+            )[htpy.i(".bi-check-lg"), " Save"],
+            htpy.button(
+                ".btn.btn-secondary.btn-sm",
+                hx_get=f"{url}?close=1",
+                hx_swap="outerHTML",
+                hx_target=f"#suggestion-title-{suggestion.id}",
+                type="button",
+            )["Cancel"],
+        ],
+    ]
+
+
+def suggestion_title_form(
+    suggestion: SuggestionDetail,
+    *,
+    title: str | None = None,
+    error: str | None = None,
+) -> str:
+    return str(
+        _suggestion_title_form(
+            suggestion,
+            title=title,
+            error=error,
+        )
+    )
+
+
 def _suggestion_description_block(
     suggestion: SuggestionDetail,
     *,

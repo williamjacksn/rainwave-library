@@ -9,6 +9,8 @@ from .content import (
     suggestion_link_button,
     suggestion_link_form,
     suggestion_links_block,
+    suggestion_title_block,
+    suggestion_title_form,
 )
 from .detail import suggestion_detail_row, suggestion_link_fields, suggestion_page
 from .file_controls import (
@@ -73,6 +75,8 @@ __all__ = (
     "suggestion_schedule_release_duration",
     "suggestion_schedule_release_form",
     "suggestion_schedule_release_target",
+    "suggestion_title_block",
+    "suggestion_title_form",
     "suggestion_wizard_body",
     "suggestions_index",
     "suggestions_rows",

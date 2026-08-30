@@ -2730,6 +2730,67 @@ def suggestion_description(suggestion_id: str) -> str:
     )
 
 
+@app.route("/suggestions/<suggestion_id>/title", methods=["GET", "POST"])
+@signed_in
+def suggestion_title(suggestion_id: str) -> str:
+    requester_discord_id = str(flask.g.discord_id or "")
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx_, suggestion_id
+        )
+        if suggestion is None:
+            flask.abort(404)
+        if (
+            not requester_discord_id
+            or suggestion.requester_discord_id != requester_discord_id
+        ):
+            flask.abort(403)
+        if suggestion.status not in (
+            rainwave_library.models.suggestions.Suggestion.owner_editable_statuses
+        ):
+            flask.abort(
+                409,
+                "Only new or claimed suggestions can be edited by their owner.",
+            )
+
+        if flask.request.method == "GET":
+            if "close" in flask.request.args:
+                return rainwave_library.components.suggestion_title_block(
+                    suggestion, editable=True
+                )
+            return rainwave_library.components.suggestion_title_form(suggestion)
+
+        title = flask.request.form.get("title", "")
+        try:
+            updated = rainwave_library.models.suggestions.suggestion_title_update(
+                storage_cnx_,
+                suggestion_id,
+                requester_discord_id=requester_discord_id,
+                title=title,
+                actor_name=flask.g.discord_display_name,
+            )
+        except ValueError as error:
+            return rainwave_library.components.suggestion_title_form(
+                suggestion,
+                title=title,
+                error=str(error),
+            )
+        if not updated:
+            flask.abort(403)
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx_, suggestion_id
+        )
+    finally:
+        storage_cnx_.close()
+
+    if suggestion is None:
+        flask.abort(404)
+    return rainwave_library.components.suggestion_title_block(suggestion, editable=True)
+
+
 @app.route("/suggestions/<suggestion_id>/activity", methods=["GET"])
 @signed_in
 def suggestion_activity(suggestion_id: str) -> str:

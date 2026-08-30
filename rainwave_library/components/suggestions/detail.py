@@ -18,6 +18,7 @@ from .activity import _suggestion_activity_block
 from .content import (
     _suggestion_description_block,
     _suggestion_links_block,
+    _suggestion_title_block,
 )
 from .files import _suggestion_files_card
 from .release import (
@@ -148,8 +149,9 @@ def suggestion_detail_row(
     editable: bool = False,
     edit_result: tuple[str, str] | None = None,
 ) -> str:
-    description_editable = (
-        bool(suggestion.requester_discord_id)
+    owner_editable = (
+        not editable
+        and bool(suggestion.requester_discord_id)
         and suggestion.requester_discord_id == str(flask.g.discord_id or "")
         and suggestion.status in Suggestion.owner_editable_statuses
     )
@@ -175,7 +177,10 @@ def suggestion_detail_row(
                         title="Close suggestion details",
                         type="button",
                     )[htpy.i(".bi-x-lg")],
-                    htpy.h5(".mb-0")[suggestion.title],
+                    _suggestion_title_block(
+                        suggestion,
+                        editable=owner_editable,
+                    ),
                 ],
                 htpy.div(".card-body.p-2")[
                     editable and _suggestion_edit_form(suggestion, edit_result),
@@ -234,7 +239,7 @@ def suggestion_detail_row(
                         ],
                         _suggestion_description_block(
                             suggestion,
-                            editable=description_editable,
+                            editable=owner_editable,
                         ),
                     ],
                     htpy.h6(".mt-3")["Links"],

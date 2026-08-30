@@ -1644,6 +1644,82 @@ def suggestion_description_update(
     return True
 
 
+def suggestion_title_update(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    *,
+    requester_discord_id: str,
+    title: str,
+    actor_name: str | None = None,
+) -> bool:
+    requester_discord_id = requester_discord_id.strip()
+    if not requester_discord_id:
+        msg = "A Discord user ID is required to update the suggestion title."
+        raise ValueError(msg)
+    title = title.strip()
+    if not title:
+        msg = "Suggestion title is required."
+        raise ValueError(msg)
+
+    try:
+        existing = con.execute(
+            """
+            select title
+            from suggestions
+            where suggestion_id = :suggestion_id
+                and requester_discord_id = :requester_discord_id
+                and status in ('new', 'claimed')
+            """,
+            {
+                "suggestion_id": suggestion_id,
+                "requester_discord_id": requester_discord_id,
+            },
+        ).fetchone()
+        if existing is None:
+            con.rollback()
+            return False
+        old_title = str(existing["title"])
+        if old_title == title:
+            con.rollback()
+            return True
+
+        cursor = con.execute(
+            """
+            update suggestions
+            set
+                title = :title,
+                updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            where suggestion_id = :suggestion_id
+                and requester_discord_id = :requester_discord_id
+                and status in ('new', 'claimed')
+            """,
+            {
+                "suggestion_id": suggestion_id,
+                "requester_discord_id": requester_discord_id,
+                "title": title,
+            },
+        )
+        if cursor.rowcount != 1:
+            con.rollback()
+            return False
+        _activity_insert(
+            con,
+            suggestion_id,
+            activity_type="updated-title",
+            actor_name=actor_name,
+            actor_discord_id=requester_discord_id,
+            old_value=old_title,
+            new_value=title,
+        )
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+
+    log.info("Updated title for suggestion %s", suggestion_id)
+    return True
+
+
 def suggestion_delete(con: sqlite3.Connection, suggestion_id: str) -> bool:
     try:
         cursor = con.execute(
