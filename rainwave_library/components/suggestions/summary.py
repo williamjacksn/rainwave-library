@@ -179,7 +179,7 @@ def _suggestion_preview_actions(
         )[htpy.i(".bi-check2-all"), " Mark completed"],
         owner_withdrawable
         and htpy.button(
-            ".btn.btn-outline-danger.btn-sm",
+            ".btn.btn-danger.btn-sm",
             hx_confirm=(f'Are you sure you want to withdraw "{suggestion.title}"?'),
             hx_disabled_elt="this",
             hx_post=flask.url_for(
