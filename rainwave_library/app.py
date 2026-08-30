@@ -2591,6 +2591,7 @@ def _suggestion_staged_file_get(
 @secure
 def suggestion_file_preview(suggestion_id: str) -> flask.Response:
     image_types = {
+        ".jpeg": "image/jpeg",
         ".jpg": "image/jpeg",
         ".png": "image/png",
     }
@@ -2614,7 +2615,10 @@ def suggestion_file_preview(suggestion_id: str) -> flask.Response:
 @app.route("/suggestions/<suggestion_id>/files/preview-modal", methods=["GET"])
 @secure
 def suggestion_file_preview_modal(suggestion_id: str) -> str:
-    relative_path, _ = _suggestion_staged_file_get(suggestion_id, {".jpg", ".png"})
+    relative_path, _ = _suggestion_staged_file_get(
+        suggestion_id,
+        {".jpeg", ".jpg", ".png"},
+    )
     return rainwave_library.components.suggestion_image_preview_modal(
         suggestion_id,
         relative_path,

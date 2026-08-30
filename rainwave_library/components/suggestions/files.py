@@ -28,7 +28,7 @@ def _suggestion_file_category(path: str) -> str:
     normalized_path = path.casefold()
     if normalized_path.endswith(".mp3"):
         return "music"
-    if normalized_path.endswith((".jpg", ".png")):
+    if normalized_path.endswith((".jpeg", ".jpg", ".png")):
         return "images"
     return "other-files"
 
