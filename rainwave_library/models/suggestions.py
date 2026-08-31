@@ -25,6 +25,7 @@ class Suggestion:
     }
     default_kind: typing.ClassVar[str] = "new-album"
     limited_kinds = ("new-album", "add-to-existing-album")
+    open_limit: typing.ClassVar[int] = 5
     sort_fields: typing.ClassVar[tuple[tuple[str, str], ...]] = (
         ("status", "Status"),
         ("title", "Suggestion title"),
@@ -33,6 +34,7 @@ class Suggestion:
         ("claimed_by_name", "Claimed by"),
     )
     statuses: typing.ClassVar[tuple[str, ...]] = (
+        "draft",
         "new",
         "claimed",
         "accepted",
@@ -52,7 +54,11 @@ class Suggestion:
         "completed",
         "declined",
     )
-    owner_editable_statuses: typing.ClassVar[tuple[str, ...]] = ("new", "claimed")
+    owner_editable_statuses: typing.ClassVar[tuple[str, ...]] = (
+        "draft",
+        "new",
+        "claimed",
+    )
 
     id: str
     title: str
@@ -445,6 +451,7 @@ def suggestions_get(
     channel_ids: typing.Iterable[int] | None = None,
     kinds: typing.Iterable[str] | None = None,
     include_unassigned_channel: bool = False,
+    viewer_discord_id: str | None = None,
 ) -> list[Suggestion]:
     query = query.strip() if query else None
     valid_statuses = tuple(
@@ -502,12 +509,13 @@ def suggestions_get(
         "status": (
             """
             case s.status
-                when 'new' then 1
-                when 'claimed' then 2
-                when 'accepted' then 3
-                when 'completed' then 4
-                when 'declined' then 5
-                when 'withdrawn' then 6
+                when 'draft' then 1
+                when 'new' then 2
+                when 'claimed' then 3
+                when 'accepted' then 4
+                when 'completed' then 5
+                when 'declined' then 6
+                when 'withdrawn' then 7
             end
             """,
             "s.requested_at",
@@ -557,8 +565,12 @@ def suggestions_get(
                 :status_0 is null
                 or s.status in (
                     :status_0, :status_1, :status_2, :status_3, :status_4,
-                    :status_5
+                    :status_5, :status_6
                 )
+            )
+            and (
+                s.status != 'draft'
+                or s.requester_discord_id = :viewer_discord_id
             )
             and (
                 :kind_0 is null
@@ -624,12 +636,14 @@ def suggestions_get(
             "offset": 100 * (page - 1),
             "query": f"%{query}%" if query else None,
             "requester_discord_id": requester_discord_id,
+            "viewer_discord_id": viewer_discord_id,
             "status_0": status_parameters[0],
             "status_1": status_parameters[1],
             "status_2": status_parameters[2],
             "status_3": status_parameters[3],
             "status_4": status_parameters[4],
             "status_5": status_parameters[5],
+            "status_6": status_parameters[6],
             "kind_0": kind_parameters[0],
             "kind_1": kind_parameters[1],
             "kind_2": kind_parameters[2],
@@ -671,7 +685,7 @@ def suggestion_counts_by_requester(
         """
         select
             count(*) filter (
-                where status in ('new', 'claimed', 'accepted')
+                where status in ('draft', 'new', 'claimed', 'accepted')
             ) active_count,
             count(*) filter (
                 where status in ('completed', 'declined')
@@ -902,6 +916,7 @@ def suggestion_create(
     requester_discord_id: str | None,
     kind: str = Suggestion.default_kind,
     links: typing.Iterable[tuple[str, str]] = (),
+    status: str = "new",
 ) -> str:
     title = title.strip()
     if not title:
@@ -912,6 +927,9 @@ def suggestion_create(
         raise ValueError(msg)
     if kind not in Suggestion.kinds:
         msg = "A valid suggestion type is required."
+        raise ValueError(msg)
+    if status not in {"draft", "new"}:
+        msg = "A new suggestion must be saved as a draft or submitted."
         raise ValueError(msg)
     description = description.strip()
     if not description:
@@ -930,6 +948,7 @@ def suggestion_create(
                 suggestion_id,
                 title,
                 kind,
+                status,
                 description,
                 requester_name,
                 requester_discord_id,
@@ -940,6 +959,7 @@ def suggestion_create(
                 :suggestion_id,
                 :title,
                 :kind,
+                :status,
                 :description,
                 :requester_name,
                 :requester_discord_id,
@@ -952,6 +972,7 @@ def suggestion_create(
                 "suggestion_id": suggestion_id,
                 "title": title,
                 "kind": kind,
+                "status": status,
                 "description": description,
                 "requester_name": requester_name,
                 "requester_discord_id": requester_discord_id,
@@ -991,7 +1012,7 @@ def suggestion_create(
         con.rollback()
         raise
 
-    log.info("Created native suggestion %s", suggestion_id)
+    log.info("Created native %s suggestion %s", status, suggestion_id)
     return suggestion_id
 
 
@@ -1479,6 +1500,92 @@ def suggestion_withdraw(
     return withdrawn
 
 
+def suggestion_publish(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    *,
+    requester_discord_id: str,
+    actor_name: str | None,
+    limits_apply: bool = True,
+) -> bool:
+    requester_discord_id = requester_discord_id.strip()
+    if not requester_discord_id:
+        msg = "A Discord user ID is required to publish a suggestion."
+        raise ValueError(msg)
+
+    try:
+        cursor = con.execute(
+            """
+            update suggestions
+            set
+                status = 'new',
+                requested_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+                updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            where suggestion_id = :suggestion_id
+                and requester_discord_id = :requester_discord_id
+                and status = 'draft'
+                and (
+                    :limits_apply = 0
+                    or kind not in ('new-album', 'add-to-existing-album')
+                    or (
+                        select count(*)
+                        from suggestions open_suggestion
+                        where open_suggestion.requester_discord_id =
+                                :requester_discord_id
+                            and open_suggestion.status in ('new', 'claimed')
+                            and open_suggestion.kind in (
+                                'new-album',
+                                'add-to-existing-album'
+                            )
+                            and exists (
+                                select 1
+                                from suggestion_channels open_channel
+                                where open_channel.suggestion_id =
+                                        open_suggestion.suggestion_id
+                                    and open_channel.channel_id = (
+                                        select draft_channel.channel_id
+                                        from suggestion_channels draft_channel
+                                        where draft_channel.suggestion_id =
+                                                suggestions.suggestion_id
+                                        order by
+                                            draft_channel.is_primary desc,
+                                            draft_channel.channel_id
+                                        limit 1
+                                    )
+                            )
+                    ) < :open_limit
+                )
+            """,
+            {
+                "suggestion_id": suggestion_id,
+                "requester_discord_id": requester_discord_id,
+                "limits_apply": int(limits_apply),
+                "open_limit": Suggestion.open_limit,
+            },
+        )
+        published = cursor.rowcount == 1
+        if published:
+            _activity_insert(
+                con,
+                suggestion_id,
+                activity_type="updated-status",
+                actor_name=actor_name,
+                actor_discord_id=requester_discord_id,
+                old_value="draft",
+                new_value="new",
+            )
+            con.commit()
+        else:
+            con.rollback()
+    except Exception:
+        con.rollback()
+        raise
+
+    if published:
+        log.info("Suggestion %s published by its owner", suggestion_id)
+    return published
+
+
 def suggestion_update(
     con: sqlite3.Connection,
     suggestion_id: str,
@@ -1587,6 +1694,11 @@ def suggestion_update(
         for slug, old_value, new_value in changes:
             if (old_value or None) == (new_value or None):
                 continue
+            if (existing["status"] == "draft" or status == "draft") and slug in {
+                "title",
+                "description",
+            }:
+                continue
             _activity_insert(
                 con,
                 suggestion_id,
@@ -1644,11 +1756,11 @@ def suggestion_description_update(
     try:
         existing = con.execute(
             """
-            select description
+            select description, status
             from suggestions
             where suggestion_id = :suggestion_id
                 and requester_discord_id = :requester_discord_id
-                and status in ('new', 'claimed')
+                and status in ('draft', 'new', 'claimed')
             """,
             {
                 "suggestion_id": suggestion_id,
@@ -1671,7 +1783,7 @@ def suggestion_description_update(
                 updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
             where suggestion_id = :suggestion_id
                 and requester_discord_id = :requester_discord_id
-                and status in ('new', 'claimed')
+                and status in ('draft', 'new', 'claimed')
             """,
             {
                 "suggestion_id": suggestion_id,
@@ -1682,15 +1794,16 @@ def suggestion_description_update(
         if cursor.rowcount != 1:
             con.rollback()
             return False
-        _activity_insert(
-            con,
-            suggestion_id,
-            activity_type="updated-description",
-            actor_name=actor_name,
-            actor_discord_id=requester_discord_id,
-            old_value=old_description,
-            new_value=description,
-        )
+        if existing["status"] != "draft":
+            _activity_insert(
+                con,
+                suggestion_id,
+                activity_type="updated-description",
+                actor_name=actor_name,
+                actor_discord_id=requester_discord_id,
+                old_value=old_description,
+                new_value=description,
+            )
         con.commit()
     except Exception:
         con.rollback()
@@ -1720,11 +1833,11 @@ def suggestion_title_update(
     try:
         existing = con.execute(
             """
-            select title
+            select title, status
             from suggestions
             where suggestion_id = :suggestion_id
                 and requester_discord_id = :requester_discord_id
-                and status in ('new', 'claimed')
+                and status in ('draft', 'new', 'claimed')
             """,
             {
                 "suggestion_id": suggestion_id,
@@ -1747,7 +1860,7 @@ def suggestion_title_update(
                 updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
             where suggestion_id = :suggestion_id
                 and requester_discord_id = :requester_discord_id
-                and status in ('new', 'claimed')
+                and status in ('draft', 'new', 'claimed')
             """,
             {
                 "suggestion_id": suggestion_id,
@@ -1758,15 +1871,16 @@ def suggestion_title_update(
         if cursor.rowcount != 1:
             con.rollback()
             return False
-        _activity_insert(
-            con,
-            suggestion_id,
-            activity_type="updated-title",
-            actor_name=actor_name,
-            actor_discord_id=requester_discord_id,
-            old_value=old_title,
-            new_value=title,
-        )
+        if existing["status"] != "draft":
+            _activity_insert(
+                con,
+                suggestion_id,
+                activity_type="updated-title",
+                actor_name=actor_name,
+                actor_discord_id=requester_discord_id,
+                old_value=old_title,
+                new_value=title,
+            )
         con.commit()
     except Exception:
         con.rollback()
@@ -1854,14 +1968,14 @@ def suggestion_link_add(
     owner_discord_id = (actor_discord_id or "").strip()
     exists = con.execute(
         """
-        select 1
+        select status
         from suggestions
         where suggestion_id = :suggestion_id
             and (
                 :is_staff = 1
                 or (
                     requester_discord_id = :requester_discord_id
-                    and status in ('new', 'claimed')
+                    and status in ('draft', 'new', 'claimed')
                 )
             )
         """,
@@ -1881,14 +1995,15 @@ def suggestion_link_add(
         msg = "This link has already been added."
         raise ValueError(msg)
     try:
-        _activity_insert(
-            con,
-            suggestion_id,
-            activity_type="added-link",
-            actor_name=actor_name,
-            actor_discord_id=actor_discord_id,
-            new_value=url,
-        )
+        if exists["status"] != "draft":
+            _activity_insert(
+                con,
+                suggestion_id,
+                activity_type="added-link",
+                actor_name=actor_name,
+                actor_discord_id=actor_discord_id,
+                new_value=url,
+            )
         con.execute(
             """
             insert into suggestion_links (
@@ -1924,7 +2039,7 @@ def suggestion_link_delete(
     try:
         link = con.execute(
             """
-            select sl.url
+            select sl.url, s.status
             from suggestion_links sl
             join suggestions s using (suggestion_id)
             where sl.suggestion_id = :suggestion_id
@@ -1933,7 +2048,7 @@ def suggestion_link_delete(
                     :is_staff = 1
                     or (
                         s.requester_discord_id = :requester_discord_id
-                        and s.status in ('new', 'claimed')
+                        and s.status in ('draft', 'new', 'claimed')
                     )
                 )
             """,
@@ -1948,14 +2063,15 @@ def suggestion_link_delete(
             con.rollback()
             return False
 
-        _activity_insert(
-            con,
-            suggestion_id,
-            activity_type="removed-link",
-            actor_name=actor_name,
-            actor_discord_id=actor_discord_id,
-            old_value=str(link["url"]),
-        )
+        if link["status"] != "draft":
+            _activity_insert(
+                con,
+                suggestion_id,
+                activity_type="removed-link",
+                actor_name=actor_name,
+                actor_discord_id=actor_discord_id,
+                old_value=str(link["url"]),
+            )
         cursor = con.execute(
             """
             delete from suggestion_links

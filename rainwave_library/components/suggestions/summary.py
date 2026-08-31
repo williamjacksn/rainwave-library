@@ -14,6 +14,7 @@ from rainwave_library.models.suggestions import (
 
 def _suggestion_status_badge(status: str) -> htpy.Element:
     status_classes = {
+        "draft": "text-bg-secondary",
         "new": "text-bg-primary",
         "claimed": "text-bg-warning",
         "accepted": "text-bg-info",
@@ -75,12 +76,15 @@ def _suggestion_staff_action_state(
 def _suggestion_preview_actions(
     suggestion: Suggestion,
     *,
+    owner_publish_blocked_reason: str | None = None,
+    owner_publishable: bool = False,
     owner_withdrawable: bool = False,
 ) -> htpy.Node:
     is_staff, claimable, assignable, releasable, resolvable, completable = (
         _suggestion_staff_action_state(suggestion)
     )
-    if not is_staff and not owner_withdrawable:
+    publish_confirmation = f'Are you sure you want to publish "{suggestion.title}"?'
+    if not is_staff and not owner_publishable and not owner_withdrawable:
         return None
 
     return htpy.div(".d-flex.flex-wrap.gap-2.mb-3")[
@@ -177,6 +181,35 @@ def _suggestion_preview_actions(
             hx_target="closest tr",
             type="button",
         )[htpy.i(".bi-check2-all"), " Mark completed"],
+        owner_publishable
+        and (
+            htpy.span(
+                ".d-inline-block",
+                aria_label=owner_publish_blocked_reason,
+                data_bs_toggle="tooltip",
+                tabindex="0",
+                title=owner_publish_blocked_reason,
+            )[
+                htpy.button(
+                    ".btn.btn-success.btn-sm.pe-none",
+                    disabled=True,
+                    type="button",
+                )[htpy.i(".bi-send"), " Publish suggestion"]
+            ]
+            if owner_publish_blocked_reason
+            else htpy.button(
+                ".btn.btn-success.btn-sm",
+                hx_confirm=publish_confirmation,
+                hx_disabled_elt="this",
+                hx_post=flask.url_for(
+                    "suggestion_publish",
+                    suggestion_id=suggestion.id,
+                ),
+                hx_swap="outerHTML",
+                hx_target="closest tr",
+                type="button",
+            )[htpy.i(".bi-send"), " Publish suggestion"]
+        ),
         owner_withdrawable
         and htpy.button(
             ".btn.btn-danger.btn-sm",

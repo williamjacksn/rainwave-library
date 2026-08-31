@@ -38,6 +38,7 @@ def _base(content: htpy.Node, *, body_class: str | None = None) -> htpy.Renderab
             _bs_script(),
             _hx_script(),
             _remote_modal_script(),
+            _tooltip_script(),
         ],
     ]
 
@@ -76,6 +77,17 @@ def _remote_modal_script() -> htpy.Element:
             ) {
                 content.replaceWith(template.content.cloneNode(true));
             }
+        });
+        """
+    )
+    return htpy.script[script]
+
+
+def _tooltip_script() -> htpy.Element:
+    script = markupsafe.Markup(
+        """
+        new bootstrap.Tooltip(document.body, {
+            selector: '[data-bs-toggle="tooltip"]'
         });
         """
     )

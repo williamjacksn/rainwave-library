@@ -6,6 +6,7 @@ import json
 import os
 import pathlib
 import secrets
+import sqlite3
 import string
 import textwrap
 import time
@@ -1486,6 +1487,41 @@ def _suggestion_notice() -> _SuggestionNotice:
     }
 
 
+def _suggestion_publish_limit_reason(
+    con: sqlite3.Connection,
+    suggestion: rainwave_library.models.suggestions.SuggestionDetail,
+) -> str | None:
+    suggestion_models = rainwave_library.models.suggestions
+    if (
+        flask.session.get("role") == "staff"
+        or suggestion.status != "draft"
+        or suggestion.kind not in suggestion_models.Suggestion.limited_kinds
+        or not suggestion.requester_discord_id
+    ):
+        return None
+
+    channel_id = suggestion.primary_channel_id
+    if channel_id is None and suggestion.channel_ids:
+        channel_id = suggestion.channel_ids[0]
+    if channel_id is None:
+        return None
+
+    open_count = suggestion_models.suggestion_open_count_for_channel(
+        con,
+        suggestion.requester_discord_id,
+        channel_id,
+    )
+    if open_count < suggestion_models.Suggestion.open_limit:
+        return None
+
+    channel_name = rainwave_library.models.rainwave.channels.get(channel_id, "selected")
+    return (
+        f"You currently have {open_count} open suggestions for the {channel_name} "
+        f"channel. The limit is {suggestion_models.Suggestion.open_limit}. This draft "
+        "can be published after enough open suggestions are resolved."
+    )
+
+
 @app.route("/suggestions/wizard", methods=["POST"])
 @signed_in
 def suggestion_wizard() -> str:
@@ -1546,17 +1582,10 @@ def suggestion_wizard() -> str:
                 )
         finally:
             storage_cnx_.close()
-        if limits_apply and open_count >= 5:
-            return rainwave_library.components.suggestion_wizard_body(
-                2,
-                channel_id=channel_id,
-                kind=kind,
-                open_count=open_count,
-                limits_apply=limits_apply,
-                title=title,
-                description=description,
-                links=links,
-            )
+        draft_only = (
+            limits_apply
+            and open_count >= rainwave_library.models.suggestions.Suggestion.open_limit
+        )
         if step in {"4", "5"} and not title.strip():
             return rainwave_library.components.suggestion_wizard_body(
                 3,
@@ -1608,6 +1637,7 @@ def suggestion_wizard() -> str:
                 title=title,
                 description=description,
                 links=links,
+                draft_only=draft_only,
             )
         if step == "4":
             return rainwave_library.components.suggestion_wizard_body(
@@ -1659,6 +1689,8 @@ def suggestion_create() -> werkzeug.Response | str:
     )
     channel = flask.request.form.get("channel", "")
     channel_id = int(channel) if channel.isdigit() else 0
+    status = flask.request.form.get("status", "new")
+    requester_discord_id = str(flask.g.discord_id) if flask.g.discord_id else None
     link_pairs = [
         (url.strip(), label.strip())
         for url, label in itertools.zip_longest(
@@ -1668,22 +1700,45 @@ def suggestion_create() -> werkzeug.Response | str:
         )
     ]
     entered_links = tuple(pair for pair in link_pairs if pair[0] or pair[1])
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         try:
+            limit_reached = (
+                status == "new"
+                and flask.session.get("role") != "staff"
+                and kind in rainwave_library.models.suggestions.Suggestion.limited_kinds
+            )
+            if limit_reached:
+                suggestion_models = rainwave_library.models.suggestions
+                open_count = suggestion_models.suggestion_open_count_for_channel(
+                    storage_cnx_, requester_discord_id, channel_id
+                )
+                limit_reached = (
+                    open_count
+                    >= rainwave_library.models.suggestions.Suggestion.open_limit
+                )
+            if limit_reached:
+                return rainwave_library.components.suggestion_wizard_body(
+                    5,
+                    channel_id=channel_id,
+                    kind=kind,
+                    title=title,
+                    description=description,
+                    links=entered_links,
+                    draft_only=True,
+                )
             suggestion_id = rainwave_library.models.suggestions.suggestion_create(
-                storage_cnx,
+                storage_cnx_,
                 title=title,
                 description=description,
                 channel_id=channel_id,
                 kind=kind,
                 requester_name=flask.g.discord_display_name,
-                requester_discord_id=(
-                    str(flask.g.discord_id) if flask.g.discord_id else None
-                ),
+                requester_discord_id=requester_discord_id,
                 links=entered_links,
+                status=status,
             )
         except ValueError as error:
             return rainwave_library.components.suggestion_create_form(
@@ -1694,16 +1749,17 @@ def suggestion_create() -> werkzeug.Response | str:
                 result=("alert-danger", str(error)),
             )
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
 
-    _suggestion_created_announce(
-        suggestion_id,
-        title=title,
-        channel_id=channel_id,
-        kind=kind,
-        requester_name=flask.g.discord_display_name,
-        requester_discord_id=(str(flask.g.discord_id) if flask.g.discord_id else None),
-    )
+    if status == "new":
+        _suggestion_created_announce(
+            suggestion_id,
+            title=title,
+            channel_id=channel_id,
+            kind=kind,
+            requester_name=flask.g.discord_display_name,
+            requester_discord_id=requester_discord_id,
+        )
 
     redirect_url = flask.url_for("suggestions")
     if flask.request.headers.get("HX-Request") == "true":
@@ -1742,13 +1798,13 @@ def suggestion_staff_create() -> werkzeug.Response | str:
     )
     entered_links = tuple(pair for pair in link_pairs if pair[0] or pair[1])
 
-    storage_cnx = rainwave_library.models.storage.connection_get(
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
         try:
             suggestion_id = rainwave_library.models.suggestions.suggestion_create(
-                storage_cnx,
+                storage_cnx_,
                 title=title,
                 description=description,
                 channel_id=channel_id,
@@ -1769,7 +1825,7 @@ def suggestion_staff_create() -> werkzeug.Response | str:
                 result=("alert-danger", str(error)),
             )
     finally:
-        storage_cnx.close()
+        storage_cnx_.close()
 
     _suggestion_created_announce(
         suggestion_id,
@@ -1859,6 +1915,7 @@ def suggestions_rows() -> str:
             channel_ids,
             filters.type,
             include_unassigned_channel,
+            viewer_discord_id=str(flask.g.discord_id or "") or None,
         )
     finally:
         storage_cnx.close()
@@ -2740,9 +2797,19 @@ def suggestion_details(suggestion_id: str) -> str:
         suggestion = rainwave_library.models.suggestions.suggestion_get(
             storage_cnx_, suggestion_id
         )
+        publish_blocked_reason = (
+            _suggestion_publish_limit_reason(storage_cnx_, suggestion)
+            if suggestion is not None
+            and suggestion.requester_discord_id == str(flask.g.discord_id or "")
+            else None
+        )
     finally:
         storage_cnx_.close()
     if suggestion is None:
+        flask.abort(404)
+    if suggestion.status == "draft" and suggestion.requester_discord_id != str(
+        flask.g.discord_id or ""
+    ):
         flask.abort(404)
     editable = (
         flask.session.get("role") == "staff" and flask.request.args.get("view") != "1"
@@ -2750,6 +2817,7 @@ def suggestion_details(suggestion_id: str) -> str:
     return rainwave_library.components.suggestion_detail_row(
         suggestion,
         editable=editable,
+        publish_blocked_reason=publish_blocked_reason,
     )
 
 
@@ -2776,7 +2844,7 @@ def suggestion_description(suggestion_id: str) -> str:
         ):
             flask.abort(
                 409,
-                "Only new or claimed suggestions can be edited by their owner.",
+                "Only draft, new, or claimed suggestions can be edited by their owner.",
             )
 
         if flask.request.method == "GET":
@@ -2839,7 +2907,7 @@ def suggestion_title(suggestion_id: str) -> str:
         ):
             flask.abort(
                 409,
-                "Only new or claimed suggestions can be edited by their owner.",
+                "Only draft, new, or claimed suggestions can be edited by their owner.",
             )
 
         if flask.request.method == "GET":
@@ -2914,6 +2982,63 @@ def suggestion_withdraw(suggestion_id: str) -> str:
         flask.abort(404)
     if not withdrawn:
         flask.abort(409, "This suggestion is no longer available to withdraw.")
+    return rainwave_library.components.suggestion_row(suggestion)
+
+
+@app.route("/suggestions/<suggestion_id>/publish", methods=["POST"])
+@signed_in
+def suggestion_publish(suggestion_id: str) -> str:
+    requester_discord_id = str(flask.g.discord_id or "")
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx_, suggestion_id
+        )
+        if suggestion is None:
+            flask.abort(404)
+        if (
+            not requester_discord_id
+            or suggestion.requester_discord_id != requester_discord_id
+        ):
+            flask.abort(403)
+        if suggestion.status != "draft":
+            flask.abort(409, "Only draft suggestions can be published.")
+        channel_id = suggestion.primary_channel_id
+        if channel_id is None and suggestion.channel_ids:
+            channel_id = suggestion.channel_ids[0]
+        publish_blocked_reason = _suggestion_publish_limit_reason(
+            storage_cnx_, suggestion
+        )
+        if publish_blocked_reason:
+            flask.abort(409, publish_blocked_reason)
+
+        published = rainwave_library.models.suggestions.suggestion_publish(
+            storage_cnx_,
+            suggestion_id,
+            requester_discord_id=requester_discord_id,
+            actor_name=flask.g.discord_display_name,
+            limits_apply=flask.session.get("role") != "staff",
+        )
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx_, suggestion_id
+        )
+    finally:
+        storage_cnx_.close()
+
+    if suggestion is None:
+        flask.abort(404)
+    if not published:
+        flask.abort(409, "This suggestion is no longer available to publish.")
+    _suggestion_created_announce(
+        suggestion.id,
+        title=suggestion.title,
+        channel_id=channel_id or 0,
+        kind=suggestion.kind,
+        requester_name=suggestion.requester_name,
+        requester_discord_id=suggestion.requester_discord_id,
+    )
     return rainwave_library.components.suggestion_row(suggestion)
 
 
@@ -3014,7 +3139,7 @@ def suggestion_link(suggestion_id: str) -> werkzeug.Response | str:
         ):
             flask.abort(
                 409,
-                "Links can only be added while a suggestion is new or claimed.",
+                "Links can only be added while a suggestion is draft, new, or claimed.",
             )
 
         if flask.request.method == "GET":
@@ -3083,7 +3208,8 @@ def suggestion_link_delete(suggestion_id: str, link_id: str) -> str:
         ):
             flask.abort(
                 409,
-                "Links can only be deleted while a suggestion is new or claimed.",
+                "Links can only be deleted while a suggestion is draft, new, or "
+                "claimed.",
             )
         if not any(link.id == link_id for link in suggestion.links):
             flask.abort(404)
@@ -3478,6 +3604,10 @@ def suggestion_row(suggestion_id: str) -> str:
     finally:
         storage_cnx.close()
     if suggestion is None:
+        flask.abort(404)
+    if suggestion.status == "draft" and suggestion.requester_discord_id != str(
+        flask.g.discord_id or ""
+    ):
         flask.abort(404)
     return rainwave_library.components.suggestion_row(suggestion)
 

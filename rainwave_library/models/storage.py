@@ -2636,6 +2636,138 @@ def _migration_20(con: sqlite3.Connection) -> None:
     )
 
 
+def _migration_21(con: sqlite3.Connection) -> None:
+    con.executescript(
+        """
+        create temp table _migration_21_suggestions as
+            select * from suggestions;
+        create temp table _migration_21_suggestion_channels as
+            select * from suggestion_channels;
+        create temp table _migration_21_suggestion_links as
+            select * from suggestion_links;
+        create temp table _migration_21_suggestion_activity as
+            select * from suggestion_activity;
+        create temp table _migration_21_suggestion_file_reviews as
+            select * from suggestion_file_reviews;
+
+        drop table suggestion_file_reviews;
+        drop table suggestion_activity;
+        drop table suggestion_links;
+        drop table suggestion_channels;
+        drop table suggestions;
+
+        create table suggestions (
+            suggestion_id text primary key not null,
+            title text not null,
+            kind text not null default 'new-album'
+                check (
+                    kind in (
+                        'new-album',
+                        'add-to-existing-album',
+                        'metadata-update',
+                        'removal'
+                    )
+                ),
+            status text not null default 'new'
+                check (
+                    status in (
+                        'draft',
+                        'new',
+                        'claimed',
+                        'accepted',
+                        'completed',
+                        'declined',
+                        'withdrawn'
+                    )
+                ),
+            description text not null default '',
+            requester_name text,
+            requester_discord_id text,
+            requested_at text,
+            claimed_by_name text,
+            claimed_by_discord_id text,
+            claimed_at text,
+            resolved_at text,
+            created_at text not null,
+            updated_at text not null
+        ) without rowid;
+
+        create index suggestions_status_idx
+            on suggestions (status, requested_at);
+        create index suggestions_claimed_by_idx
+            on suggestions (claimed_by_discord_id, claimed_by_name);
+
+        insert into suggestions
+            select * from _migration_21_suggestions;
+
+        create table suggestion_channels (
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            channel_id integer not null,
+            is_primary integer not null default 0
+                check (is_primary in (0, 1)),
+            primary key (suggestion_id, channel_id)
+        ) without rowid;
+
+        insert into suggestion_channels
+            select * from _migration_21_suggestion_channels;
+
+        create table suggestion_links (
+            link_id text primary key not null,
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            url text not null,
+            label text,
+            unique (suggestion_id, url)
+        ) without rowid;
+
+        insert into suggestion_links
+            select * from _migration_21_suggestion_links;
+
+        create table suggestion_activity (
+            activity_id text primary key not null,
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            activity_type text not null,
+            actor_name text,
+            actor_discord_id text,
+            body text,
+            old_value text,
+            new_value text,
+            created_at text not null,
+            trello_member_id text
+        ) without rowid;
+
+        create index suggestion_activity_suggestion_idx
+            on suggestion_activity (suggestion_id, created_at);
+
+        insert into suggestion_activity
+            select * from _migration_21_suggestion_activity;
+
+        create table suggestion_file_reviews (
+            suggestion_id text not null
+                references suggestions (suggestion_id) on delete cascade,
+            relative_path text not null,
+            decision text not null
+                check (decision in ('keep', 'pass')),
+            reviewed_by_discord_id text,
+            reviewed_at text not null
+                default (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+            primary key (suggestion_id, relative_path)
+        ) without rowid;
+
+        insert into suggestion_file_reviews
+            select * from _migration_21_suggestion_file_reviews;
+
+        drop table _migration_21_suggestion_file_reviews;
+        drop table _migration_21_suggestion_activity;
+        drop table _migration_21_suggestion_links;
+        drop table _migration_21_suggestion_channels;
+        drop table _migration_21_suggestions;
+        """
+    )
+
+
 MIGRATIONS = (
     _migration_1,
     _migration_2,
@@ -2657,6 +2789,7 @@ MIGRATIONS = (
     _migration_18,
     _migration_19,
     _migration_20,
+    _migration_21,
 )
 
 

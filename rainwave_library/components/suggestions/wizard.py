@@ -161,7 +161,7 @@ def _suggestion_wizard_step2(
     url = flask.url_for("suggestion_wizard")
     channel_label = channels.get(channel_id, "—") if channel_id else "—"
     kind_label = Suggestion.kind_labels.get(kind or "", "—")
-    over_limit = limits_apply and open_count >= 5
+    over_limit = limits_apply and open_count >= Suggestion.open_limit
     return htpy.form(
         hx_disabled_elt="button",
         hx_post=url,
@@ -197,8 +197,10 @@ def _suggestion_wizard_step2(
             "The ",
             htpy.strong[channel_label],
             (
-                " channel allows up to 5 open suggestions at a time. Please wait "
-                "until one of your suggestions is resolved before adding another."
+                f" channel allows up to {Suggestion.open_limit} open suggestions "
+                "at a time. You can continue and save this suggestion as a draft, "
+                "but you will not be able to publish it until enough of your open "
+                "suggestions are resolved."
             ),
         ],
         not over_limit and channel_id == 1 and _suggestion_game_rules(),
@@ -217,7 +219,6 @@ def _suggestion_wizard_step2(
             ],
             htpy.button(
                 ".btn.btn-primary",
-                disabled=over_limit,
                 name="step",
                 type="submit",
                 value="3",
@@ -414,6 +415,9 @@ def _suggestion_wizard_step5(
     title: str = "",
     description: str = "",
     links: tuple[tuple[str, str], ...] = (),
+    result: tuple[str, str] | None = None,
+    *,
+    draft_only: bool = False,
 ) -> htpy.Element:
     wizard_url = flask.url_for("suggestion_wizard")
     create_url = flask.url_for("suggestion_create")
@@ -449,8 +453,15 @@ def _suggestion_wizard_step5(
         htpy.input(name="kind", type="hidden", value=kind or ""),
         htpy.input(name="title", type="hidden", value=title),
         _suggestion_wizard_hidden_request_fields(description, links),
+        result and htpy.div(f".alert.{result[0]}.py-2", role="alert")[result[1]],
         htpy.h5["Confirm suggestion"],
         htpy.p["Review your suggestion before submitting it."],
+        draft_only
+        and htpy.div(".alert.alert-warning", role="alert")[
+            "You have reached the open suggestion limit for this channel. You "
+            "can save this suggestion as a draft and publish it after enough of "
+            "your open suggestions are resolved."
+        ],
         _suggestion_detail_table(
             [
                 ("Channel", channel_label),
@@ -470,11 +481,23 @@ def _suggestion_wizard_step5(
                 type="submit",
                 value="4",
             )[htpy.i(".bi-caret-left-fill"), " Back"],
-            htpy.button(
-                ".btn.btn-success",
-                hx_post=create_url,
-                type="submit",
-            )[htpy.i(".bi-check-lg"), " Submit suggestion"],
+            htpy.div(".d-flex.flex-wrap.gap-2.justify-content-end")[
+                htpy.button(
+                    ".btn.btn-secondary",
+                    hx_post=create_url,
+                    name="status",
+                    type="submit",
+                    value="draft",
+                )[htpy.i(".bi-file-earmark"), " Save as draft"],
+                htpy.button(
+                    ".btn.btn-success",
+                    disabled=draft_only,
+                    hx_post=create_url,
+                    name="status",
+                    type="submit",
+                    value="new",
+                )[htpy.i(".bi-check-lg"), " Submit suggestion"],
+            ],
         ],
     ]
 
@@ -492,9 +515,18 @@ def _suggestion_wizard_body(
     description: str = "",
     links: tuple[tuple[str, str], ...] = (),
     title_matches: tuple[str, ...] = (),
+    draft_only: bool = False,
 ) -> htpy.Node:
     if step == 5:
-        return _suggestion_wizard_step5(channel_id, kind, title, description, links)
+        return _suggestion_wizard_step5(
+            channel_id,
+            kind,
+            title,
+            description,
+            links,
+            result,
+            draft_only=draft_only,
+        )
     if step == 4:
         return _suggestion_wizard_step4(
             channel_id, kind, title, description, links, title_matches, result
@@ -532,6 +564,7 @@ def suggestion_wizard_body(
     description: str = "",
     links: tuple[tuple[str, str], ...] = (),
     title_matches: tuple[str, ...] = (),
+    draft_only: bool = False,
 ) -> str:
     return str(
         _suggestion_wizard_body(
@@ -547,5 +580,6 @@ def suggestion_wizard_body(
             description,
             links,
             title_matches,
+            draft_only,
         )
     )
