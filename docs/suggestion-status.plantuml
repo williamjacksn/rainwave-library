@@ -1,0 +1,50 @@
+@startuml
+
+skinparam state {
+    FontColor<<WhiteFont>> White
+}
+
+state Draft <<WhiteFont>> #6c757d
+state New <<WhiteFont>> #0d6efd
+state Withdrawn <<WhiteFont>> #6c757d
+state Claimed #ffc107
+state Declined <<WhiteFont>> #dc3545
+state Accepted #0dcaf0
+state Completed <<WhiteFont>> #198754
+
+[*] -[#blue,bold]-> New : Submit
+[*] -[#blue,bold]> Draft : Save as draft
+
+Draft -[#blue,bold]> New : Publish
+Draft -[#blue,bold]> [*] : Delete
+
+New -[#blue,bold]-> Draft : Unpublish
+New -[#blue,bold]> Withdrawn : Withdraw
+New -[#red,bold]-> Claimed : Claim
+
+Claimed -[#red,bold]> New : Release
+Claimed -[#red,bold]-> Accepted : Accept
+Claimed -[#red,bold]> Declined : Decline
+
+Accepted -[#red,bold]> Completed : Complete
+
+Draft : Only visible to owner
+Draft : Can be edited by owner
+New : Can be edited by owner
+New : Can be claimed by staff
+New : Counts against limits
+Withdrawn : Visible to anyone
+Withdrawn : Cannot be claimed
+Withdrawn : Does not count against limits
+Claimed : Assigned to a member of staff
+Claimed: Counts against limits
+Accepted : Not in the library yet
+Accepted : Does not count against limits
+Declined : Will not be added to library
+Declined : Does not count against limits
+Completed : New music is in the library
+Completed : Metadata changes are done
+
+note "Owner actions in blue\nStaff actions in red" as n1
+
+@enduml
