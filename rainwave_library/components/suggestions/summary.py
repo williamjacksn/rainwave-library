@@ -79,6 +79,7 @@ def _suggestion_preview_actions(
     owner_publish_blocked_reason: str | None = None,
     owner_publishable: bool = False,
     owner_draftable: bool = False,
+    owner_deletable: bool = False,
     owner_withdrawable: bool = False,
 ) -> htpy.Node:
     is_staff, claimable, assignable, releasable, resolvable, completable = (
@@ -95,6 +96,7 @@ def _suggestion_preview_actions(
         not is_staff
         and not owner_publishable
         and not owner_draftable
+        and not owner_deletable
         and not owner_withdrawable
     ):
         return None
@@ -237,6 +239,22 @@ def _suggestion_preview_actions(
             hx_target="closest tr",
             type="button",
         )[htpy.i(".bi-file-earmark"), " Unpublish"],
+        owner_deletable
+        and htpy.button(
+            ".btn.btn-danger.btn-sm",
+            hx_confirm=(
+                f'Delete the draft suggestion "{suggestion.title}"? '
+                "This cannot be undone."
+            ),
+            hx_delete=flask.url_for(
+                "suggestion_delete",
+                suggestion_id=suggestion.id,
+            ),
+            hx_disabled_elt="this",
+            hx_swap="delete",
+            hx_target="closest tr",
+            type="button",
+        )[htpy.i(".bi-trash"), " Delete"],
         owner_withdrawable
         and htpy.button(
             ".btn.btn-danger.btn-sm",

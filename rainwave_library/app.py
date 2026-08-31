@@ -3619,20 +3619,42 @@ def suggestion_update(suggestion_id: str) -> str:
 
 
 @app.route("/suggestions/<suggestion_id>", methods=["DELETE"])
-@secure
+@signed_in
 def suggestion_delete(suggestion_id: str) -> str:
+    requester_discord_id = str(flask.g.discord_id or "")
+    is_staff = flask.session.get("role") == "staff"
     storage_cnx = rainwave_library.models.storage.connection_get(
         app.config["STORAGE_CNX"]
     )
     try:
-        deleted = rainwave_library.models.suggestions.suggestion_delete(
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
             storage_cnx, suggestion_id
+        )
+        if suggestion is None:
+            flask.abort(404)
+        if not is_staff:
+            if (
+                not requester_discord_id
+                or suggestion.requester_discord_id != requester_discord_id
+            ):
+                flask.abort(403)
+            if suggestion.status != "draft":
+                flask.abort(
+                    409, "Only draft suggestions can be deleted by their owner."
+                )
+
+        deleted = rainwave_library.models.suggestions.suggestion_delete(
+            storage_cnx,
+            suggestion_id,
+            requester_discord_id=None if is_staff else requester_discord_id,
         )
     finally:
         storage_cnx.close()
 
     if not deleted:
-        flask.abort(404)
+        if is_staff:
+            flask.abort(404)
+        flask.abort(409, "This suggestion is no longer available to delete.")
     return ""
 
 

@@ -1957,11 +1957,36 @@ def suggestion_title_update(
     return True
 
 
-def suggestion_delete(con: sqlite3.Connection, suggestion_id: str) -> bool:
+def suggestion_delete(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    *,
+    requester_discord_id: str | None = None,
+) -> bool:
+    requester_discord_id = (
+        requester_discord_id.strip() if requester_discord_id is not None else None
+    )
+    if requester_discord_id == "":
+        msg = "A Discord user ID is required to delete a draft suggestion."
+        raise ValueError(msg)
+
     try:
         cursor = con.execute(
-            "delete from suggestions where suggestion_id = ?",
-            (suggestion_id,),
+            """
+            delete from suggestions
+            where suggestion_id = :suggestion_id
+                and (
+                    :requester_discord_id is null
+                    or (
+                        requester_discord_id = :requester_discord_id
+                        and status = 'draft'
+                    )
+                )
+            """,
+            {
+                "suggestion_id": suggestion_id,
+                "requester_discord_id": requester_discord_id,
+            },
         )
         deleted = cursor.rowcount == 1
         if deleted:
