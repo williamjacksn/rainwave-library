@@ -85,10 +85,10 @@ def _suggestion_preview_actions(
     )
     publish_confirmation = f'Are you sure you want to publish "{suggestion.title}"?'
     assign_label = (
-        "Reassign staff member"
+        "Reassign"
         if suggestion.status == "claimed"
         and (suggestion.claimed_by_name or suggestion.claimed_by_discord_id)
-        else "Assign staff member"
+        else "Assign"
     )
     if not is_staff and not owner_publishable and not owner_withdrawable:
         return None
@@ -104,7 +104,7 @@ def _suggestion_preview_actions(
             hx_swap="outerHTML",
             hx_target="closest tr",
             type="button",
-        )[htpy.i(".bi-pencil"), " Edit suggestion"],
+        )[htpy.i(".bi-pencil"), " Edit"],
         claimable
         and htpy.button(
             ".btn.btn-primary.btn-sm",
@@ -117,7 +117,7 @@ def _suggestion_preview_actions(
             hx_swap="outerHTML",
             hx_target="closest tr",
             type="button",
-        )[htpy.i(".bi-person-check"), " Claim suggestion"],
+        )[htpy.i(".bi-person-check"), " Claim"],
         assignable
         and htpy.button(
             ".btn.btn-secondary.btn-sm",
@@ -145,7 +145,7 @@ def _suggestion_preview_actions(
             hx_swap="outerHTML",
             hx_target="closest tr",
             type="button",
-        )[htpy.i(".bi-person-dash"), " Release claim"],
+        )[htpy.i(".bi-person-dash"), " Release"],
         resolvable
         and htpy.button(
             ".btn.btn-success.btn-sm",
@@ -158,7 +158,7 @@ def _suggestion_preview_actions(
             hx_swap="outerHTML",
             hx_target="#modal-lg-content",
             type="button",
-        )[htpy.i(".bi-check-circle"), " Accept suggestion"],
+        )[htpy.i(".bi-check-circle"), " Accept"],
         resolvable
         and htpy.button(
             ".btn.btn-danger.btn-sm",
@@ -171,7 +171,7 @@ def _suggestion_preview_actions(
             hx_swap="outerHTML",
             hx_target="#modal-lg-content",
             type="button",
-        )[htpy.i(".bi-x-circle"), " Decline suggestion"],
+        )[htpy.i(".bi-x-circle"), " Decline"],
         completable
         and htpy.button(
             ".btn.btn-success.btn-sm",
@@ -186,7 +186,7 @@ def _suggestion_preview_actions(
             hx_swap="outerHTML",
             hx_target="closest tr",
             type="button",
-        )[htpy.i(".bi-check2-all"), " Mark completed"],
+        )[htpy.i(".bi-check2-all"), " Complete"],
         owner_publishable
         and (
             htpy.span(
@@ -200,7 +200,7 @@ def _suggestion_preview_actions(
                     ".btn.btn-success.btn-sm.pe-none",
                     disabled=True,
                     type="button",
-                )[htpy.i(".bi-send"), " Publish suggestion"]
+                )[htpy.i(".bi-send"), " Publish"]
             ]
             if owner_publish_blocked_reason
             else htpy.button(
@@ -214,7 +214,7 @@ def _suggestion_preview_actions(
                 hx_swap="outerHTML",
                 hx_target="closest tr",
                 type="button",
-            )[htpy.i(".bi-send"), " Publish suggestion"]
+            )[htpy.i(".bi-send"), " Publish"]
         ),
         owner_withdrawable
         and htpy.button(
@@ -228,7 +228,7 @@ def _suggestion_preview_actions(
             hx_swap="outerHTML",
             hx_target="closest tr",
             type="button",
-        )[htpy.i(".bi-x-circle"), " Withdraw suggestion"],
+        )[htpy.i(".bi-x-circle"), " Withdraw"],
     ]
 
 
