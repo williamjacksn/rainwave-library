@@ -50,6 +50,7 @@ class Suggestion:
     claimable_statuses: typing.ClassVar[tuple[str, ...]] = ("new", "declined")
     assignable_statuses: typing.ClassVar[tuple[str, ...]] = (
         "new",
+        "claimed",
         "accepted",
         "completed",
         "declined",
@@ -1118,14 +1119,21 @@ def suggestion_assign(
         if (
             existing is None
             or existing["status"] not in Suggestion.assignable_statuses
-            or existing["claimed_by_name"]
-            or existing["claimed_by_discord_id"]
+            or (
+                existing["status"] != "claimed"
+                and (existing["claimed_by_name"] or existing["claimed_by_discord_id"])
+            )
         ):
             con.rollback()
             return False
         old_status = str(existing["status"])
+        old_claimed_by_name = existing["claimed_by_name"]
+        old_claimed_by_discord_id = existing["claimed_by_discord_id"]
         if assignee_discord_id == actor_discord_id and old_status == "new":
             msg = "Choose another staff member, or claim the suggestion yourself."
+            raise ValueError(msg)
+        if assignee_discord_id == old_claimed_by_discord_id:
+            msg = "Choose a staff member other than the current assignee."
             raise ValueError(msg)
 
         assignee = con.execute(
@@ -1157,8 +1165,8 @@ def suggestion_assign(
                 updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
             where suggestion_id = :suggestion_id
                 and status = :old_status
-                and nullif(trim(claimed_by_name), '') is null
-                and nullif(trim(claimed_by_discord_id), '') is null
+                and claimed_by_name is :old_claimed_by_name
+                and claimed_by_discord_id is :old_claimed_by_discord_id
             """,
             {
                 "suggestion_id": suggestion_id,
@@ -1166,6 +1174,8 @@ def suggestion_assign(
                 "claimed_by_discord_id": assignee_discord_id,
                 "new_status": new_status,
                 "old_status": old_status,
+                "old_claimed_by_name": old_claimed_by_name,
+                "old_claimed_by_discord_id": old_claimed_by_discord_id,
             },
         )
         assigned = cursor.rowcount == 1
@@ -1182,13 +1192,19 @@ def suggestion_assign(
                     new_value=new_status,
                 )
             else:
+                activity_body = f"Assigned to {assignee_name}."
+                if old_claimed_by_name or old_claimed_by_discord_id:
+                    previous_assignee = old_claimed_by_name or old_claimed_by_discord_id
+                    activity_body = (
+                        f"Reassigned from {previous_assignee} to {assignee_name}."
+                    )
                 _activity_insert(
                     con,
                     suggestion_id,
                     activity_type="assigned",
                     actor_name=actor_name,
                     actor_discord_id=actor_discord_id,
-                    body=f"Assigned to {assignee_name}.",
+                    body=activity_body,
                 )
             con.commit()
         else:

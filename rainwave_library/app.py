@@ -3271,23 +3271,28 @@ def suggestion_assign(suggestion_id: str) -> werkzeug.Response | str:
         )
         if suggestion is None:
             flask.abort(404)
+        is_assigned = bool(
+            suggestion.claimed_by_name or suggestion.claimed_by_discord_id
+        )
         if (
             suggestion.status
             not in rainwave_library.models.suggestions.Suggestion.assignable_statuses
-            or suggestion.claimed_by_name
-            or suggestion.claimed_by_discord_id
+            or (is_assigned and suggestion.status != "claimed")
         ):
             flask.abort(
                 409,
-                "Only unassigned new, accepted, completed, or declined "
-                "suggestions can be assigned.",
+                "Only claimed suggestions or unassigned new, accepted, completed, "
+                "or declined suggestions can be assigned.",
             )
 
+        excluded_staff_id = None
+        if suggestion.status == "new":
+            excluded_staff_id = actor_discord_id
+        elif suggestion.status == "claimed":
+            excluded_staff_id = suggestion.claimed_by_discord_id
         staff_users = rainwave_library.models.storage.staff_users_get(
             storage_cnx,
-            exclude_discord_id=(
-                actor_discord_id if suggestion.status == "new" else None
-            ),
+            exclude_discord_id=excluded_staff_id,
         )
         if flask.request.method == "GET":
             return rainwave_library.components.suggestion_assign_form(

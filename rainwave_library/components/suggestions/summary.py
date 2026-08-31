@@ -59,8 +59,8 @@ def _suggestion_staff_action_state(
     )
     assignable = (
         is_staff
-        and is_unassigned
         and suggestion.status in Suggestion.assignable_statuses
+        and (is_unassigned or suggestion.status == "claimed")
     )
     releasable = (
         is_staff
@@ -84,6 +84,12 @@ def _suggestion_preview_actions(
         _suggestion_staff_action_state(suggestion)
     )
     publish_confirmation = f'Are you sure you want to publish "{suggestion.title}"?'
+    assign_label = (
+        "Reassign staff member"
+        if suggestion.status == "claimed"
+        and (suggestion.claimed_by_name or suggestion.claimed_by_discord_id)
+        else "Assign staff member"
+    )
     if not is_staff and not owner_publishable and not owner_withdrawable:
         return None
 
@@ -124,7 +130,7 @@ def _suggestion_preview_actions(
             hx_swap="outerHTML",
             hx_target="#modal-lg-content",
             type="button",
-        )[htpy.i(".bi-person-plus"), " Assign staff member"],
+        )[htpy.i(".bi-person-plus"), " ", assign_label],
         releasable
         and htpy.button(
             ".btn.btn-outline-danger.btn-sm",
@@ -382,6 +388,10 @@ def _suggestion_assign_form(
     error: str | None = None,
 ) -> htpy.Element:
     url = flask.url_for("suggestion_assign", suggestion_id=suggestion.id)
+    is_reassignment = suggestion.status == "claimed" and bool(
+        suggestion.claimed_by_name or suggestion.claimed_by_discord_id
+    )
+    action_label = "Reassign suggestion" if is_reassignment else "Assign suggestion"
     after_request = (
         "if (event.detail.successful && "
         "!event.detail.xhr.getResponseHeader('HX-Retarget')) {"
@@ -400,7 +410,7 @@ def _suggestion_assign_form(
         **{"hx-on:htmx:after-request": after_request},
     )[
         htpy.div(".modal-header")[
-            htpy.h5(".modal-title")["Assign suggestion"],
+            htpy.h5(".modal-title")[action_label],
             htpy.button(
                 ".btn-close",
                 aria_label="Close",
@@ -411,9 +421,13 @@ def _suggestion_assign_form(
         htpy.div(".modal-body")[
             error and htpy.div(".alert.alert-danger", role="alert")[error],
             htpy.p[
-                "Assign ",
+                "Reassign " if is_reassignment else "Assign ",
                 htpy.strong[suggestion.title],
-                " to a staff member.",
+                (
+                    f" from {suggestion.claimed_by_name} to another staff member."
+                    if is_reassignment and suggestion.claimed_by_name
+                    else " to a staff member."
+                ),
             ],
             (
                 htpy.div[
@@ -457,7 +471,7 @@ def _suggestion_assign_form(
                 ".btn.btn-primary",
                 disabled=not staff_users,
                 type="submit",
-            )[htpy.i(".bi-person-plus"), " Assign suggestion"],
+            )[htpy.i(".bi-person-plus"), " ", action_label],
         ],
     ]
 
