@@ -1516,6 +1516,57 @@ def suggestion_withdraw(
     return withdrawn
 
 
+def suggestion_unpublish(
+    con: sqlite3.Connection,
+    suggestion_id: str,
+    *,
+    requester_discord_id: str,
+    actor_name: str | None,
+) -> bool:
+    requester_discord_id = requester_discord_id.strip()
+    if not requester_discord_id:
+        msg = "A Discord user ID is required to save a suggestion as a draft."
+        raise ValueError(msg)
+
+    try:
+        cursor = con.execute(
+            """
+            update suggestions
+            set
+                status = 'draft',
+                updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            where suggestion_id = :suggestion_id
+                and requester_discord_id = :requester_discord_id
+                and status = 'new'
+            """,
+            {
+                "suggestion_id": suggestion_id,
+                "requester_discord_id": requester_discord_id,
+            },
+        )
+        unpublished = cursor.rowcount == 1
+        if unpublished:
+            _activity_insert(
+                con,
+                suggestion_id,
+                activity_type="updated-status",
+                actor_name=actor_name,
+                actor_discord_id=requester_discord_id,
+                old_value="new",
+                new_value="draft",
+            )
+            con.commit()
+        else:
+            con.rollback()
+    except Exception:
+        con.rollback()
+        raise
+
+    if unpublished:
+        log.info("Suggestion %s saved as a draft by its owner", suggestion_id)
+    return unpublished
+
+
 def suggestion_publish(
     con: sqlite3.Connection,
     suggestion_id: str,

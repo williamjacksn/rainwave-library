@@ -78,6 +78,7 @@ def _suggestion_preview_actions(
     *,
     owner_publish_blocked_reason: str | None = None,
     owner_publishable: bool = False,
+    owner_draftable: bool = False,
     owner_withdrawable: bool = False,
 ) -> htpy.Node:
     is_staff, claimable, assignable, releasable, resolvable, completable = (
@@ -90,7 +91,12 @@ def _suggestion_preview_actions(
         and (suggestion.claimed_by_name or suggestion.claimed_by_discord_id)
         else "Assign"
     )
-    if not is_staff and not owner_publishable and not owner_withdrawable:
+    if (
+        not is_staff
+        and not owner_publishable
+        and not owner_draftable
+        and not owner_withdrawable
+    ):
         return None
 
     return htpy.div(".d-flex.flex-wrap.gap-2.mb-3")[
@@ -216,6 +222,21 @@ def _suggestion_preview_actions(
                 type="button",
             )[htpy.i(".bi-send"), " Publish"]
         ),
+        owner_draftable
+        and htpy.button(
+            ".btn.btn-secondary.btn-sm",
+            hx_confirm=(
+                f'Are you sure you want to move "{suggestion.title}" back to drafts?'
+            ),
+            hx_disabled_elt="this",
+            hx_post=flask.url_for(
+                "suggestion_unpublish",
+                suggestion_id=suggestion.id,
+            ),
+            hx_swap="outerHTML",
+            hx_target="closest tr",
+            type="button",
+        )[htpy.i(".bi-file-earmark"), " Unpublish"],
         owner_withdrawable
         and htpy.button(
             ".btn.btn-danger.btn-sm",

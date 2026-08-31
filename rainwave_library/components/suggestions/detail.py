@@ -159,6 +159,7 @@ def suggestion_detail_row(
         and suggestion.status in Suggestion.owner_editable_statuses
     )
     owner_publishable = not editable and is_owner and suggestion.status == "draft"
+    owner_draftable = not editable and is_owner and suggestion.status == "new"
     owner_withdrawable = not editable and is_owner and suggestion.status == "new"
     channel_badges: htpy.Node = (
         htpy.fragment[
@@ -195,6 +196,7 @@ def suggestion_detail_row(
                             suggestion,
                             owner_publish_blocked_reason=publish_blocked_reason,
                             owner_publishable=owner_publishable,
+                            owner_draftable=owner_draftable,
                             owner_withdrawable=owner_withdrawable,
                         ),
                         htpy.div(".g-3.row")[

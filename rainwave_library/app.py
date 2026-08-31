@@ -2985,6 +2985,46 @@ def suggestion_withdraw(suggestion_id: str) -> str:
     return rainwave_library.components.suggestion_row(suggestion)
 
 
+@app.route("/suggestions/<suggestion_id>/draft", methods=["POST"])
+@signed_in
+def suggestion_unpublish(suggestion_id: str) -> str:
+    requester_discord_id = str(flask.g.discord_id or "")
+    storage_cnx_ = rainwave_library.models.storage.connection_get(
+        app.config["STORAGE_CNX"]
+    )
+    try:
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx_, suggestion_id
+        )
+        if suggestion is None:
+            flask.abort(404)
+        if (
+            not requester_discord_id
+            or suggestion.requester_discord_id != requester_discord_id
+        ):
+            flask.abort(403)
+        if suggestion.status != "new":
+            flask.abort(409, "Only new suggestions can be saved as drafts.")
+
+        unpublished = rainwave_library.models.suggestions.suggestion_unpublish(
+            storage_cnx_,
+            suggestion_id,
+            requester_discord_id=requester_discord_id,
+            actor_name=flask.g.discord_display_name,
+        )
+        suggestion = rainwave_library.models.suggestions.suggestion_get(
+            storage_cnx_, suggestion_id
+        )
+    finally:
+        storage_cnx_.close()
+
+    if suggestion is None:
+        flask.abort(404)
+    if not unpublished:
+        flask.abort(409, "This suggestion is no longer available to save as a draft.")
+    return rainwave_library.components.suggestion_row(suggestion)
+
+
 @app.route("/suggestions/<suggestion_id>/publish", methods=["POST"])
 @signed_in
 def suggestion_publish(suggestion_id: str) -> str:
