@@ -110,6 +110,7 @@ def listeners_index(ranks: list[dict]) -> str:
                                         ("group", "group_name", "Group"),
                                         ("rank", "rank_title", "Rank"),
                                         ("ratings", "rating_count", "Ratings"),
+                                        ("registered", "user_regdate", "Registered"),
                                         ("active", "radio_last_active", "Last active"),
                                     ]
                                 ],

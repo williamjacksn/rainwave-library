@@ -263,10 +263,11 @@ class ListenerDict(TypedDict):
     rating_count: int
     user_id: int
     user_name: str
+    user_regdate: int
 
 
 class Listener:
-    colspan: int = 8
+    colspan: int = 9
     thead: htpy.Element = htpy.thead[
         htpy.tr(".text-center")[
             htpy.th,
@@ -276,6 +277,7 @@ class Listener:
             htpy.th["Rank"],
             htpy.th["Ratings"],
             htpy.th["Discord"],
+            htpy.th["Registered"],
             htpy.th["Last active"],
         ]
     ]
@@ -289,6 +291,14 @@ class Listener:
             htpy.tbody[
                 htpy.tr[htpy.th["ID"], htpy.td(".user-select-all")[htpy.code[self.id]]],
                 htpy.tr[htpy.th["User name"], htpy.td(".user-select-all")[self.name]],
+                htpy.tr[
+                    htpy.th["Registration date"],
+                    htpy.td[
+                        self.registration_date.isoformat()
+                        if self.registration_date
+                        else ""
+                    ],
+                ],
                 htpy.tr[htpy.th["Rank"], htpy.td(".user-select-all")[self.rank]],
                 htpy.tr[
                     htpy.th["Discord user ID"],
@@ -368,6 +378,13 @@ class Listener:
         return self.data.get("rating_count")
 
     @property
+    def registration_date(self) -> datetime.date | None:
+        timestamp = self.data.get("user_regdate")
+        if not timestamp or timestamp < 0:
+            return None
+        return datetime.datetime.fromtimestamp(timestamp, tz=datetime.UTC).date()
+
+    @property
     def tr(self) -> htpy.Element:
         return htpy.tr[
             htpy.td(".text-center.text-nowrap")[
@@ -391,6 +408,9 @@ class Listener:
             htpy.td[self.rating_count],
             htpy.td(".text-center")[
                 self.is_discord_user and htpy.i(".bi-check-lg", title=self.discord_id)
+            ],
+            htpy.td(".text-nowrap")[
+                self.registration_date.isoformat() if self.registration_date else ""
             ],
             htpy.td(".text-nowrap")[
                 bool(self.last_active) and self.last_active.date().isoformat()
@@ -1103,6 +1123,7 @@ def get_listener(db: fort.PostgresDatabase, listener_id: int) -> Listener:
         select
             u.user_id,
             coalesce(u.radio_username, u.username) as user_name,
+            u.user_regdate,
             u.discord_user_id,
             case
                 when radio_last_active > 0 then to_timestamp(radio_last_active)
@@ -1166,6 +1187,7 @@ def get_listeners(
         "radio_last_active",
         "rank_title",
         "rating_count",
+        "user_regdate",
         "user_id",
         "user_name",
     ):
@@ -1204,6 +1226,7 @@ def get_listeners(
             u.user_avatar,
             u.user_id,
             coalesce(u.radio_username, u.username) as user_name,
+            u.user_regdate,
             u.user_rank
         from phpbb_users u
         left join phpbb_ranks r on r.rank_id = u.user_rank
