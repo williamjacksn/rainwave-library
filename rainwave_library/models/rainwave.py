@@ -1197,10 +1197,11 @@ def get_listeners(
         sort_clause = f"{sort_clause}, user_id asc"
     sql = f"""
         with c as (
-            select user_id, count(*) rating_count
-            from r4_song_ratings
-            where song_rating_user is not null
-            group by user_id
+            select sr.user_id, count(*) rating_count
+            from r4_song_ratings sr
+            join r4_songs s on s.song_id = sr.song_id and s.song_verified is true
+            where sr.song_rating_user is not null
+            group by sr.user_id
         )
         select
             u.discord_user_id,
