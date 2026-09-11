@@ -72,6 +72,7 @@ class ChannelRootFolder(enum.StrEnum):
     COVERS_CHIP_ALL = ("cover-chip-all", "Covers, Chiptune")
     COVERS_ONLY = ("cover-only", "Covers only")
     CHIPTUNE_ALL = ("chip-all", "Chiptune")
+    CHIPTUNE_CHILL_ALL = ("chip-chill-all", "Chiptune, Chill")
     CHIPTUNE_ONLY = ("chip-only", "Chiptune only")
     CHILL_ONLY = ("chill-only", "Chill")
 
