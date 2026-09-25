@@ -141,6 +141,7 @@ def _staff_suggestion_create_form(
     requester_name: str = "",
     requester_discord_id: str = "",
     links: tuple[tuple[str, str], ...] = (),
+    send_discord_notification: bool = True,
     result: tuple[str, str] | None = None,
 ) -> htpy.Element:
     url = flask.url_for("suggestion_staff_create")
@@ -268,6 +269,19 @@ def _staff_suggestion_create_form(
                 type="button",
             )[htpy.i(".bi-plus-lg"), " Add link"],
         ],
+        htpy.div(".form-check.mt-3")[
+            htpy.input(
+                "#staff-suggestion-send-discord-notification.form-check-input",
+                checked=send_discord_notification,
+                name="send-discord-notification",
+                type="checkbox",
+                value="1",
+            ),
+            htpy.label(
+                ".form-check-label",
+                for_="staff-suggestion-send-discord-notification",
+            )["Send Discord notification"],
+        ],
         htpy.div(".mt-3")[
             htpy.button(".btn.btn-success", type="submit")[
                 htpy.i(".bi-plus-lg"), " Create suggestion"
@@ -284,6 +298,7 @@ def staff_suggestion_create_form(
     requester_name: str = "",
     requester_discord_id: str = "",
     links: tuple[tuple[str, str], ...] = (),
+    send_discord_notification: bool = True,
     result: tuple[str, str] | None = None,
 ) -> str:
     return str(
@@ -295,6 +310,7 @@ def staff_suggestion_create_form(
             requester_name=requester_name,
             requester_discord_id=requester_discord_id,
             links=links,
+            send_discord_notification=send_discord_notification,
             result=result,
         )
     )

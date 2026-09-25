@@ -1774,6 +1774,9 @@ def suggestion_create() -> werkzeug.Response | str:
 def suggestion_staff_create() -> werkzeug.Response | str:
     title = flask.request.form.get("title", "")
     description = flask.request.form.get("description", "")
+    send_discord_notification = (
+        flask.request.form.get("send-discord-notification") == "1"
+    )
     kind = flask.request.form.get(
         "kind", rainwave_library.models.suggestions.Suggestion.default_kind
     )
@@ -1822,19 +1825,21 @@ def suggestion_staff_create() -> werkzeug.Response | str:
                 requester_name=requester_name_input,
                 requester_discord_id=requester_discord_id_input,
                 links=entered_links,
+                send_discord_notification=send_discord_notification,
                 result=("alert-danger", str(error)),
             )
     finally:
         storage_cnx_.close()
 
-    _suggestion_created_announce(
-        suggestion_id,
-        title=title,
-        channel_id=channel_id,
-        kind=kind,
-        requester_name=requester_name,
-        requester_discord_id=requester_discord_id,
-    )
+    if send_discord_notification:
+        _suggestion_created_announce(
+            suggestion_id,
+            title=title,
+            channel_id=channel_id,
+            kind=kind,
+            requester_name=requester_name,
+            requester_discord_id=requester_discord_id,
+        )
 
     redirect_url = flask.url_for("suggestions")
     if flask.request.headers.get("HX-Request") == "true":
