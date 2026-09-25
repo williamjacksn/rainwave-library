@@ -80,7 +80,6 @@ def _suggestion_preview_actions(
     owner_publishable: bool = False,
     owner_draftable: bool = False,
     owner_deletable: bool = False,
-    owner_withdrawable: bool = False,
 ) -> htpy.Node:
     is_staff, claimable, assignable, releasable, resolvable, completable = (
         _suggestion_staff_action_state(suggestion)
@@ -97,7 +96,6 @@ def _suggestion_preview_actions(
         and not owner_publishable
         and not owner_draftable
         and not owner_deletable
-        and not owner_withdrawable
     ):
         return None
 
@@ -255,19 +253,6 @@ def _suggestion_preview_actions(
             hx_target="closest tr",
             type="button",
         )[htpy.i(".bi-trash"), " Delete"],
-        owner_withdrawable
-        and htpy.button(
-            ".btn.btn-danger.btn-sm",
-            hx_confirm=(f'Are you sure you want to withdraw "{suggestion.title}"?'),
-            hx_disabled_elt="this",
-            hx_post=flask.url_for(
-                "suggestion_withdraw",
-                suggestion_id=suggestion.id,
-            ),
-            hx_swap="outerHTML",
-            hx_target="closest tr",
-            type="button",
-        )[htpy.i(".bi-x-circle"), " Withdraw"],
     ]
 
 
