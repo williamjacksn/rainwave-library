@@ -223,6 +223,7 @@ def id3_tag_values_set(
 #  'ð', 240,
 #  'ñ': 241,
 #  'ó': 243,
+#  'ô': 244,
 #  'ö': 246,
 #  'ú': 250,
 #  'ü': 252,
@@ -255,8 +256,8 @@ def make_safe(s: str) -> str:
     }
     special = dict(
         zip(
-            map(ord, "²ÀÉÜàáâãäçèéêíðñóöúüāōşūКСавеийкмностṃ"),
-            "2AEUaaaaaceeeidnoouuaosuKSaveijkmnostm",
+            map(ord, "²ÀÉÜàáâãäçèéêíðñóôöúüāōşūКСавеийкмностṃ"),
+            "2AEUaaaaaceeeidnooouuaosuKSaveijkmnostm",
         )
     )
     translate_table.update(special)
