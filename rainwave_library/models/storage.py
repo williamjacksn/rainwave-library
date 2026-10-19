@@ -1,5 +1,5 @@
 import dataclasses
-import datetime
+import datetime as dt
 import enum
 import json
 import logging
@@ -225,7 +225,7 @@ def upcoming_music_date_mp3_duration_get(
     release_date: str,
 ) -> float:
     try:
-        parsed_release_date = datetime.date.fromisoformat(release_date)
+        parsed_release_date = dt.date.fromisoformat(release_date)
     except ValueError:
         msg = "Choose a valid release date."
         raise ValueError(msg) from None
@@ -470,14 +470,11 @@ def suggestion_release_target_get(
     parsed_release_date = None
     if not release_immediately:
         try:
-            parsed_release_date = datetime.date.fromisoformat(release_date)
+            parsed_release_date = dt.date.fromisoformat(release_date)
         except ValueError:
             msg = "Choose a valid release date."
             raise ValueError(msg) from None
-        if (
-            parsed_release_date
-            <= datetime.datetime.now(tz=datetime.UTC).astimezone().date()
-        ):
+        if parsed_release_date <= dt.datetime.now(tz=dt.UTC).astimezone().date():
             msg = "The release date must be in the future."
             raise ValueError(msg)
     try:

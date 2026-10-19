@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import enum
 import os
 import pathlib
@@ -259,7 +259,7 @@ class ListenerDict(TypedDict):
     discord_user_id: int
     group_name: str
     is_discord_user: bool
-    radio_last_active: datetime.datetime | None
+    radio_last_active: dt.datetime | None
     rank_title: str
     rating_count: int
     user_id: int
@@ -363,7 +363,7 @@ class Listener:
         return self.data.get("is_discord_user")
 
     @property
-    def last_active(self) -> datetime.datetime | None:
+    def last_active(self) -> dt.datetime | None:
         return self.data.get("radio_last_active")
 
     @property
@@ -379,11 +379,11 @@ class Listener:
         return self.data.get("rating_count")
 
     @property
-    def registration_date(self) -> datetime.date | None:
+    def registration_date(self) -> dt.date | None:
         timestamp = self.data.get("user_regdate")
         if not timestamp or timestamp < 0:
             return None
-        return datetime.datetime.fromtimestamp(timestamp, tz=datetime.UTC).date()
+        return dt.datetime.fromtimestamp(timestamp, tz=dt.UTC).date()
 
     @property
     def tr(self) -> htpy.Element:
@@ -473,10 +473,8 @@ class Song:
         return self.data.get("song_length")
 
     @property
-    def added_on(self) -> datetime.datetime:
-        return datetime.datetime.fromtimestamp(
-            self.data.get("song_added_on"), tz=datetime.UTC
-        )
+    def added_on(self) -> dt.datetime:
+        return dt.datetime.fromtimestamp(self.data.get("song_added_on"), tz=dt.UTC)
 
     @property
     def album_name(self) -> str:
@@ -1074,9 +1072,7 @@ def get_category_for_album(db: fort.PostgresDatabase, album_name: str) -> str | 
     return None
 
 
-def get_elections(
-    db: fort.PostgresDatabase, sid: int, day: datetime.date
-) -> list[dict]:
+def get_elections(db: fort.PostgresDatabase, sid: int, day: dt.date) -> list[dict]:
     where_clause = "elec_used is true"
 
     if sid not in (1, 2, 3, 4, 5):

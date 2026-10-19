@@ -1,7 +1,7 @@
 # https://docs.bsky.app/docs/get-started
 
 import dataclasses
-import datetime
+import datetime as dt
 import logging
 
 import httpx
@@ -46,7 +46,7 @@ class BlueskyClient:
         record = {
             "collection": "app.bsky.feed.post",
             "record": {
-                "createdAt": datetime.datetime.now(tz=datetime.UTC).isoformat(),
+                "createdAt": dt.datetime.now(tz=dt.UTC).isoformat(),
                 "text": text,
             },
             "repo": self.handle,

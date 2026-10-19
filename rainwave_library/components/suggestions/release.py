@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 
 import flask
 import htpy
@@ -177,8 +177,7 @@ def _suggestion_schedule_release_form(
         else channel_folder
     )
     minimum_release_date = (
-        datetime.datetime.now(tz=datetime.UTC).astimezone().date()
-        + datetime.timedelta(days=1)
+        dt.datetime.now(tz=dt.UTC).astimezone().date() + dt.timedelta(days=1)
     ).isoformat()
     return htpy.form(
         "#suggestion-schedule-release-form.modal-content",

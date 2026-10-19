@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import functools
 import io
 import itertools
@@ -673,7 +673,7 @@ def artists_rows() -> str:
 def api_elections() -> flask.Response:
     db = app.config["RAINWAVE_DATABASE"]
     sid = int(flask.request.values.get("sid", 1))
-    day = datetime.date.fromisoformat(flask.request.values.get("day", "2024-01-01"))
+    day = dt.date.fromisoformat(flask.request.values.get("day", "2024-01-01"))
     return flask.jsonify(
         {
             "sid": sid,
@@ -1481,9 +1481,7 @@ def _suggestion_notice() -> _SuggestionNotice:
     count = rainwave_library.models.rainwave.song_count(db)
     return {
         "song_count": count // 1000 * 1000,
-        "song_count_as_of": datetime.datetime.now(tz=datetime.UTC)
-        .astimezone()
-        .strftime("%B %Y"),
+        "song_count_as_of": dt.datetime.now(tz=dt.UTC).astimezone().strftime("%B %Y"),
     }
 
 
@@ -3873,7 +3871,7 @@ def songs_remove(song_id: int) -> werkzeug.Response | str:
     note_text = textwrap.dedent(f"""\
         Song ID: {song_id}
         Original location: {song_filename}
-        Removed: {datetime.datetime.now(tz=datetime.UTC)}
+        Removed: {dt.datetime.now(tz=dt.UTC)}
         Removed by: {flask.g.discord_username} ({flask.g.discord_id})
         Removal reason: {reason}
         """)

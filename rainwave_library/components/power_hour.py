@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 
 import flask
 import htpy
@@ -9,7 +9,7 @@ from rainwave_library.models.rainwave import channel_badge, length_display
 from .common import _back_button, _base, _duration_hms, _user_menu
 
 
-def _scheduling_time_display(value: datetime.datetime) -> str:
+def _scheduling_time_display(value: dt.datetime) -> str:
     hour = value.hour % 12 or 12
     return (
         f"{value:%A, %B} {value.day}, {value.year} at "

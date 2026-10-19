@@ -1,5 +1,5 @@
 import dataclasses
-import datetime
+import datetime as dt
 from typing import TypedDict, cast
 from zoneinfo import ZoneInfo
 
@@ -10,9 +10,9 @@ POWER_HOUR_TARGET_DURATION_SECONDS = 120 * 60
 POWER_HOUR_MINIMUM_DURATION_SECONDS = 20 * 60
 POWER_HOUR_ALLOWED_ISO_WEEKDAYS = frozenset({1, 2, 4})
 POWER_HOUR_TIME_ZONE = ZoneInfo("America/New_York")
-POWER_HOUR_START_TIME = datetime.time(hour=14)
+POWER_HOUR_START_TIME = dt.time(hour=14)
 POWER_HOUR_REPRISE_TIME_ZONE = ZoneInfo("Europe/London")
-POWER_HOUR_REPRISE_START_TIME = datetime.time(hour=10)
+POWER_HOUR_REPRISE_START_TIME = dt.time(hour=10)
 
 
 class _PowerHourCandidateRow(TypedDict):
@@ -37,7 +37,7 @@ class PowerHourCandidate:
 @dataclasses.dataclass(frozen=True)
 class PowerHourOverview:
     candidates: tuple[PowerHourCandidate, ...]
-    next_scheduling_at: datetime.datetime
+    next_scheduling_at: dt.datetime
     minimum_duration_seconds: int = POWER_HOUR_MINIMUM_DURATION_SECONDS
     target_duration_seconds: int = POWER_HOUR_TARGET_DURATION_SECONDS
 
@@ -50,7 +50,7 @@ class PowerHourOverview:
         return max(0, self.minimum_duration_seconds - self.total_duration_seconds)
 
     @property
-    def next_reprise_at(self) -> datetime.datetime:
+    def next_reprise_at(self) -> dt.datetime:
         return power_hour_reprise_at(self.next_scheduling_at)
 
     @property
@@ -58,11 +58,9 @@ class PowerHourOverview:
         return sum(candidate.duration_seconds for candidate in self.candidates)
 
 
-def next_power_hour_scheduling_at(
-    now: datetime.datetime | None = None,
-) -> datetime.datetime:
+def next_power_hour_scheduling_at(now: dt.datetime | None = None) -> dt.datetime:
     if now is None:
-        local_now = datetime.datetime.now(tz=POWER_HOUR_TIME_ZONE)
+        local_now = dt.datetime.now(tz=POWER_HOUR_TIME_ZONE)
     elif now.tzinfo is None:
         msg = "Power Hour scheduling requires a timezone-aware datetime."
         raise ValueError(msg)
@@ -70,8 +68,8 @@ def next_power_hour_scheduling_at(
         local_now = now.astimezone(POWER_HOUR_TIME_ZONE)
 
     for offset in range(8):
-        date = local_now.date() + datetime.timedelta(days=offset)
-        scheduling_at = datetime.datetime.combine(
+        date = local_now.date() + dt.timedelta(days=offset)
+        scheduling_at = dt.datetime.combine(
             date,
             POWER_HOUR_START_TIME,
             tzinfo=POWER_HOUR_TIME_ZONE,
@@ -86,9 +84,7 @@ def next_power_hour_scheduling_at(
     raise RuntimeError(msg)
 
 
-def power_hour_reprise_at(
-    scheduling_at: datetime.datetime,
-) -> datetime.datetime:
+def power_hour_reprise_at(scheduling_at: dt.datetime) -> dt.datetime:
     if scheduling_at.tzinfo is None:
         msg = (
             "New Music Power Hour reprise scheduling requires a timezone-aware "
@@ -96,8 +92,8 @@ def power_hour_reprise_at(
         )
         raise ValueError(msg)
     scheduling_date = scheduling_at.astimezone(POWER_HOUR_REPRISE_TIME_ZONE).date()
-    return datetime.datetime.combine(
-        scheduling_date + datetime.timedelta(days=1),
+    return dt.datetime.combine(
+        scheduling_date + dt.timedelta(days=1),
         POWER_HOUR_REPRISE_START_TIME,
         tzinfo=POWER_HOUR_REPRISE_TIME_ZONE,
     )
@@ -146,7 +142,7 @@ def power_hour_candidates_get(
 def power_hour_overview_get(
     db: fort.PostgresDatabase,
     *,
-    now: datetime.datetime | None = None,
+    now: dt.datetime | None = None,
 ) -> PowerHourOverview:
     return PowerHourOverview(
         candidates=power_hour_candidates_get(db),
