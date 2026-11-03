@@ -82,9 +82,9 @@ def get_ocremix_fetch(ocr_info: dict, categories: list[str]) -> str:
                 htpy.input(
                     name="download-from",
                     type="hidden",
-                    value=ocr_info.get("download_url"),
+                    value=ocr_info["download_urls"][0],
                 ),
-                htpy.code[ocr_info.get("download_url")],
+                htpy.code[ocr_info["download_urls"][0]],
             ],
         ],
         htpy.tr[
