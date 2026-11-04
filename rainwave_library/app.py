@@ -1094,7 +1094,9 @@ def get_ocremix() -> str:
 @app.route("/get-ocremix/download", methods=["POST"])
 @secure
 def get_ocremix_download() -> str:
-    r = httpx.get(flask.request.values["download-from"])
+    user_agent = "rainwave-library (+https://github.com/williamjacksn/rainwave-library)"
+    headers = {"User-Agent": user_agent}
+    r = httpx.get(flask.request.values["download-from"], headers=headers)
     mp3_data = io.BytesIO(r.content)
     tags = mutagen.id3.ID3(mp3_data)
     tags.delall("TALB")
