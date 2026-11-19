@@ -133,7 +133,7 @@ def main() -> None:
     while True:
         try:
             sql = input("sql> ")
-        except (EOFError, KeyboardInterrupt):
+        except EOFError, KeyboardInterrupt:
             print()
             break
         if sql.strip().lower() in {"quit", "exit"}:

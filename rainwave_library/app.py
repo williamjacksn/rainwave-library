@@ -789,7 +789,7 @@ def impersonate_user() -> werkzeug.Response | str:
                         discord_user_id=discord_user_id,
                         error=message,
                     )
-                except (httpx.HTTPError, ValueError):
+                except httpx.HTTPError, ValueError:
                     app.logger.exception(
                         "Could not look up Discord user %s",
                         discord_user_id,
@@ -808,7 +808,7 @@ def impersonate_user() -> werkzeug.Response | str:
                     discord_user_id=discord_user_id,
                     error="Discord could not look up that guild member.",
                 )
-        except (httpx.HTTPError, ValueError):
+        except httpx.HTTPError, ValueError:
             app.logger.exception(
                 "Could not look up Discord guild member %s",
                 discord_user_id,
@@ -1392,7 +1392,7 @@ def suggestions() -> str:
             filters = rainwave_library.models.suggestions.SuggestionFilterSet.from_json(
                 saved_filters
             )
-        except (json.JSONDecodeError, TypeError, ValueError):
+        except json.JSONDecodeError, TypeError, ValueError:
             app.logger.warning(
                 "Ignoring invalid saved suggestion filters for Discord user %s",
                 discord_id,
@@ -1953,7 +1953,7 @@ def _suggestion_staged_files_get(
                 suggestion_id,
                 path,
             )
-        except (OSError, ValueError):
+        except OSError, ValueError:
             music_tags[path] = rainwave_library.models.mp3.Mp3TagValues(
                 error="Could not read ID3 tags."
             )
@@ -2394,7 +2394,7 @@ def suggestion_files_normalize(suggestion_id: str) -> str:
                                     for source_path, target_path in completed_renames
                                 },
                             )
-                        except (OSError, ValueError):
+                        except OSError, ValueError:
                             app.logger.exception(
                                 "Could not roll back normalized filenames for "
                                 "suggestion %s",
@@ -2552,7 +2552,7 @@ def suggestion_file_tags_update(suggestion_id: str) -> str:
                         value,
                     )
                     updated_count += 1
-                except (OSError, ValueError):
+                except OSError, ValueError:
                     failed_count += 1
                     app.logger.exception(
                         "Could not update %s for suggestion file %s",
@@ -2644,7 +2644,7 @@ def _suggestion_staged_file_get(
             suggestion_id,
             relative_path,
         )
-    except (OSError, ValueError):
+    except OSError, ValueError:
         flask.abort(404)
     return relative_path, file_path
 
